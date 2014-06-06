@@ -30,12 +30,12 @@ $mock_off_target_object->mock( 'info', sub { return qw( 0.223 0.528 17:403-425:-
 
 my $mock_target_object = Test::MockObject->new();
 $mock_target_object->set_isa( 'Crispr::Target' );
-$mock_target_object->mock( 'info', sub{ return (qw{ ENSE000000035646 ENSDARG00000026374 atpase2 rw4 }) } );
+$mock_target_object->mock( 'info', sub{ return (qw{ ENSE000000035646 ENSDARG00000026374 atpase2 crispr_test }) } );
 $mock_target_object->mock( 'assembly', sub{ return undef } );
 
 my $mock_target_object_3 = Test::MockObject->new();
 $mock_target_object_3->set_isa( 'Crispr::Target' );
-$mock_target_object_3->mock( 'info', sub{ return (qw{ ENSE000000035646 ENSDARG00000026374 atpase2 rw4 }) } );
+$mock_target_object_3->mock( 'info', sub{ return (qw{ ENSE000000035646 ENSDARG00000026374 atpase2 crispr_test }) } );
 $mock_target_object_3->mock( 'assembly', sub{ return 'Zv9' } );
 $mock_target_object_3->mock( 'species', sub{ return 'zebrafish' } );
 
