@@ -671,7 +671,7 @@ __END__
 
 =head1 DESCRIPTION
  
-Object of this class represent a targets strecth of DNA to search for potential crispr target sites. 
+Object of this class represent a target stretch of DNA to search for potential crispr target sites. 
  
 =head1 DIAGNOSTICS
  
