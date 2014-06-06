@@ -23,7 +23,7 @@ subtype 'Crispr::Target::NOT_EMPTY',
 
 =method new
 
-  Usage       : my $target = Crispr::target->new(
+  Usage       : my $target = Crispr::Target->new(
 					target_id => undef,
                     name => 'hspa5_exon1',
                     assembly => 'Zv9',
