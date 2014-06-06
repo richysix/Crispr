@@ -42,7 +42,7 @@ subtype 'Crispr::Target::NOT_EMPTY',
 					target_adaptor => $target_adaptor,
                 );
   Purpose     : Constructor for creating target objects
-  Returns     : Crispr::target object
+  Returns     : Crispr::Target object
   Parameters  : target_id => Int
                 name => String
                 assembly => String
@@ -636,10 +636,9 @@ sub _parse_date {
 __PACKAGE__->meta->make_immutable;
 1;
 
-##########################
-# DOCUMENTATION
-##########################
+__END__
 
+=pod
 
 =head1 NAME
  
