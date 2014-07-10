@@ -10,6 +10,14 @@ use Data::Dumper;
 #plan tests => 15 + 36 + 3 + 4 + 6;
 $tests = 0;
 
+use lib 't/lib';
+use TestMethods;
+
+my $test_method_obj = TestMethods->new();
+$test_method_obj->check_for_test_genome();
+$test_method_obj->check_for_annotation();
+my $slice_adaptor = $test_method_obj->slice_adaptor;
+
 use Crispr;
 
 # remove files from previous runs
@@ -39,13 +47,6 @@ foreach my $method ( @attributes, @methods ) {
     can_ok( $design_obj, $method );
     $tests++;
 }
-
-use Bio::EnsEMBL::Registry;
-Bio::EnsEMBL::Registry->load_registry_from_db(
-  -host    => 'ensembldb.ensembl.org',
-  -user    => 'anonymous',
-);
-my $slice_adaptor = Bio::EnsEMBL::Registry->get_adaptor( 'zebrafish', 'core', 'slice' );
 
 $design_obj = Crispr->new(
     species => 'zebrafish',
@@ -169,16 +170,6 @@ is( $off_targets2->score, 0.9, 'check off target score 2');
 $tests+=3;
 
 # calculate protein coding scores
-use Bio::EnsEMBL::Registry;
-warnings_like { Bio::EnsEMBL::Registry->load_registry_from_db(
-    -host    => 'ensembldb.ensembl.org',
-    -user    => 'anonymous',
-    -port    => 5306,
-    -verbose => 0,
-    -species => 'zebrafish', ), }
-    [qr/WARN:/xms, qr/WARN:/xms, qr/WARN:/xms, qr/WARN:/xms, ], 'supress warnings';
-$tests++;
-
 my $gene_adaptor = Bio::EnsEMBL::Registry->get_adaptor( 'zebrafish', 'core', 'gene' );
 my $gene = $gene_adaptor->fetch_by_stable_id( 'ENSDARG00000038399' );
 my $transcripts = $gene->get_all_Transcripts();
