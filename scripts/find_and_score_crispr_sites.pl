@@ -64,7 +64,7 @@ $basename =~ s/\A/$options{file_base}_/xms if( $options{file_base} );
 # make new design object
 my $crispr_design = Crispr->new(
     species => $options{species},
-    target_seq => $options{target_seq},
+    target_seq => $options{target_sequence},
     target_genome => $options{target_genome},
     annotation_file => $options{annotation_file},
     slice_adaptor => $slice_adaptor,
@@ -187,9 +187,7 @@ foreach my $target ( @{ $crispr_design->targets } ){
 sub get_exon {
     my ( $exon_id, $requestor ) = @_;
     my $success = 0;
-    if( !$requestor ){
-        die "Need a requestor for each exon!\n";
-    }
+    $requestor = get_requestor( $requestor );
     $requestor =~ s/'//xmsg;
     # get exon object
     my $exon = $exon_adaptor->fetch_by_stable_id( $exon_id );
@@ -249,9 +247,7 @@ sub get_exon {
 sub get_gene {
     my ( $gene_id, $requestor ) = @_;
     my $success = 0;
-    if( !$requestor ){
-        die "Need a requestor for each position!\n";
-    }
+    $requestor = get_requestor( $requestor );
     $requestor =~ s/'//xmsg;
     #get gene
     my $gene = $gene_adaptor->fetch_by_stable_id( $gene_id );
@@ -334,9 +330,7 @@ sub get_gene {
 sub get_transcript {
     my ( $transcript_id, $requestor ) = @_;
     my $success = 0;
-    if( !$requestor ){
-        die "Need a requestor for each transcript!\n";
-    }
+    $requestor = get_requestor( $requestor );
     $requestor =~ s/'//xmsg;
     #get gene
     my $transcript = $transcript_adaptor->fetch_by_stable_id( $transcript_id );
@@ -402,9 +396,7 @@ sub get_transcript {
 sub get_posn {
     my ( $posn, $requestor, $gene_id  ) = @_;
     my $success = 0;
-    if( !$requestor ){
-        die "Need a requestor for each position!\n";
-    }
+    $requestor = get_requestor( $requestor );
     $requestor =~ s/'//xmsg;
     
     my ( $chr, $position, $strand, ) =  split /:/, $posn;
@@ -483,12 +475,19 @@ sub get_posn {
         }
     }
     else{
-        warn "Couldn't get gene for id:$gene_id.\n";
+        warn "Couldn't get slice for region, $target_name.\n";
         $success = 1;
     }
     return $success;
 }
 
+sub get_requestor {
+    my ( $input, ) = @_;
+    my $requestor = $options{requestor} ne 'NULL'   ?   $options{requestor}
+        :           $input                              $input
+        :           $options{requestor};
+    return $requestor;
+}
 
 sub get_and_check_options {
     
@@ -504,6 +503,7 @@ sub get_and_check_options {
         'num_five_prime_Gs=i',
         'coding',
         'file_base=s',
+        'requestor=s',
         'no_crRNA',
         'help',
         'man',
@@ -544,12 +544,12 @@ sub get_and_check_options {
     }
     
     my $five_prime_Gs_in_target_seq;
-    if( $options{target_seq} ){
+    if( $options{target_sequence} ){
         # check target sequence is 23 bases long
-        if( length $options{target_seq} != 23 ){
+        if( length $options{target_sequence} != 23 ){
             pod2usage("Target sequence must be 23 bases long!\n");
         }
-        if( $options{target_seq} =~ m/\A(G*) # match Gs at the start/xms ){
+        if( $options{target_sequence} =~ m/\A(G*) # match Gs at the start/xms ){
             $five_prime_Gs_in_target_seq = length $1;
         }
         else{
@@ -559,7 +559,7 @@ sub get_and_check_options {
         if( defined $options{num_five_prime_Gs} ){
             if( $five_prime_Gs_in_target_seq != $options{num_five_prime_Gs} ){
                 pod2usage("The number of five prime Gs in target sequence, ",
-                          $options{target_seq}, " doesn't match with the value of --num_five_prime_Gs option, ",
+                          $options{target_sequence}, " doesn't match with the value of --num_five_prime_Gs option, ",
                           $options{num_five_prime_Gs}, "!\n");
             }
         }
@@ -576,14 +576,17 @@ sub get_and_check_options {
             }
             substr( $target_seq, 0, $options{num_five_prime_Gs}, $Gs );
             #print join("\t", $Gs, $target_seq ), "\n";
-            $options{target_seq} = $target_seq;
+            $options{target_sequence} = $target_seq;
         }
         else{
-            $options{target_seq} = 'GGNNNNNNNNNNNNNNNNNNNGG';
+            $options{target_sequence} = 'GGNNNNNNNNNNNNNNNNNNNGG';
             $options{num_five_prime_Gs} = 2;
         }
     }
-
+    
+    if( !$options{requestor} ){
+        $options{requestor} = 'NULL';
+    }
     $options{debug} = 0 if !$options{debug};
     
     warn "Settings:\n", map { join(' - ', $_, defined $options{$_} ? $options{$_} : 'off'),"\n" } sort keys %options if $options{verbose};
@@ -618,6 +621,7 @@ possible off-target effects and optionally for its position in coding transcript
         --enzyme                Sets the requires_enzyme attribute of targets [default: n]
         --coding                turns on scoring of position of site within target gene
         --file_base             a prefix for all output files
+        --requestor             A requestor to use for all targets
         --no_crRNA              option to supress finding and scoring crispr target sites
         --help                  prints help message and exits
         --man                   prints manual page and exits
@@ -665,7 +669,7 @@ The path of the annotation file for the appropriate species. Must be in gff form
 
 The Cas9 target sequence [default: NNNNNNNNNNNNNNNNNNNNNGG ]
 
-=item B<--num_Gs >
+=item B<--num_five_prime_Gs >
 
 The numbers of Gs required at the 5' end of the target sequence.
 e.g. 1 five prime G has a target sequence GNNNNNNNNNNNNNNNNNNNNGG. [default: 0]
@@ -681,6 +685,13 @@ switch to indicate whether or not to score crRNAs for position in coding transcr
 =item B<--file_base >
 
 A prefix for all output files. This is added to output filenames with a '_' as separator.
+
+=item B<--requestor >
+
+All targets need a requestor. If the requestor is the same for all the targets
+supplied to the script it can be supplied here instead of with each target.
+If this option is not set, it will be set to 'NULL'in case requestors are not
+supplied with each target.
 
 =item B<--no_crRNA>
 
