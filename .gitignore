@@ -2,3 +2,4 @@ Crispr-*
 *CR_*.tsv
 tmp/*
 cover_db/*
+t/data/mock_*
