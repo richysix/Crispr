@@ -12,7 +12,7 @@ use DateTime;
 my $date_obj = DateTime->now();
 my $todays_date = $date_obj->ymd;
 
-plan tests => 4 + 2 + 1 + 17 + 4 + 4 + 2 + 5 + 6 + 6 + 2 + 8 + 2 + 2 + 2 + 2 + 6 + 8 + 4;
+plan tests => 4 + 2 + 1 + 17 + 4 + 4 + 2 + 5 + 6 + 6 + 2 + 8 + 2 + 2 + 2 + 2 + 6 + 9 + 4;
 
 my $species = 'zebrafish';
 
@@ -190,7 +190,7 @@ throws_ok { $target->designed( '2012-02-30' ) } qr/Invalid/, 'Impossible date';
 
 is( $target_2->designed, '2012-07-18', 'designed2');
 
-# 8 tests - check output of non attribute methods
+# 9 tests - check output of non attribute methods
 is( $target->region, '5:18067321-18083466:-1', 'check region');
 is( $target_2->region, '50-60:1', 'Get region without chr');
 is( $target->length, 16146, 'check length' );
@@ -218,6 +218,8 @@ $tmp_target = Crispr::Target->new(
     ensembl_version => 71,
 );
 
+like( join("\t", $tmp_target->summary ),
+    qr/SLC39A14\tENSDARG00000090174\tSLC39A14\tNULL/, 'check summary 3' );
 like( join("\t", $tmp_target->info ),
     qr/\A 1\tSLC39A14\tZv9\t5\t18067321\t18083466\t-1\tNULL\ty\tENSDARG00000090174\tSLC39A14\tNULL\t71\tNULL \z/xms, 'check info 3' );
 
