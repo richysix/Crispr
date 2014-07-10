@@ -484,7 +484,7 @@ sub get_posn {
 sub get_requestor {
     my ( $input, ) = @_;
     my $requestor = $options{requestor} ne 'NULL'   ?   $options{requestor}
-        :           $input                              $input
+        :           $input                          ?   $input
         :           $options{requestor};
     return $requestor;
 }
@@ -634,9 +634,18 @@ possible off-target effects and optionally for its position in coding transcript
 
 =item B<input>
 
-input_file of Ensembl exon ids, gene ids, transcript ids or genomic positions.
+tab-sepaarted input.
+Columns are: TARGETS    REQUESTOR   [GENE_ID]
+
+TARGETS: Acceptable targets are Ensembl exon ids, gene ids, transcript ids or genomic positions/regions.
 All four types can be present in one file.
-This can also be supplied on STDIN.
+
+REQUESTOR: A requestor is required if you are using the SQL database to store guide RNAs.
+Each target can have a different requestor if supplied in the input rather than by the --requestor option.
+
+GENE_ID: Optionally an Ensembl gene id can be supplied for genomic regions.
+
+This input can also be supplied on STDIN rather than a file.
 
 =back
 
@@ -677,6 +686,7 @@ e.g. 1 five prime G has a target sequence GNNNNNNNNNNNNNNNNNNNNGG. [default: 0]
 =item B<--enzyme>
 
 switch to indicate if a unique restriction site is required within the crispr site.
+Will be used when designing screening primers.
 
 =item B<--coding>
 
@@ -697,6 +707,7 @@ supplied with each target.
 
 Option to supress finding and scoring of crRNAs for the targets.
 Simply gets the information on the targets and outputs the target info.
+Produces target info in a form that is simple to add to the SQL database.
 
 =item B<--debug>
 
