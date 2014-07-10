@@ -286,6 +286,12 @@ my $target_seen = {};
 #Throws      : 
 #Comments    : 
 
+my $testing;
+sub _testing {
+    my $self = shift @_;
+    $testing = shift @_;
+}
+
 sub _seen_crRNA_id {
 	my ( $self, $name, $target_name ) = @_;
 	if( exists $crRNA_seen->{$name . q{_} . $target_name} ){
@@ -909,6 +915,7 @@ sub bwa_align {
 	#	$self->target_genome, $fq_filename, '>', $sai_filename, );
 	my $align_cmd = join(q{ }, 'bwa aln -n 4 -o 0 -l 20 -k 3 -N',
 		$self->target_genome, $fq_filename, '>', $sai_filename, );
+    $align_cmd .= ' 2> /dev/null' if $testing;
 	system( $align_cmd );
     return 1;
 }
@@ -930,10 +937,12 @@ sub filter_and_score_off_targets {
     
 	my $sam_cmd = join(q{ }, 'bwa samse -n 900000',
 		$self->target_genome, "$basename.sai", "$basename.fq", );
+    $sam_cmd .= ' 2> /dev/null' if $testing;
     
     open (my $sam_pipe, '-|', $sam_cmd) || confess "failed to execute command $sam_cmd\n";
     my $line;
     while ( $line = <$sam_pipe>) {
+        next if( $line =~ m/\A \@/xms );
 		chomp $line;
 		my ( $crispr_id, $flag, $chr, $start, $mapq, $cigar_str,
                 undef, undef, undef, $seq, undef, @tags, ) = split /\t/, $line;
@@ -954,6 +963,9 @@ sub filter_and_score_off_targets {
             next if( $supp_align eq q{} );
             my ( $chr, $pos, $cigar, $mismatch ) = split /,/, $supp_align;
             my $strand = substr($pos, 0, 1, "");
+            $strand = $strand eq '+'    ?   '1'
+                :       $strand eq '-'  ?   '-1'
+                :                           '1';
             my $end = $pos - 1 + length( $seq );
             
             #get slice
