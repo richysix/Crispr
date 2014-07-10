@@ -6,7 +6,7 @@ use Test::Warn;
 use Test::MockObject;
 use Data::Dumper;
 
-plan tests => 1 + 33 + 4 + 4 + 1 + 4 + 4 + 4 + 1 + 3 + 3 + 5 + 2 + 7 + 4 + 4 + 2 + 2 + 1;
+plan tests => 1 + 33 + 4 + 4 + 1 + 4 + 4 + 4 + 1 + 3 + 3 + 5 + 2 + 7 + 4 + 4 + 2 + 2 + 2 + 1;
 
 my $species = 'zebrafish';
 
@@ -30,12 +30,14 @@ $mock_off_target_object->mock( 'info', sub { return qw( 0.223 0.528 17:403-425:-
 
 my $mock_target_object = Test::MockObject->new();
 $mock_target_object->set_isa( 'Crispr::Target' );
-$mock_target_object->mock( 'info', sub{ return (qw{ ENSE000000035646 ENSDARG00000026374 atpase2 crispr_test }) } );
+$mock_target_object->mock( 'summary', sub{ return (qw{ ENSE000000035646 ENSDARG00000026374 atpase2 crispr_test }) } );
+$mock_target_object->mock( 'info', sub{ return (
+    qw{ NULL ENSE000000035646 NULL 5 18078900 18079400 1 zebrafish n ENSDARG00000026374 atpase2 crispr_test 75 NULL }) } );
 $mock_target_object->mock( 'assembly', sub{ return undef } );
 
 my $mock_target_object_3 = Test::MockObject->new();
 $mock_target_object_3->set_isa( 'Crispr::Target' );
-$mock_target_object_3->mock( 'info', sub{ return (qw{ ENSE000000035646 ENSDARG00000026374 atpase2 crispr_test }) } );
+$mock_target_object_3->mock( 'summary', sub{ return (qw{ ENSE000000035646 ENSDARG00000026374 atpase2 crispr_test }) } );
 $mock_target_object_3->mock( 'assembly', sub{ return 'Zv9' } );
 $mock_target_object_3->mock( 'species', sub{ return 'zebrafish' } );
 
@@ -52,6 +54,7 @@ my $crRNA = Crispr::crRNA->new(
     strand => '1',
     sequence => 'GGCCTTCGGGTTTGACCCCATGG',
     species => 'danio_rerio',
+    target => $mock_target_object,
     off_target_hits => $mock_off_target_object,
     coding_scores => \%coding_scores,
 ); 
@@ -203,6 +206,15 @@ like( join("\t", $crRNA->info ),
 like( join("\t", $crRNA_2->info ),
     qr/crRNA:5:18078991-18079013:-1\t5\t18078991\t18079013\t-1\tNULL\tGGCCTTCGGGTTTGACCCCATGG\tATAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGGC\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL/,
     'check info 2');
+
+# crRNA target_summary_plus_crRNA_info & target_info_plus_crRNA_info
+# 2 tests
+like( join("\t", $crRNA->target_summary_plus_crRNA_info ),
+    qr/ENSE000000035646\tENSDARG00000026374\tatpase2\tcrispr_test\tcrRNA:5:18078991-18079013:1\t5\t18078991\t18079013\t1\t0.099\tGGCCTTCGGGTTTGACCCCATGG\tTAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGG\t0.223\t0.528\t17:403-425:-1\/2\/4\t0.422\t17:403-425:-1,Zv9_NA1:403-425:-1\/2\/4\t0.445\tENSDART00000037691=0.734;ENSDART00000037681=0.5/,
+    'check target_summary plus info' );
+like( join("\t", $crRNA->target_info_plus_crRNA_info ),
+    qr/NULL\tENSE000000035646\tNULL\t5\t18078900\t18079400\t1\tzebrafish\tn\tENSDARG00000026374\tatpase2\tcrispr_test\t75\tNULL\tcrRNA:5:18078991-18079013:1\t5\t18078991\t18079013\t1\t0.099\tGGCCTTCGGGTTTGACCCCATGG\tTAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGG\t0.223\t0.528\t17:403-425:-1\/2\/4\t0.422\t17:403-425:-1,Zv9_NA1:403-425:-1\/2\/4\t0.445\tENSDART00000037691=0.734;ENSDART00000037681=0.5/,
+    'check target_info plus info' );
 
 # check cut-site 2 tests
 is( $crRNA->cut_site, 18079007, 'cut_site + strand');
