@@ -851,15 +851,15 @@ sub parse_cr_name {
   Parameters  : ArrayRef of Crispr::crRNA objects
                 Basename for tmp output files   (String)
   Throws      : 
-  Comments    : TO DO: Need to do something about an undef basename
+  Comments    : Basename set to tmp if undefined
 
 =cut
 
 sub off_targets_bwa {
     my ( $self, $crRNAs, $basename, ) = @_;
+    $basename = $basename  ?   $basename    :   'tmp';
     $self->output_fastq_for_off_targets( $crRNAs, $basename, );
     $self->bwa_align( $basename, );
-    $self->make_bam_and_bed_files( $basename, );
     $self->filter_and_score_off_targets( $crRNAs, $basename, );
     return $crRNAs;
 }
@@ -897,7 +897,7 @@ sub output_fastq_for_off_targets {
   Returns     : 1 on Success
   Parameters  : Basename for tmp output files   (String)
   Throws      : 
-  Comments    : 
+  Comments    : bwa must be installed in the user's path
 
 =cut
 
@@ -905,37 +905,11 @@ sub bwa_align {
 	my ( $self, $basename, ) = @_;
 	my $fq_filename = $basename . '.fq';
 	my $sai_filename = $basename . '.sai';
-	#my $align_cmd = join(q{ }, '/software/solexa/bin/bwa aln -n 6 -o 0 -l 20 -k 5 -N',
+	#my $align_cmd = join(q{ }, 'bwa aln -n 6 -o 0 -l 20 -k 5 -N',
 	#	$self->target_genome, $fq_filename, '>', $sai_filename, );
-	my $align_cmd = join(q{ }, '/software/solexa/bin/bwa aln -n 4 -o 0 -l 20 -k 3 -N',
+	my $align_cmd = join(q{ }, 'bwa aln -n 4 -o 0 -l 20 -k 3 -N',
 		$self->target_genome, $fq_filename, '>', $sai_filename, );
 	system( $align_cmd );
-    return 1;
-}
-
-=method make_bam_and_bed_files
-
-  Usage       : $crispr->make_bam_and_bed_files( $basename, );
-  Purpose     : Run bwa samse and bamtobed to create a bed file of off-target checking
-  Returns     : 1 on Success
-  Parameters  : Basename for tmp output files   (String)
-  Throws      : 
-  Comments    : 
-
-=cut
-
-sub make_bam_and_bed_files {
-	my ( $self, $basename ) = @_;
-	my $sam_cmd = join(q{ }, '/software/solexa/bin/bwa samse -n 900000',
-		$self->target_genome, "$basename.sai", "$basename.fq",
-		'| /software/solexa/pkg/bwa/current/xa2multi.pl ',
-		'| /software/team31/bin/samtools view -bS - ',
-		'| /software/team31/bin/samtools sort -', "$basename.sorted", );
-	system( $sam_cmd );
-	
-	my $bed_cmd = join(q{ }, '/software/team31/bin/bedtools bamtobed',
-		"-i $basename.sorted.bam", '>', "$basename.bed", );
-	system( $bed_cmd );
     return 1;
 }
 
@@ -953,24 +927,48 @@ sub make_bam_and_bed_files {
 
 sub filter_and_score_off_targets {
 	my ( $self, $crRNAs, $basename, ) = @_;
-	open my $bed_fh, '<', "$basename.bed";
-	while(<$bed_fh>){
-		chomp;
-		my ( $chr, $zero_start, $end, $id, undef, $strand_symbol, ) = split /\t/;
-		my $strand = $strand_symbol eq '+'	?	'1'
-			:									'-1';
-		#get slice
-		my $off_target_slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $zero_start + 1, $end, $strand, );
-		next if( $off_target_slice->seq !~ m/GG\z/xms || $off_target_slice->seq =~ m/N/xms );
-		warn $crRNAs->{$id}->name, "\t", $off_target_slice->seq, "\t", $off_target_slice->strand, "\n" if( $self->debug == 2 );
-		$crRNAs = $self->score_off_targets_from_bed_output( $crRNAs, $id, $chr, $zero_start + 1, $end, $strand, );
+    
+	my $sam_cmd = join(q{ }, 'bwa samse -n 900000',
+		$self->target_genome, "$basename.sai", "$basename.fq", );
+    
+    open (my $sam_pipe, '-|', $sam_cmd) || confess "failed to execute command $sam_cmd\n";
+    my $line;
+    while ( $line = <$sam_pipe>) {
+		chomp $line;
+		my ( $crispr_id, $flag, $chr, $start, $mapq, $cigar_str,
+                undef, undef, undef, $seq, undef, @tags, ) = split /\t/, $line;
+		next if( !exists $crRNAs->{$crispr_id} );
+        
+        # parse top hit
+        my $strand = $flag == 0         ?	'1'
+            :           $flag == 16     ?	'-1'
+			:								'1';
+        
+        my $end = $start - 1 + length( $seq );
+        $self->score_off_targets_from_sam_output( $crRNAs, $crispr_id, $chr,
+                                                 $start, $end, $strand, );
+        
+        my @supp_alignments = grep { m/\A XA:Z:/xms } @tags;
+        foreach my $supp_align ( map { $_ =~ s/\A XA:Z://xms;
+                                        split /;/, $_; } @supp_alignments ){
+            next if( $supp_align eq q{} );
+            my ( $chr, $pos, $cigar, $mismatch ) = split /,/, $supp_align;
+            my $strand = substr($pos, 0, 1, "");
+            my $end = $pos - 1 + length( $seq );
+            
+            #get slice
+            my $off_target_slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $pos, $end, $strand, );
+            next if( $off_target_slice->seq !~ m/GG\z/xms || $off_target_slice->seq =~ m/N/xms );
+            warn $crRNAs->{$crispr_id}->name, "\t", $off_target_slice->seq, "\t", $off_target_slice->strand, "\n" if( $self->debug == 2 );
+            $crRNAs = $self->score_off_targets_from_sam_output( $crRNAs, $crispr_id, $chr, $pos, $end, $strand, );
+        }
 	}
 	return $crRNAs;
 }
 
-=method score_off_targets_from_bed_output
+=method score_off_targets_from_sam_output
 
-  Usage       : $crispr->score_off_targets_from_bed_output( $crRNAs, $id, $chr, $start, $end, $strand, );
+  Usage       : $crispr->score_off_targets_from_sam_output( $crRNAs, $id, $chr, $start, $end, $strand, );
   Purpose     : Adds off-target info to crRNA objects and to off_targets_interval_tree
   Returns     : HashRef of Crispr::crRNA objects
   Parameters  : HashRef of Crispr::crRNA objects
@@ -984,7 +982,7 @@ sub filter_and_score_off_targets {
 
 =cut
 
-sub score_off_targets_from_bed_output {
+sub score_off_targets_from_sam_output {
 	my ( $self, $crRNAs, $id, $chr, $start, $end, $strand, ) = @_;
 	
 	return $crRNAs if( !exists $crRNAs->{$id} );
