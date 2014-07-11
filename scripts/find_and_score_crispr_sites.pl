@@ -477,7 +477,7 @@ sub get_posn {
     if( $slice ){
         my $gene;
         if( $gene_id ){
-            if( $gene_id !~ m/\AENS[A-Z]*G[0-9]+\z/xms ){
+            if( $gene_id !~ m/\AENS[A-Z]*G[0-9]{11}\z/xms ){
                 die join(" ", $gene_id, "is not a valid gene id.", ), "\n";
             }
             # get gene from gene id and get transcripts
