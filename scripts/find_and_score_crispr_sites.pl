@@ -56,6 +56,8 @@ my $gene_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'core
 my $exon_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'Core', 'Exon' );
 my $slice_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'core', 'slice' );
 my $transcript_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'core', 'transcript' );
+my $rnaseq_gene_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'otherfeatures', 'gene' );
+my $rnaseq_transcript_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'otherfeatures', 'transcript' );
 
 # open filehandles for off_target fasta files
 my $basename = $todays_date;
@@ -82,13 +84,14 @@ while(<>){
     my $rv;
     my @columns = split /\t/xms;
     # guess id type
-    $rv =   ($columns[0] =~ m/\AENS[A-Z]*G[0-9]{11}# gene id/xms
-            ||
-            $columns[0] =~ m/\ALRG_[0-9]+/xms )     ?   get_gene( @columns )
-        :   $columns[0] =~ m/\AENS[A-Z]*E[0-9]{11}# exon id/xms ? get_exon( @columns )
-        :   $columns[0] =~ m/\AENS[A-Z]*T[0-9]{11}# transcript id/xms   ?   get_transcript( @columns )
-        :   $columns[0] =~ m/\A[\w.]+:\d+\-\d+[:0-1-]*# position/xms    ?   get_posn( @columns )
-        :                                                                   "Couldn't match input type: " . join("\t", @columns,) . ".\n";
+    $rv =   $columns[0] =~ m/\AENS[A-Z]*G[0-9]{11}  # gene id/xms               ?   get_gene( @columns )
+        :   $columns[0] =~ m/\ALRG_[0-9]+/xms                                   ?   get_gene( @columns )
+        :   $columns[0] =~ m/\ARNASEQG[0-9]{11} # RNA Seq gene id/xms           ?   get_gene( @columns )
+        :   $columns[0] =~ m/\AENS[A-Z]*E[0-9]{11}  # exon id/xms               ?   get_exon( @columns )
+        :   $columns[0] =~ m/\AENS[A-Z]*T[0-9]{11}  # transcript id/xms         ?   get_transcript( @columns )
+        :   $columns[0] =~ m/\ARNASEQT[0-9]{11} # RNA Seq transcript id/xms     ?   get_transcript( @columns )
+        :   $columns[0] =~ m/\A[\w.]+:\d+\-\d+[:0-1-]*# position/xms            ?   get_posn( @columns )
+        :                                                                       "Couldn't match input type: " . join("\t", @columns,) . ".\n";
         ;
     
     if( $rv =~ m/\ACouldn't\smatch/xms ){
@@ -276,7 +279,10 @@ sub get_gene {
     $requestor = get_requestor( $requestor );
     $requestor =~ s/'//xmsg;
     #get gene
-    my $gene = $gene_adaptor->fetch_by_stable_id( $gene_id );
+    my $gene =  $gene_id =~ m/\AENS[A-Z]*G[0-9]{11}# gene id/xms       ?   $gene_adaptor->fetch_by_stable_id( $gene_id )
+        :       $gene_id =~ m/\ARNASEQG[0-9]{11}# rnaseq gene id/xms   ?   $rnaseq_gene_adaptor->fetch_by_stable_id( $gene_id )
+        :                                                                  undef
+        ;
     
     if( $gene ){
         # check for LRG_genes
@@ -370,16 +376,19 @@ sub get_transcript {
     my $success = 0;
     $requestor = get_requestor( $requestor );
     $requestor =~ s/'//xmsg;
-    #get gene
-    my $transcript = $transcript_adaptor->fetch_by_stable_id( $transcript_id );
+    #get transcript
+    my $transcript =    $transcript_id =~ m/\AENS[A-Z]*T[0-9]{11}# transcript id/xms   ?   $transcript_adaptor->fetch_by_stable_id( $transcript_id )
+        :               $transcript_id =~ m/\ARNASEQT[0-9]{11}# transcript id/xms      ?   $rnaseq_transcript_adaptor->fetch_by_stable_id( $transcript_id )
+        :                                                                                  undef
+        ;
     if( $options{debug} ){
         if( $transcript ){
             warn join("\t", $transcript->stable_id, );
         }
     }
-    my $gene = $transcript->get_Gene;
     
     if( $transcript ){
+        my $gene = $transcript->get_Gene;
         my $exons = $transcript->get_all_Exons();
         
         foreach my $exon ( @{$exons} ){
@@ -720,7 +729,8 @@ possible off-target effects and optionally for its position in coding transcript
 tab-sepaarted input.
 Columns are: TARGETS    REQUESTOR   [GENE_ID]
 
-TARGETS: Acceptable targets are Ensembl exon ids, gene ids, transcript ids or genomic positions/regions.
+TARGETS: Acceptable targets are Ensembl exon ids, gene ids, transcript ids or
+genomic positions/regions. RNA Seq gene/transcript ids are also accepted.
 All four types can be present in one file.
 
 REQUESTOR: A requestor is required if you are using the SQL database to store guide RNAs.
