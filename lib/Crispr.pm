@@ -481,7 +481,7 @@ sub find_crRNAs_by_target {
             "not a ", ref $target, ".\n";
     }
 	if( $self->_seen_target_name( $target->name ) ){
-		confess "This target, ", $target->name,", has been seen before.\n";
+		die "This target, ", $target->name,", has been seen before.\n";
 	}
 	my $crRNAs = $self->find_crRNAs_by_region( $target->region, $target );
 	$self->add_target( $target );
