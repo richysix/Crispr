@@ -51,11 +51,11 @@ else {
     Bio::EnsEMBL::Registry->set_reconnect_when_lost();
 }
 
-#get adaptors
+# get adaptors
 my $gene_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'core', 'gene' );
-my $exon_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'Core', 'Exon' );
-my $slice_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'core', 'slice' );
+my $exon_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'core', 'exon' );
 my $transcript_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'core', 'transcript' );
+my $slice_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'core', 'slice' );
 my $rnaseq_gene_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'otherfeatures', 'gene' );
 my $rnaseq_transcript_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'otherfeatures', 'transcript' );
 
@@ -726,7 +726,7 @@ possible off-target effects and optionally for its position in coding transcript
 
 =item B<input>
 
-tab-sepaarted input.
+tab-separated input.
 Columns are: TARGETS    REQUESTOR   [GENE_ID]
 
 TARGETS: Acceptable targets are Ensembl exon ids, gene ids, transcript ids or
