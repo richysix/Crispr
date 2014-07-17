@@ -344,17 +344,17 @@ exit 0;
 
 ###   SUBROUTINES   ###
 
-=func no_match
+# no_match
+# 
+#   Usage       : no_match( $targets_for, $columns, )
+#   Purpose     : warn when the input type cannot be matched
+#   Returns     : HashRef
+#   Parameters  : Targets HashRef - HashRef
+#                 Input Line      - ArrayRef
+#   Throws      : 
+#   Comments    : 
+# 
 
-  Usage       : no_match( $targets_for, $columns, )
-  Purpose     : warn when the input type cannot be matched
-  Returns     : HashRef
-  Parameters  : Targets HashRef - HashRef
-                Input Line      - ArrayRef
-  Throws      : 
-  Comments    : 
-
-=cut
 
 sub no_match {
     my ( $targets_for, $columns, ) = @_;
@@ -362,20 +362,20 @@ sub no_match {
     return $targets_for;
 }
 
-=func targets_from_gene
+# targets_from_gene
+# 
+#   Usage       : targets_from_gene( $targets_for, $columns, )
+#   Purpose     : Return targets with crRNAs for every exon of a gene
+#   Returns     : HashRef
+#   Parameters  : Targets HashRef - HashRef
+#                 Input Line      - ArrayRef
+#   Throws      : 
+#   Comments    : Warns if:   Cannot retrieve gene for the supplied gene id
+#                             There are no protein coding transcripts in the gene
+#                             If an exon is non-coding
+#                             If the are no crispr targets sites for one of the targets
+# 
 
-  Usage       : targets_from_gene( $targets_for, $columns, )
-  Purpose     : Return targets with crRNAs for every exon of a gene
-  Returns     : HashRef
-  Parameters  : Targets HashRef - HashRef
-                Input Line      - ArrayRef
-  Throws      : 
-  Comments    : Warns if:   Cannot retrieve gene for the supplied gene id
-                            There are no protein coding transcripts in the gene
-                            If an exon is non-coding
-                            If the are no crispr targets sites for one of the targets
-
-=cut
 
 sub targets_from_gene {
     my ( $targets_for, $columns, ) = @_;
@@ -438,18 +438,18 @@ sub targets_from_gene {
     return $targets_for;
 }
 
-=func targets_from_transcript
+# targets_from_transcript
+# 
+#   Usage       : targets_from_transcript( $targets_for, $columns, )
+#   Purpose     : Return targets with crRNAs for every exon of a transcript
+#   Returns     : HashRef
+#   Parameters  : Targets HashRef - HashRef
+#                 Input Line      - ArrayRef
+#   Throws      : 
+#   Comments    : Warns if:   Cannot retrieve transcript for the supplied transcript id
+#                             If the are no crispr targets sites for one of the targets
+# 
 
-  Usage       : targets_from_transcript( $targets_for, $columns, )
-  Purpose     : Return targets with crRNAs for every exon of a transcript
-  Returns     : HashRef
-  Parameters  : Targets HashRef - HashRef
-                Input Line      - ArrayRef
-  Throws      : 
-  Comments    : Warns if:   Cannot retrieve transcript for the supplied transcript id
-                            If the are no crispr targets sites for one of the targets
-
-=cut
 
 sub targets_from_transcript {
     my ( $targets_for, $columns, ) = @_;
@@ -488,18 +488,18 @@ sub targets_from_transcript {
     return $targets_for;
 }
 
-=func targets_from_exon
+# targets_from_exon
+# 
+#   Usage       : targets_from_exon( $targets_for, $columns, )
+#   Purpose     : Return targets with crRNAs for an exon
+#   Returns     : HashRef
+#   Parameters  : Targets HashRef - HashRef
+#                 Input Line      - ArrayRef
+#   Throws      : 
+#   Comments    : Warns if:   Cannot retrieve exon for the supplied exon id
+#                             If the are no crispr targets sites for one of the targets
+# 
 
-  Usage       : targets_from_exon( $targets_for, $columns, )
-  Purpose     : Return targets with crRNAs for an exon
-  Returns     : HashRef
-  Parameters  : Targets HashRef - HashRef
-                Input Line      - ArrayRef
-  Throws      : 
-  Comments    : Warns if:   Cannot retrieve exon for the supplied exon id
-                            If the are no crispr targets sites for one of the targets
-
-=cut
 
 sub targets_from_exon {
     my ( $targets_for, $columns, ) = @_;
@@ -530,7 +530,7 @@ sub targets_from_exon {
     return $targets_for;
 }
 
-=func targets_from_posn
+targets_from_posn
 
   Usage       : targets_from_posn( $targets_for, $columns, )
   Purpose     : Return targets with crRNAs for a genomic region
@@ -541,7 +541,7 @@ sub targets_from_exon {
   Comments    : Warns if:   Position is not in the right format. CHR:START[-END:STRAND]
                             If the are no crispr targets sites for one of the targets
 
-=cut
+
 
 sub targets_from_posn {
     my ( $targets_for, $columns, ) = @_;
@@ -575,24 +575,24 @@ sub targets_from_posn {
     return $targets_for;
 }
 
-=func make_targets_and_fetch_crRNAs
+# make_targets_and_fetch_crRNAs
+# 
+#   Usage       : make_targets_and_fetch_crRNAs( $chr, $start, $end, $strand, $target_id, $gene, $requestor, )
+#   Purpose     : Creates two targets (a and b) for a feature
+#                 Finds all crRNAs for each target
+#                 crRNAs are filtered by strand so that the first crispr in the pair is on the reverse strand
+#   Returns     : ArrayRef of Crispr::Targets
+#   Parameters  : CHR         - Str
+#                 START       - Int
+#                 END         - Int
+#                 STRAND      - Str
+#                 TARGET_ID   - Str
+#                 GENE        - Bio::EnsEMBL::Gene OPTIONAL
+#                 REQUESTOR   - Str
+#   Throws      : 
+#   Comments    : 
+# 
 
-  Usage       : make_targets_and_fetch_crRNAs( $chr, $start, $end, $strand, $target_id, $gene, $requestor, )
-  Purpose     : Creates two targets (a and b) for a feature
-                Finds all crRNAs for each target
-                crRNAs are filtered by strand so that the first crispr in the pair is on the reverse strand
-  Returns     : ArrayRef of Crispr::Targets
-  Parameters  : CHR         - Str
-                START       - Int
-                END         - Int
-                STRAND      - Str
-                TARGET_ID   - Str
-                GENE        - Bio::EnsEMBL::Gene OPTIONAL
-                REQUESTOR   - Str
-  Throws      : 
-  Comments    : 
-
-=cut
 
 sub make_targets_and_fetch_crRNAs {
     my ( $chr, $start, $end, $strand, $target_id, $gene, $requestor, ) = @_;
@@ -668,18 +668,18 @@ sub make_targets_and_fetch_crRNAs {
     return [ $a_target, $b_target ];
 }
 
-=func best_score_best_separation
+# best_score_best_separation
+# 
+#   Usage       : best_score_best_separation( $targets_for, $columns, )
+#   Purpose     : sorting subroutine.
+#                 Sorts by combined off target score and then difference from optimal crispr separation
+#   Returns     : Int
+#   Parameters  : crRNA1 to be sorted
+#                 crRNA2 to be sorted
+#   Throws      : 
+#   Comments    : 
+# 
 
-  Usage       : best_score_best_separation( $targets_for, $columns, )
-  Purpose     : sorting subroutine.
-                Sorts by combined off target score and then difference from optimal crispr separation
-  Returns     : Int
-  Parameters  : crRNA1 to be sorted
-                crRNA2 to be sorted
-  Throws      : 
-  Comments    : 
-
-=cut
 
 sub best_score_best_separation {
     my ( $a, $b, ) = @_;
@@ -692,19 +692,19 @@ sub best_score_best_separation {
         $a_separation <=> $b_separation );
 }
 
-=func best_score_best_separation_paired_off_targets
-
-  Usage       : best_score_best_separation_paired_off_targets( $targets_for, $columns, )
-  Purpose     : sorting subroutine.
-                Sorts by combined score and then difference from optimal crispr separation
-                combined score includes five prime score if $check_five_prime_score is set.
-  Returns     : Int
-  Parameters  : crRNA1 to be sorted
-                crRNA2 to be sorted
-  Throws      : 
-  Comments    : 
-
-=cut
+# best_score_best_separation_paired_off_targets
+# 
+#   Usage       : best_score_best_separation_paired_off_targets( $targets_for, $columns, )
+#   Purpose     : sorting subroutine.
+#                 Sorts by combined score and then difference from optimal crispr separation
+#                 combined score includes five prime score if $check_five_prime_score is set.
+#   Returns     : Int
+#   Parameters  : crRNA1 to be sorted
+#                 crRNA2 to be sorted
+#   Throws      : 
+#   Comments    : 
+# 
+# 
 
 # sort pairs by paired off_targets and single off_targets and output info
 sub best_score_best_separation_paired_off_targets {
@@ -729,35 +729,35 @@ sub best_score_best_separation_paired_off_targets {
                 $a_separation <=> $b_separation );
 }
 
-=func cut_site
-
-  Usage       : cut_site( $targets_for, $columns, )
-  Purpose     : Returns the cut-site position for a crispr position
-  Returns     : Int
-  Parameters  : START   - Int
-                END     - Int
-                STRAND  - Str
-  Throws      : 
-  Comments    : 
-
-=cut
+# cut_site
+# 
+#   Usage       : cut_site( $targets_for, $columns, )
+#   Purpose     : Returns the cut-site position for a crispr position
+#   Returns     : Int
+#   Parameters  : START   - Int
+#                 END     - Int
+#                 STRAND  - Str
+#   Throws      : 
+#   Comments    : 
+# 
+# 
 
 sub cut_site {
     my ( $start, $end, $strand ) = @_;
     return $strand eq '1'       ?   $end - 6    : $start + 5;
 }
 
-=func five_prime_score
-
-  Usage       : five_prime_score( $targets_for, $columns, )
-  Purpose     : Returns the average five prime score for a crispr pair and target
-  Returns     : Int (0-1)
-  Parameters  : CrisprPair      - Crispr::CrisprPair
-                Target id       - Str
-  Throws      : 
-  Comments    : 
-
-=cut
+# five_prime_score
+# 
+#   Usage       : five_prime_score( $targets_for, $columns, )
+#   Purpose     : Returns the average five prime score for a crispr pair and target
+#   Returns     : Int (0-1)
+#   Parameters  : CrisprPair      - Crispr::CrisprPair
+#                 Target id       - Str
+#   Throws      : 
+#   Comments    : 
+# 
+# 
 
 sub five_prime_score {
     my ( $cr_pair, $target_id ) = @_;
@@ -796,17 +796,17 @@ sub five_prime_score {
     }
 }
 
-=func calc_five_prime_score
-
-  Usage       : calc_five_prime_score( $targets_for, $columns, )
-  Purpose     : Calculates the five prime score for a position and a transcript
-  Returns     : Int (0-1)
-  Parameters  : Cut site    - Int
-                transcript  -   Bio::EnsEMBL::Transcript
-  Throws      : 
-  Comments    : 
-
-=cut
+# calc_five_prime_score
+# 
+#   Usage       : calc_five_prime_score( $targets_for, $columns, )
+#   Purpose     : Calculates the five prime score for a position and a transcript
+#   Returns     : Int (0-1)
+#   Parameters  : Cut site    - Int
+#                 transcript  -   Bio::EnsEMBL::Transcript
+#   Throws      : 
+#   Comments    : 
+# 
+# 
 
 sub calc_five_prime_score {
     my ( $cut_site, $transcript ) = @_;
@@ -837,19 +837,19 @@ sub calc_five_prime_score {
     }
 }
 
-=func get_and_check_options
-
-  Usage       : get_and_check_options()
-  Purpose     : Gets the options from the command line and places in the %options HASH
-  Returns     : None
-  Parameters  : None
-  Throws      : If neither of --target_genome or --species is set
-                If --num_five_prime_Gs is not 0, 1 OR 2
-                If --target_sequence is not 23 bp long # could change for non S.pyogenes Cas9
-                If --target_sequence and --num_five_prime_Gs options are incompatible
-  Comments    : 
-
-=cut
+# get_and_check_options
+# 
+#   Usage       : get_and_check_options()
+#   Purpose     : Gets the options from the command line and places in the %options HASH
+#   Returns     : None
+#   Parameters  : None
+#   Throws      : If neither of --target_genome or --species is set
+#                 If --num_five_prime_Gs is not 0, 1 OR 2
+#                 If --target_sequence is not 23 bp long # could change for non S.pyogenes Cas9
+#                 If --target_sequence and --num_five_prime_Gs options are incompatible
+#   Comments    : 
+# 
+# 
 
 sub get_and_check_options {
     
@@ -959,8 +959,6 @@ crispr_pairs_for_deletions.pl
 =head1 DESCRIPTION
 
 Design crispr pairs to create deletions.
-
-=cut
 
 =head1 SYNOPSIS
 
