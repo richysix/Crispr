@@ -3,3 +3,5 @@ Crispr-*
 tmp/*
 cover_db/*
 t/data/mock_*
+.build/
+perltidy.LOG
