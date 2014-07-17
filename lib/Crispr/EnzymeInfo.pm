@@ -7,7 +7,6 @@ package Crispr::EnzymeInfo;
 use namespace::autoclean;
 use Moose;
 use Moose::Util::TypeConstraints;
-use lib '/software/team31/bioperl/bioperl-1-6-9/';
 use Bio::Restriction::EnzymeCollection;
 use Bio::Restriction::Analysis;
 use Readonly;
