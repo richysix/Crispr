@@ -407,7 +407,7 @@ sub _parse_strand_input {
 		return '-1';
 	}
 	else{
-		return undef;
+		return;
 	}
 }
 

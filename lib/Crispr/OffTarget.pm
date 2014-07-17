@@ -1,4 +1,9 @@
+## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::OffTarget;
+## use critic
+
+# ABSTRACT: OffTarget object - representing possible off-target positions for a crispr guide RNA
+
 use namespace::autoclean;
 use Moose;
 use Moose::Util::TypeConstraints;
@@ -242,7 +247,7 @@ sub number_seed_exon_hits {
         return scalar @{$self->seed_exon_alignments};
     }
     else{
-        return undef;
+        return;
     }
 }
 
@@ -263,7 +268,7 @@ sub seed_score {
     if( !defined $self->number_seed_exon_hits &&
         !defined $self->number_seed_intron_hits &&
         !defined $self->number_seed_nongenic_hits ){
-        return undef;
+        return;
     }    
     my $score = 1;
     if( $self->number_seed_exon_hits ){
@@ -319,7 +324,7 @@ sub number_exonerate_exon_hits {
         return scalar @{$self->exonerate_exon_alignments};
     }
     else{
-        return undef;
+        return;
     }
 }
 
@@ -340,7 +345,7 @@ sub exonerate_score {
     if( !defined $self->number_exonerate_exon_hits &&
         !defined $self->number_exonerate_intron_hits &&
         !defined $self->number_exonerate_nongenic_hits ){
-        return undef;
+        return;
     }    
     my $score = 1;
     if( $self->number_exonerate_exon_hits ){
@@ -396,7 +401,7 @@ sub number_bwa_exon_hits {
         return scalar @{$self->bwa_exon_alignments};
     }
     else{
-        return undef;
+        return;
     }
 }
 
@@ -417,7 +422,7 @@ sub bwa_score {
     if( !defined $self->number_bwa_exon_hits &&
         !defined $self->number_bwa_intron_hits &&
         !defined $self->number_bwa_nongenic_hits ){
-        return undef;
+        return;
     }    
     my $score = 1;
     if( $self->number_bwa_exon_hits ){

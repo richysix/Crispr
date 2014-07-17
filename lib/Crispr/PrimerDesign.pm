@@ -592,16 +592,16 @@ sub fasta_for_repeatmask {
     
     my $amp_array = [];
     
-    open(FASTA, '> RM_' . $type . '.fa');
+    open my $fasta_fh, '>', 'RM_' . $type . '.fa';
     foreach my $id (sort keys %$targets) {
         if (defined $targets->{$id}->{"${type}_amp"}
             && !defined $targets->{$id}->{"${type}_primers"}) {
             my $amp = $targets->{$id}->{"${type}_amp"};
-            print FASTA '>', $amp->[0], "\n", $amp->[1], "\n";
+            print {$fasta_fh} '>', $amp->[0], "\n", $amp->[1], "\n";
             push(@$amp_array, $amp);
         }
     }
-    close(FASTA);
+    close($fasta_fh);
     return $amp_array;
 }
 
@@ -613,15 +613,15 @@ sub repeatmask {
     my $pid = system($cmd);
     
     if (-f 'RM_' . $type . '.fa.out') {
-        open (RM, '< RM_' . $type . '.fa.out') or die "Can't open RM_", $type, ".fa.out: $!\n";
-        while (<RM>) {
+        open my $rm_fh, '<', 'RM_' . $type . '.fa.out' or die "Can't open RM_", $type, ".fa.out: $!\n";
+        while (<$rm_fh>) {
             chomp;
             my @line = split(/\s+/, $_);
             next unless @line && $line[1] =~ m/^\d+$/; # Score
             my $id = $line[5]; # ID
             push @{ $targets->{$id}->{$type . '_amp'}[5] }, [ $line[6], $line[7] - $line[6] ]; # Start and end
         }
-        close(RM);
+        close($rm_fh);
     }
     
     my @rmfile = (

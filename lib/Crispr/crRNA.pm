@@ -400,7 +400,7 @@ sub _parse_strand_input {
 		return '-1';
 	}
 	else{
-		return undef;
+		return;
 	}
 }
 
@@ -433,7 +433,7 @@ sub _parse_species {
     );
     
     if( !$input ){
-        return undef;
+        return;
     }
     else{
         if( exists $common_names_for{ $input } ){
@@ -475,7 +475,7 @@ sub top_restriction_sites {
         }
     }
     else{
-        return undef;
+        return;
     }
 }
 
@@ -697,7 +697,7 @@ sub _build_species {
         return $self->target->species;
     }
     else{
-        return undef;
+        return;
     }
 }
 
@@ -940,7 +940,7 @@ sub coding_score {
     my $coding_scores_for = $self->coding_scores;
     
     if( !keys %{$coding_scores_for} ){
-        return undef;
+        return;
     }
     else{
         my ( $num_transcripts, $sum );

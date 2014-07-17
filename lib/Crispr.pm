@@ -958,8 +958,9 @@ sub filter_and_score_off_targets {
                                                  $start, $end, $strand, );
         
         my @supp_alignments = grep { m/\A XA:Z:/xms } @tags;
-        foreach my $supp_align ( map { $_ =~ s/\A XA:Z://xms;
-                                        split /;/, $_; } @supp_alignments ){
+        foreach my $supp_align ( map { my $align = $_;
+                                        $align =~ s/\A XA:Z://xms;
+                                        split /;/, $align; } @supp_alignments ){
             next if( $supp_align eq q{} );
             my ( $chr, $pos, $cigar, $mismatch ) = split /,/, $supp_align;
             my $strand = substr($pos, 0, 1, "");
