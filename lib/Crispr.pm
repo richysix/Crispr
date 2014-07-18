@@ -2,13 +2,14 @@
 package Crispr;
 ## use critic
 
-# ABSTRACT: Crispr object - used for designing crispr guide RNAs
+# ABSTRACT: Crispr - used for designing crispr guide RNAs
 
 use warnings;
 use strict;
 use autodie qw(:all);
 use List::MoreUtils qw( any );
 use Carp;
+use English qw( -no_match_vars );
 
 use Moose;
 use Moose::Util::TypeConstraints;
@@ -76,7 +77,8 @@ subtype 'Crispr::FileExists',
   Purpose     : Getter for target_seq attribute
   Returns     : Str (must be a valid DNA string)
   Parameters  : None
-  Throws      : If input is given
+  Throws      : If input is given when called after object construction
+                If the attribute contains characters not in this set: ACGTNRYSWMKBDHV
   Comments    : 
 
 =cut
@@ -92,7 +94,8 @@ has 'target_seq' => (
   Purpose     : Getter for PAM attribute
   Returns     : String
   Parameters  : None
-  Throws      : If input is given
+  Throws      : If input is given when called after object construction
+                If the attribute contains characters not in this set: ACGTNRYSWMKBDHV
   Comments    : 
 
 =cut
@@ -108,7 +111,8 @@ has 'PAM' => (
   Purpose     : Getter for five_prime_Gs attribute
   Returns     : Int
   Parameters  : None
-  Throws      : If input is given
+  Throws      : If input is given when called after object construction
+                If attribute is anything other than 0, 1 OR 2
   Comments    : 
 
 =cut
@@ -126,7 +130,7 @@ has 'five_prime_Gs' => (
   Purpose     : Getter for species attribute
   Returns     : String
   Parameters  : None
-  Throws      : If input is given
+  Throws      : If input is given when called after object construction
   Comments    : 
 
 =cut
@@ -142,7 +146,7 @@ has 'species' => (
   Purpose     : Getter for target_genome attribute
   Returns     : Str
   Parameters  : None
-  Throws      : If input is given.
+  Throws      : If input is given when called after object construction.
                 If file does not exist or is empty.
   Comments    : 
 
@@ -159,7 +163,8 @@ has 'target_genome' => (
   Purpose     : Getter for slice_adaptor attribute
   Returns     : Bio::EnsEMBL::DBSQL::SliceAdaptor
   Parameters  : None
-  Throws      : If input is given
+  Throws      : If input is given when called after object construction
+                If attribute is not a Bio::EnsEMBL::DBSQL::SliceAdaptor object
   Comments    : 
 
 =cut
@@ -173,10 +178,10 @@ has 'slice_adaptor' => (
 
   Usage       : $crispr_design->targets;
   Purpose     : Getter for targets attribute
-  Returns     : String
+  Returns     : ArrayRef of Crispr::Target objects
   Parameters  : None
-  Throws      : If input is given
-  Comments    : Hash keys should be target names
+  Throws      : If input is given when called after object construction
+  Comments    : 
 
 =cut
 
@@ -190,10 +195,10 @@ has 'targets' => (
 
   Usage       : $crispr_design->all_crisprs;
   Purpose     : Getter for all_crisprs attribute
-  Returns     : String
+  Returns     : HashRef
   Parameters  : None
-  Throws      : If input is given
-  Comments    : Hash keys are combination of crRNA name and Target name
+  Throws      : If input is given when called after object construction
+  Comments    : Hash keys are crRNA_name '_' Target_name
 
 =cut
 
@@ -209,14 +214,15 @@ has 'all_crisprs' => (
   Purpose     : Getter for annotation_file attribute
   Returns     : String
   Parameters  : None
-  Throws      : If input is given
+  Throws      : If input is given when called after object construction
+                If file does not exist or is empty.
   Comments    : 
 
 =cut
 
 has 'annotation_file' => (
     is => 'ro',
-    isa => 'Str',
+    isa => 'Crispr::FileExists',
 );
 
 =method annotation_tree
@@ -225,7 +231,7 @@ has 'annotation_file' => (
   Purpose     : Getter for annotation_tree attribute
   Returns     : Tree::AnnotationTree
   Parameters  : None
-  Throws      : If input is given
+  Throws      : If input is given when called after object construction
   Comments    : 
 
 =cut
@@ -243,7 +249,7 @@ has 'annotation_tree' => (
   Purpose     : Getter for off_targets_interval_tree attribute
   Returns     : Set::GenomicTree
   Parameters  : None
-  Throws      : If input is given
+  Throws      : If input is given when called after object construction
   Comments    : 
 
 =cut
@@ -259,9 +265,9 @@ has 'off_targets_interval_tree' => (
 
   Usage       : $crispr_design->debug;
   Purpose     : Getter for debug attribute
-  Returns     : String
+  Returns     : Int
   Parameters  : None
-  Throws      : If input is given
+  Throws      : If input is given when called after object construction
   Comments    : 
 
 =cut
@@ -270,11 +276,6 @@ has 'debug' => (
     is => 'ro',
     isa => 'Int',
 );
-
-# This hash is used to keep track of crRNAs for every target
-# keys are concatenated crRNA name and Target name
-my $crRNA_seen = {};
-my $target_seen = {};
 
 #_seen_crRNA_id
 #
@@ -292,6 +293,19 @@ sub _testing {
     $testing = shift @_;
 }
 
+#_seen_crRNA_id
+#
+#Usage       : $crRNA->_seen_crRNA_id;
+#Purpose     : Internal method for checking if a particular crRNA has been seen before
+#Returns     : 1 if crRNA has been seen before, 0 otherwise
+#Parameters  : crRNA name
+#              Target name
+#Throws      : 
+#Comments    : 
+
+# This hash is used to keep track of crRNAs for every target
+# keys are concatenated crRNA name and Target name
+my $crRNA_seen = {};
 sub _seen_crRNA_id {
 	my ( $self, $name, $target_name ) = @_;
 	if( exists $crRNA_seen->{$name . q{_} . $target_name} ){
@@ -312,6 +326,9 @@ sub _seen_crRNA_id {
 #Throws      : 
 #Comments    : 
 
+# This hash is used to keep track of every target name
+# keys are Target names
+my $target_seen = {};
 sub _seen_target_name {
 	my ( $self, $name ) = @_;
 	if( exists $target_seen->{$name} ){
@@ -340,10 +357,10 @@ sub find_crRNAs_by_region {
 	my ( $self, $region, $target ) = @_;
 	
 	if( !defined $region ){
-		confess "A region must be supplied to find_crRNAs_by_region!\n";
+		croak "A region must be supplied to find_crRNAs_by_region!\n";
 	}
 	if( !defined $self->target_seq ){
-		confess "The target_seq attribute must be defined to search for crRNAs!\n";
+		croak "The target_seq attribute must be defined to search for crRNAs!\n";
 	}
     # get target name. If no target, use region as name.
     my $target_name = defined $target   ?   $target->name   :   $region;
@@ -360,9 +377,13 @@ sub find_crRNAs_by_region {
 	# fetch region from Ensembl
 	my ( $chr, $interval, $strand ) = split /:/, $region;
 	if( !$chr || !$interval ){
-		confess "Couldn't understand region - $region.\n";
+		croak "Couldn't understand region - $region.\n";
 	}
 	my ( $start, $end ) = split /-/, $interval;
+	if( !$start || !$end ){
+		croak "Couldn't understand region - $region.\n";
+	}
+    
 	my $slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $start, $end, '1' );
 	# expand slice by length of target sequence
 	my $expanded_slice = $slice->expand( $self->target_seq_length, $self->target_seq_length );
@@ -432,6 +453,10 @@ sub _construct_regex_from_target_seq {
 	my ( $self, $target_str ) = @_;
 	my %regex_for = (
 		N => '[ACGT]',
+        A => '[A]',
+        C => '[C]',
+        G => '[G]',
+        T => '[T]',
 		R => '[AG]',
 		Y => '[CT]',
 		S => '[CG]',
@@ -453,7 +478,7 @@ sub _construct_regex_from_target_seq {
 			$regex_str .= $_;
 		}
 		else{
-			confess "Base, ", $_, " is not an accepted IUPAC code.\n";
+			croak "Base, ", $_, " is not an accepted IUPAC code.\n";
 		}
 	}
 	my $regex = qr/(?=($regex_str))/xms;
@@ -467,6 +492,7 @@ sub _construct_regex_from_target_seq {
   Parameters  : Crispr::Target
   Throws      : If Target not supplied.
                 If the Target has already been seen before.
+                If the target's region cannot be understood by find_crRNAs_by_region
   Comments    : Only crRNAs with cut-sites inside the target region are retained
 
 =cut
@@ -474,16 +500,35 @@ sub _construct_regex_from_target_seq {
 sub find_crRNAs_by_target {
 	my ( $self, $target, ) = @_;
 	if( !defined $target ){
-		confess "A Crispr::Target must be supplied to find_crRNAs_by_target!\n";
+		croak "A Crispr::Target must be supplied to find_crRNAs_by_target!\n";
 	}
     if( !$target->isa('Crispr::Target') ){
-        confess "A Crispr::Target object is required for find_crRNAs_by_target",
+        croak "A Crispr::Target object is required for find_crRNAs_by_target",
             "not a ", ref $target, ".\n";
     }
 	if( $self->_seen_target_name( $target->name ) ){
-		die "This target, ", $target->name,", has been seen before.\n";
+		croak "This target, ", $target->name,", has been seen before.\n";
 	}
-	my $crRNAs = $self->find_crRNAs_by_region( $target->region, $target );
+	my $crRNAs;
+    eval {
+        $crRNAs = $self->find_crRNAs_by_region( $target->region, $target );
+    };
+    if( $EVAL_ERROR ){
+        if( $EVAL_ERROR =~ m/A\sregion\smust\sbe\ssupplied/xms ){
+            croak join("\n", 'This target does not have an associated region!',
+                'The attributes chr, start and end need to be set when the target object is created for find_crRNAs_by_target to work.',
+            ), "\n";
+        }
+        elsif( $EVAL_ERROR =~ m/Couldn't\sunderstand\sregion/xms ){
+            croak join("\n", "Couldn't understand the target's region!",
+                join(q{ }, 'Target:', $target->name,),
+                join(q{ }, 'Region:', $target->region,), ), "\n";
+        }
+        else{
+            croak $EVAL_ERROR;
+        }
+    }
+    
 	$self->add_target( $target );
     $target->crRNAs( $crRNAs );
 	return $crRNAs;
@@ -572,11 +617,11 @@ sub add_targets {
 	
 	# check $targets is an arrayref of Targets
     if( !ref $targets || ref $targets ne 'ARRAY' ){
-        confess "The supplied argument is not an ArrayRef!\n";
+        croak "The supplied argument is not an ArrayRef!\n";
     }
     foreach ( @{$targets} ){
         if( !ref $_ || !$_->isa('Crispr::Target') ){
-            confess "One of the supplied objects is not a Crispr::Target object, it's a ",
+            croak "One of the supplied objects is not a Crispr::Target object, it's a ",
                 ref $_, ".\n";
         }
     }
@@ -605,7 +650,7 @@ sub add_targets {
 sub add_target {
 	my ( $self, $target ) = @_;
 	if( !ref $target || !$target->isa('Crispr::Target') ){
-		confess "The supplied object is not a Crispr::Target object, it's a ",
+		croak "The supplied object is not a Crispr::Target object, it's a ",
                 ref $target, ".\n";
 	}
 	$self->add_targets( [ $target ] );
@@ -625,7 +670,7 @@ sub add_target {
 sub remove_target {
 	my ( $self, $target ) = @_;
 	if( !ref $target || !$target->isa('Crispr::Target') ){
-		confess "The supplied object is not a Crispr::Target object, it's a ",
+		croak "The supplied object is not a Crispr::Target object, it's a ",
                 ref $target, ".\n";
 	}
 	my @targets_to_keep = grep { $_->name ne $target->name } @{$self->targets};
@@ -653,19 +698,19 @@ sub add_crisprs {
 	
 	# check $crRNAs is either an arrayref or a hashref of crRNAs
     if( !ref $crRNAs ){
-        confess "The supplied argument is neither an ArrayRef or a HashRef!\n";
+        croak "The supplied argument is neither an ArrayRef or a HashRef!\n";
     }
 	if( ref $crRNAs eq 'ARRAY' ){
 		foreach ( @{$crRNAs} ){
 			if( !ref $_ || !$_->isa('Crispr::crRNA') ){
-				confess "One of the supplied objects is not a Crispr::crRNA object, it's a ",
+				croak "One of the supplied objects is not a Crispr::crRNA object, it's a ",
 					ref $_, ".\n";
 			}
 		}
 		
 		# check all crRNAs have a target
 		if( !$target_name && any { !defined $_->target } @{$crRNAs} ){
-			confess "Method: add_crisprs - Each crRNA must have an associated target or a target name must be supplied for all supplied crRNAs!\n";
+			croak "Method: add_crisprs - Each crRNA must have an associated target or a target name must be supplied for all supplied crRNAs!\n";
 		}
 		my $crispr_ref = $self->all_crisprs;
 		$crispr_ref = {} if( !defined $crispr_ref );
@@ -679,14 +724,14 @@ sub add_crisprs {
 	elsif( ref $crRNAs eq 'HASH' ){
 		foreach ( keys %{$crRNAs} ){
 			if( !ref $crRNAs->{$_} || !$crRNAs->{$_}->isa('Crispr::crRNA') ){
-				confess "One of the supplied objects is not a Crispr::crRNA object, it's a ",
+				croak "One of the supplied objects is not a Crispr::crRNA object, it's a ",
 					ref $crRNAs->{$_}, ".\n";
 			}
 		}
 		
 		# check all crRNAs have a target
 		if( !$target_name && any { !defined $crRNAs->{$_}->target } keys %{$crRNAs} ){
-			confess "Method: add_crisprs - Each crRNA must have an associated target or a target name must be supplied for all supplied crRNAs!\n";
+			croak "Method: add_crisprs - Each crRNA must have an associated target or a target name must be supplied for all supplied crRNAs!\n";
 		}
 		my $crispr_ref = $self->all_crisprs;
 		$crispr_ref = {} if( !defined $crispr_ref );
@@ -699,7 +744,7 @@ sub add_crisprs {
 		$self->_set_all_crisprs( $crispr_ref );
 	}
 	else{
-        confess "The supplied argument is neither an ArrayRef or a HashRef!\n";
+        croak "The supplied argument is neither an ArrayRef or a HashRef!\n";
 	}
 }
 
@@ -721,19 +766,19 @@ sub remove_crisprs {
 	
 	# check $crRNAs is either an arrayref or hashref of crRNAs
     if( !ref $crRNAs ){
-        confess "The supplied argument is neither an ArrayRef or a HashRef!\n";
+        croak "The supplied argument is neither an ArrayRef or a HashRef!\n";
     }
 	if( ref $crRNAs eq 'ARRAY' ){
 		foreach ( @{$crRNAs} ){
 			if( !ref $_ || !$_->isa('Crispr::crRNA') ){
-				confess "One of the supplied objects is not a Crispr::crRNA object, it's a ",
+				croak "One of the supplied objects is not a Crispr::crRNA object, it's a ",
 					ref $_, ".\n";
 			}
 		}
 		
 		# check all crRNAs have a target
 		if( any { !defined $_->target } @{$crRNAs} ){
-			confess "Each crRNA must have an associated target!\n";
+			croak "Each crRNA must have an associated target!\n";
 		}
 		my $crispr_ref = $self->all_crisprs;
 		$crispr_ref = {} if( !defined $crispr_ref );
@@ -745,14 +790,14 @@ sub remove_crisprs {
 	elsif( ref $crRNAs eq 'HASH' ){
 		foreach ( keys %{$crRNAs} ){
 			if( !ref $_ || !$_->isa('Crispr::crRNA') ){
-				confess "One of the supplied objects is not a Crispr::crRNA object, it's a ",
+				croak "One of the supplied objects is not a Crispr::crRNA object, it's a ",
 					ref $_, ".\n";
 			}
 		}
 		
 		# check all crRNAs have a target
 		if( any { !defined $crRNAs->{$_}->target } keys %{$crRNAs} ){
-			confess "Each crRNA must have an associated target!\n";
+			croak "Each crRNA must have an associated target!\n";
 		}
 		my $crispr_ref = $self->all_crisprs;
 		$crispr_ref = {} if( !defined $crispr_ref );
@@ -763,7 +808,7 @@ sub remove_crisprs {
 		$self->_set_all_crisprs( $crispr_ref );
 	}
 	else{
-        confess "The supplied argument is neither an ArrayRef or a HashRef!\n";
+        croak "The supplied argument is neither an ArrayRef or a HashRef!\n";
 	}
 }
 
@@ -773,7 +818,7 @@ sub remove_crisprs {
   Purpose     : Getter for target_seq_length attribute
   Returns     : Int
   Parameters  : None
-  Throws      : If input is given
+  Throws      : If input is given when called after object construction
   Comments    : 
 
 =cut
@@ -783,7 +828,7 @@ sub target_seq_length {
     my ( $self, $input, ) = @_;
     
     if( $input ){
-        confess "target_seq_length is a read-only attribute. It cannot be set.\n";
+        croak "target_seq_length is a read-only attribute. It cannot be set.\n";
     }
     if( !$target_seq_length ){
         $target_seq_length = length $self->target_seq;
@@ -842,7 +887,7 @@ sub parse_cr_name {
     }
     else{
         # complain
-        confess "Could not understand crRNA name. Should at least be crRNA:CHR:START-END.\n";
+        croak "Could not understand crRNA name. Should at least be crRNA:CHR:START-END.\n";
     }
     my ( $start, $end ) = split /-/, $range;
     
@@ -886,7 +931,10 @@ sub output_fastq_for_off_targets {
     my ( $self, $crRNAs, $basename, ) = @_;
 	
     my $crispr_fq_filename = $basename . '.fq';
-    open my $fq_fh, '>', $crispr_fq_filename or confess "Couldn't open file, $crispr_fq_filename:$!\n";
+    open my $fq_fh, '>', $crispr_fq_filename or croak join("\n",
+        "Scoring off-targets failed!",
+        "Couldn't open file, $crispr_fq_filename",
+        $OS_ERROR, ), "\n";
     
 	foreach my $crRNA_id ( keys %{$crRNAs} ){
 		my $crRNA = $crRNAs->{$crRNA_id};
@@ -939,7 +987,8 @@ sub filter_and_score_off_targets {
 		$self->target_genome, "$basename.sai", "$basename.fq", );
     $sam_cmd .= ' 2> /dev/null' if $testing;
     
-    open (my $sam_pipe, '-|', $sam_cmd) || confess "failed to execute command $sam_cmd\n";
+    open (my $sam_pipe, '-|', $sam_cmd) || croak join("\n",
+        "Scoring off-targets failed!", $sam_cmd, $OS_ERROR, ), "\n";
     my $line;
     while ( $line = <$sam_pipe>) {
         next if( $line =~ m/\A \@/xms );
@@ -1058,7 +1107,7 @@ sub score_off_targets_from_sam_output {
 
 =cut
 
-sub calculate_all_pc_coding_scores{
+sub calculate_all_pc_coding_scores {
 	my ($self, $crRNA, $transcripts ) = @_;
 	# get coding transcripts
 	my @coding_transcripts = grep { $_->biotype() eq 'protein_coding' } @{$transcripts};
@@ -1146,13 +1195,13 @@ sub _build_annotation_tree {
     
     my $tree;
     if( !$self->annotation_file ){
-        confess "Cannot make an AnnotationTree without an annotation file!\n";
+        croak "Cannot make an AnnotationTree without an annotation file!\n";
     }
     elsif( $self->annotation_file !~ m/\.gff\z/xms ){
-        confess "The annotation file, ", $self->annotation_file, ", doesn't appear to be a gff file!\n";
+        croak "The annotation file, ", $self->annotation_file, ", doesn't appear to be a gff file!\n";
     }
     elsif( !-e $self->annotation_file || -z $self->annotation_file ){
-        confess "The annotation file for exon/intron annotation does not exist or is empty.\n";
+        croak "The annotation file for exon/intron annotation does not exist or is empty.\n";
     }
     else{
         # assume annotation is in gff format
@@ -1204,40 +1253,244 @@ __END__
 
 =pod
 
-=head1 NAME
- 
-<Crispr> - <Main Module for creating Crispr objects.>
-
- 
 =head1 SYNOPSIS
  
-    use Crispr::Target;
+    use Crispr;
     my $crispr_design = Crispr->new(
         species => 'zebrafish',
+        target_seq => 'NNNNNNNNNNNNNNNNNNNNNGG',
+        PAM => 'NGG',
+        five_prime_Gs => 0,
         target_genome => 'target_genome.fa',
         slice_adaptor => $slice_adaptor,
         annotation_file => 'annotation.gff',
-        annotation_tree => $tree,
         debug => 0,
     );
     
-    # print out target summary or info
-    print join("\t", $target->summary ), "\n";
-    print join("\t", $target->info ), "\n";
+    # find CRISPR target sites (crRNAs) using Crispr::Target objects
+    $crRNAs = $crispr_design->find_crRNAs_by_target( $target );
     
+    # get targets
+    $targets = $crispr_design->targets();
+    
+    # get a hash of all the crRNAs (keys are 'target_name'_'crRNA_name', values are crRNA objects )
+    $crRNAs = $crispr_design->all_crisprs();
+    
+    # keep crRNAs only on one strand
+    $crRNAs = $crispr_design->filter_crRNAs_from_target_by_strand( $target, $strand_to_keep );
 
+    # keep the top scoring crRNAs
+    $crRNAs = $crispr_design->filter_crRNAs_from_target_by_score( $target, $number_to_keep );
+
+    # add or remove target(s) to crispr_design object
+    $crispr_design->add_target( $target );
+    $crispr_design->add_targets( \@targets );
+    $crispr_design->remove_target( $target );
+    
+    # add or remove crRNAs
+    $crispr_design->add_crisprs( \@crRNAs );
+    $crispr_design->remove_crisprs( \@crRNAs );
+
+    
+    $target_length = $crispr_design->target_seq_length();
+    
+    # use a crRNA id
+    $crRNA = $crispr_design->create_crRNA_from_crRNA_name( 'crRNA:5:123-145:1' );
+    ( $chr, $start, $end, $strand ) = $crispr_design->parse_cr_name( $crRNA->name );
+    
+    # calculate potential off target sites for targets
+    $crispr_design->off_targets_bwa( $crispr_design->all_crisprs );
+    
+    # calculate protein-coding scores
+    $crispr_design->calculate_all_pc_coding_scores( $crRNA, $transcripts );
+    
+    
 =head1 DESCRIPTION
  
-Object of this class represent a targets strecth of DNA to search for potential crispr target sites. 
- 
+Objects of this class implement methods to find and score CRISPR target sites.
+It uses the other Crispr Modules to do this.
+
+=over
+
+=item B<Crispr::Target>
+
+This object represents a stretch of DNA that is to be searched for possible
+CRISPR target sites. It can correspond to an exon, transcript or gene, but it
+can also be any arbitrary region in a genome.
+
+=item B<Crispr::crRNA>
+
+This object represents a single CRISPR target site.
+
+=item B<Crispr::OffTarget>
+
+This object is used to hold the positions of potential off-target sites for a
+CRISPR target.
+
+=item B<Crispr::EnzymeInfo>
+
+This object is used to hold information about restriction enzymes that cut
+amplicons that are used to screen the efficiency of CRISPR guide RNAs.
+Note: Currently can be added as an attribute to a crRNA object, but may be
+better done as an attribute of a PrimerPair.
+
+=item B<Crispr::CrisprPair>
+
+This object represents two CRISPR target sites to be used as a pair to produce
+a specific deletion. It is comprised of two crRNA objects and two Target
+objects which can be the same region. The first crRNA of the pair must be on
+the reverse strand and the second on the forward strand. This orientation has
+been shown to be more efficient at inducing indels than the opposite one
+(http://dx.doi.org/10.1016/j.cell.2013.08.021).
+
+=item B<Crispr::PrimerDesign>
+
+This object is used to design PCR primers for screening the efficiency of
+specific CRISPR guide RNAs
+
+=item B<Crispr::Config>
+
+A helper object for importing and parsing config files.
+
+=back
+
 =head1 DIAGNOSTICS
- 
+
+=over
+
+=item Not a valid crRNA target sequence
+
+The supplied sequence must only contain the characters ACGTNRYSWMKBDHV.
+
+=item File does not exist or is empty.
+
+If the target_genome attribute is supplied to the C<new> method it must exist and not be empty.
+
+=item A region must be supplied to find_crRNAs_by_region
+
+This means that the attribute target_seq was not defined when the Crispr object was created with a call to C<new>.
+The C<find_crRNAs> methods cannot work if no target sequence is defined.
+
+=item The target_seq attribute must be defined to search for crRNAs
+
+This means that the attribute target_seq was not defined when the Crispr object was created with a call to C<new>.
+The C<find_crRNAs> methods cannot work if no target sequence is defined.
+
+=item Couldn't understand region
+
+This means that the C<find_crRNAs_by_region> method could not correctly parse the region supplied.
+The region must be in the format CHR:START-END[:STRAND] (Strand defaults to '1').
+
+=item Base, is not an accepted IUPAC code.
+
+The target sequence must only be composed of the characters ACGTNRYSWMKBDHV.
+This should be checked on the creation of the Crispr object so this error message should never be encountered!
+
+=item A Crispr::Target must be supplied to find_crRNAs_by_target
+
+This means that C<find_crRNAs_by_target> was called without a defined Crispr::Target object.
+
+=item A Crispr::Target object is required for find_crRNAs_by_target
+
+This means that C<find_crRNAs_by_target> was called with an object that is not a Crispr::Target object.
+
+=item This target, ", $target->name,", has been seen before.
+
+This means that the name of the Crispr::Target supplied to C<find_crRNAs_by_target> has been seen before.
+A Crispr object keeps a record of the targets that it has found crRNAs for so that duplicate crRNAs found in the all_crisprs attribute.
+Unfortunately this error is very likely to occur if searching for crRNAs for a gene and so the exception needs to be caught and dealt with.
+The scripts supplied with Crispr do this and print a warning saying that the target has been seen before and that it is being skipped.
+
+=item This target does not have an associated region
+
+This means that the Crispr::Target object supplied to C<find_crRNAs_by_target> does not have a defined region.
+The chr, start and end attributes of the target must be defined for there to be a defined region.
+
+=item The supplied argument is not an ArrayRef!
+
+The argument supplied to C<add_targets> must be an ArrayRef of Crispr::Target objects
+
+=item One of the supplied objects is not a Crispr::Target object, it's a 
+
+The argument supplied to C<add_targets> must be an ArrayRef of Crispr::Target objects
+
+=item The supplied object is not a Crispr::Target object
+
+The argument supplied to C<add_target/remove_target> must be a Crispr::Target object
+
+=item The supplied argument is neither an ArrayRef or a HashRef!
+
+The argument supplied to C<add_targets/remove_targets> must be either an ArrayRef or a HashRef of Crispr::crRNA objects
+
+=item One of the supplied objects is not a Crispr::crRNA object
+
+All of the objects supplied to C<add_targets/remove_targets> must be Crispr::crRNA objects
+
+=item Method: add_crisprs - Each crRNA must have an associated target or a target name must be supplied for all supplied crRNAs
+
+This means one of the objects supplied to add_crisprs does not have an associated Crispr::Target object.
+The Crispr module keeps track of crRNAs by using the crRNA_name and target_name so it needs a target name.
+If the target name is the same for all crRNAs it can be supplied as the second argument to the method.
+
+=item Each crRNA must have an associated target!
+
+This means one of the objects supplied to add_crisprs does not have an associated Crispr::Target object.
+The Crispr module keeps track of crRNAs by using the crRNA_name and target_name so it needs a target name to remove it.
+
+=item target_seq_length is a read-only attribute. It cannot be set.
+
+The target sequence length attribute cannot be set by the user. It is calculated using the target_seq attribute
+
+=item Could not understand crRNA name. Should at least be crRNA:CHR:START-END.
+
+The format of the crRNA name supplied to C<create_crRNA_from_crRNA_name/parse_cr_name> must be crRNA:CHR:START-END[:STRAND].
+The default value for strand is '1'.
+
+=item Scoring off-targets failed
+
+This indicates that something went wrong with the off-target scoring process.
+This could be for a few reasons.
+
+=over
+
+=item 1. The FASTQ file for the crRNA target sequence to be tested could not be created.
+
+=item 2. The mapping staged failed
+
+=item 3. The parsing of the results failed
+
+=back
+
+=item Cannot make an AnnotationTree without an annotation file!
+
+This error message occurs if off-target scoring is being done but no annotation file has been supplied by setting the annotation_file attribute.
+
+=item The annotation file, annotation_file_name, doesn't appear to be a gff file!
+
+This error message occurs if off-target scoring is being done and the annotation file is not in gff format.
+
+=item The annotation file for exon/intron annotation does not exist or is empty.
+
+This error message occurs if off-target scoring is being done and the annotation file does not or is empty.
+
+=back
  
 =head1 CONFIGURATION AND ENVIRONMENT
- 
- 
+
+bwa (bio-bwa.sourceforge.net) must be installed in the current path for off-target scoring to work.
+Also the target genome must have already been indexed by bwa.
+
+Off-target checking uses an Interval Tree for fast checking of annotation.
+This needs a file of annotation for species in question in gff format.
+
+## In future, I would like to implement checking of annotation using Ensembl
+although this will be probably be considerably slower  ##
+
+All off-targets are also stored in an Interval tree for fast checking of off-target sites that are close together.
+
 =head1 DEPENDENCIES
  
+ Set::Interval
  
 =head1 INCOMPATIBILITIES
  
