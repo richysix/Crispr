@@ -69,12 +69,12 @@ my $design_obj_no_target_seq = Crispr->new(
 # check attributes
 throws_ok { Crispr->new( target_seq => 'NNNNNJNNNNNNNNNNNNNNNGG' ) } qr/Not\sa\svalid\scrRNA\starget\ssequence/, 'Incorrect target seq - non-DNA character';
 throws_ok { Crispr->new( five_prime_Gs => 3 ) } qr/Validation\sfailed/, 'Attempt to set five_prime_Gs to 3';
-throws_ok { Crispr->new( target_genome => '/lustre/scratch110/sanger/rw4/genomes/Dr/Zv8/striped/zv9_toplevel_unmasked.fa' ) }
+throws_ok { Crispr->new( target_genome => 'non_existent_genome_file.fa' ) }
     qr/File\sdoes\snot\sexist\sor\sis\sempty/, 'genome file that does not exist';
 $tests+=3;
 
 # test methods
-# find_crRNAs_by_region - 3 tests
+# find_crRNAs_by_region - 6 tests
 throws_ok { $design_obj_no_target_seq->find_crRNAs_by_region() } qr/A\sregion\smust\sbe\ssupplied\sto\sfind_crRNAs_by_region/,
     'find crRNAs by region - no region';
 throws_ok { $design_obj_no_target_seq->find_crRNAs_by_region( '5:46628364-46628423', ) } qr/The\starget_seq\sattribute\smust\sbe\sdefined\sto\ssearch\sfor\scrRNAs/,
@@ -87,27 +87,41 @@ ok( $design_obj->find_crRNAs_by_region( '5:46628364-46628423' ), 'find crRNAs by
 is( scalar keys %{ $design_obj->all_crisprs }, 9, 'check number of crispr sites' );
 $tests+=6;
 
-# find_crRNAs_by_region - 4 tests
+# find_crRNAs_by_target - 10 tests
 # make mock Target object
 my $crRNAs;
 $mock_target = Test::MockObject->new();
 $mock_target->set_isa( 'Crispr::Target' );
 $mock_target->mock( 'name', sub{ return '5:46628364-46628423_b' });
-$mock_target->mock( 'region', sub{ return '5:46628364-46628423:1' });
 $mock_target->mock( 'crRNAs', sub{ my @args = @_; if( $args[1] ){ $crRNAs = $args[1] }else{ return $crRNAs } } );
-
-ok( $design_obj->find_crRNAs_by_target( $mock_target ), 'find crRNAs by target');
-is( scalar @{ $design_obj->targets }, 1, 'check number of targets');
-ok( $design_obj->filter_crRNAs_from_target_by_strand( $mock_target, '1' ), 'filter crRNAs by strand');
-is( scalar @{ $mock_target->crRNAs }, 6, 'check crispr left after filtering by + strand' );
+$mock_target->mock( 'region', sub{ return undef });
 
 throws_ok { $design_obj->find_crRNAs_by_target() }
     qr/A\sCrispr::Target\smust\sbe\ssupplied\sto\sfind_crRNAs_by_target/, 'find crRNAs by target - no target';
 throws_ok { $design_obj->find_crRNAs_by_target( 'target' ) }
     qr/A\sCrispr::Target\sobject\sis\srequired\sfor\sfind_crRNAs_by_target/, 'find crRNAs by target - not a Crispr::Target';
 throws_ok { $design_obj->find_crRNAs_by_target( $mock_target ) }
-    qr/This\starget,\s5:46628364-46628423_b,\shas\sbeen\sseen\sbefore/, 'find crRNAs by target - same target';
-$tests+=7;
+    qr/This\starget\sdoes\snot\shave\san\sassociated\sregion/, 'find crRNAs by target - no region';
+
+$mock_target->mock( 'name', sub{ return '5:46628364-46628423_c' });
+$mock_target->mock( 'region', sub{ return '46628364-46628423' });
+throws_ok { $design_obj->find_crRNAs_by_target( $mock_target ) }
+    qr/Couldn't\sunderstand\sthe\starget's\sregion/, 'find crRNAs by target - incorrect region format';
+
+$mock_target->mock( 'region', sub{ return '5:46628364-46628423:1' });
+$mock_target->mock( 'name', sub{ return '5:46628364-46628423_d' });
+throws_ok { $design_obj_no_target_seq->find_crRNAs_by_target( $mock_target ) } qr/The\starget_seq\sattribute\smust\sbe\sdefined\sto\ssearch\sfor\scrRNAs/,
+    'find crRNAs by target - no target_seq';
+
+$mock_target->mock( 'name', sub{ return '5:46628364-46628423_e' });
+ok( $design_obj->find_crRNAs_by_target( $mock_target ), 'find crRNAs by target');
+is( scalar @{ $design_obj->targets }, 1, 'check number of targets');
+ok( $design_obj->filter_crRNAs_from_target_by_strand( $mock_target, '1' ), 'filter crRNAs by strand');
+is( scalar @{ $mock_target->crRNAs }, 6, 'check crispr left after filtering by + strand' );
+
+throws_ok { $design_obj->find_crRNAs_by_target( $mock_target ) }
+    qr/This\starget,\s5:46628364-46628423_e,\shas\sbeen\sseen\sbefore/, 'find crRNAs by target - same target';
+$tests+=10;
 
 my $crRNA_1;
 ok( $crRNA_1 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:3:5689156-5689178:1', 'zebrafish' ), 'create crRNA from crRNA name' );
