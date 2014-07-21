@@ -166,12 +166,12 @@ is( $crRNA->score - 0.4 < 0.001, 1, "check score");
 # test coding_scores - 7 tests
 is( $crRNA->coding_score_for( 'ENSDART00000037691' ), 0.734, "check return of coding score for transcript ENSDART00000037691.");
 is( $crRNA->coding_score_for( 'ENSDART00000037681' ), 0.5, "check return of coding score for transcript ENSDART00000037681.");
-like( join(';', $crRNA->coding_scores_by_transcript), qr/ENSDART00000037691=0.734;ENSDART00000037681=0.5/, "check coding_scores_by_transcript");
+like( join(';', $crRNA->coding_scores_by_transcript), qr/ENSDART00000037681=0.5;ENSDART00000037691=0.734/, "check coding_scores_by_transcript");
 
 $crRNA->coding_score_for( 'ENSDART00000037671', 0.1 );
     #print Dumper( %{$crRNA->coding_scores} );
 is( $crRNA->coding_score - 0.445 < 0.001, 1, "check overall coding score after adding a new score");
-like( join(';', $crRNA->coding_scores_by_transcript), qr/ENSDART00000037691=0.734;ENSDART00000037681=0.5;ENSDART00000037671=0.1/,
+like( join(';', $crRNA->coding_scores_by_transcript), qr/ENSDART00000037671=0.1;ENSDART00000037681=0.5;ENSDART00000037691=0.734/,
      "check coding_scores_by_transcript after adding a new score");
 
 is( $crRNA_2->coding_score, undef, "check undef coding_scores");
@@ -201,7 +201,7 @@ is( $crRNA_2->name, 'crRNA:5:18078991-18079013:-1', 'Get name 2');
 
 # crRNA_info - 2 tests
 like( join("\t", $crRNA->info ),
-    qr/crRNA:5:18078991-18079013:1\t5\t18078991\t18079013\t1\t0.099\tGGCCTTCGGGTTTGACCCCATGG\tTAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGG\t0.223\t0.528\t17:403-425:-1\/2\/4\t0.422\t17:403-425:-1,Zv9_NA1:403-425:-1\/2\/4\t0.445\tENSDART00000037691=0.734;ENSDART00000037681=0.5/,
+    qr/crRNA:5:18078991-18079013:1\t5\t18078991\t18079013\t1\t0.099\tGGCCTTCGGGTTTGACCCCATGG\tTAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGG\t0.223\t0.528\t17:403-425:-1\/2\/4\t0.422\t17:403-425:-1,Zv9_NA1:403-425:-1\/2\/4\t0.445\tENSDART00000037671=0.1;ENSDART00000037681=0.5;ENSDART00000037691=0.734/,
     'check info' );
 like( join("\t", $crRNA_2->info ),
     qr/crRNA:5:18078991-18079013:-1\t5\t18078991\t18079013\t-1\tNULL\tGGCCTTCGGGTTTGACCCCATGG\tATAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGGC\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL/,
@@ -210,10 +210,10 @@ like( join("\t", $crRNA_2->info ),
 # crRNA target_summary_plus_crRNA_info & target_info_plus_crRNA_info
 # 2 tests
 like( join("\t", $crRNA->target_summary_plus_crRNA_info ),
-    qr/ENSE000000035646\tENSDARG00000026374\tatpase2\tcrispr_test\tcrRNA:5:18078991-18079013:1\t5\t18078991\t18079013\t1\t0.099\tGGCCTTCGGGTTTGACCCCATGG\tTAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGG\t0.223\t0.528\t17:403-425:-1\/2\/4\t0.422\t17:403-425:-1,Zv9_NA1:403-425:-1\/2\/4\t0.445\tENSDART00000037691=0.734;ENSDART00000037681=0.5/,
+    qr/ENSE000000035646\tENSDARG00000026374\tatpase2\tcrispr_test\tcrRNA:5:18078991-18079013:1\t5\t18078991\t18079013\t1\t0.099\tGGCCTTCGGGTTTGACCCCATGG\tTAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGG\t0.223\t0.528\t17:403-425:-1\/2\/4\t0.422\t17:403-425:-1,Zv9_NA1:403-425:-1\/2\/4\t0.445\tENSDART00000037671=0.1;ENSDART00000037681=0.5;ENSDART00000037691=0.734/,
     'check target_summary plus info' );
 like( join("\t", $crRNA->target_info_plus_crRNA_info ),
-    qr/NULL\tENSE000000035646\tNULL\t5\t18078900\t18079400\t1\tzebrafish\tn\tENSDARG00000026374\tatpase2\tcrispr_test\t75\tNULL\tcrRNA:5:18078991-18079013:1\t5\t18078991\t18079013\t1\t0.099\tGGCCTTCGGGTTTGACCCCATGG\tTAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGG\t0.223\t0.528\t17:403-425:-1\/2\/4\t0.422\t17:403-425:-1,Zv9_NA1:403-425:-1\/2\/4\t0.445\tENSDART00000037691=0.734;ENSDART00000037681=0.5/,
+    qr/NULL\tENSE000000035646\tNULL\t5\t18078900\t18079400\t1\tzebrafish\tn\tENSDARG00000026374\tatpase2\tcrispr_test\t75\tNULL\tcrRNA:5:18078991-18079013:1\t5\t18078991\t18079013\t1\t0.099\tGGCCTTCGGGTTTGACCCCATGG\tTAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGG\t0.223\t0.528\t17:403-425:-1\/2\/4\t0.422\t17:403-425:-1,Zv9_NA1:403-425:-1\/2\/4\t0.445\tENSDART00000037671=0.1;ENSDART00000037681=0.5;ENSDART00000037691=0.734/,
     'check target_info plus info' );
 
 # check cut-site 2 tests
