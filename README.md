@@ -19,13 +19,13 @@ Contains the following modules:
 
 *   EnzymeInfo.pm   - object that holds information about restriction enzymes found in amplicons for screening guide RNAs
 
-*   OffTarget.pm    - object for potential off target sites for CRISPR target sites
+*   OffTarget.pm    - object for potential off-target sites for CRISPR target sites
 
 *   CrisprPair.pm   - object representing two CRISPR target sites designed together as a pair
 
 *   PrimerDesign.pm - object used to design PCR primers for efficiency screening
 
-*   Config.pm       - helper module to parse configurations files
+*   Config.pm       - helper module to parse configuration files
 
 ## Scripts
 
