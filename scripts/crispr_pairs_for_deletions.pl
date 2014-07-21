@@ -530,17 +530,17 @@ sub targets_from_exon {
     return $targets_for;
 }
 
-targets_from_posn
-
-  Usage       : targets_from_posn( $targets_for, $columns, )
-  Purpose     : Return targets with crRNAs for a genomic region
-  Returns     : HashRef
-  Parameters  : Targets HashRef - HashRef
-                Input Line      - ArrayRef
-  Throws      : 
-  Comments    : Warns if:   Position is not in the right format. CHR:START[-END:STRAND]
-                            If the are no crispr targets sites for one of the targets
-
+#targets_from_posn
+#
+#  Usage       : targets_from_posn( $targets_for, $columns, )
+#  Purpose     : Return targets with crRNAs for a genomic region
+#  Returns     : HashRef
+#  Parameters  : Targets HashRef - HashRef
+#                Input Line      - ArrayRef
+#  Throws      : 
+#  Comments    : Warns if:   Position is not in the right format. CHR:START[-END:STRAND]
+#                            If the are no crispr targets sites for one of the targets
+#
 
 
 sub targets_from_posn {
