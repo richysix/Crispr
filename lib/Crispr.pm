@@ -16,8 +16,8 @@ use Moose::Util::TypeConstraints;
 use namespace::autoclean;
 use Crispr::crRNA;
 use Crispr::Target;
-use Tree::Annotation;
-use Tree::GenomicInterval;
+use Tree::AnnotationTree;
+use Tree::GenomicIntervalTree;
 
 use Bio::Seq;
 use Bio::SeqIO;
@@ -63,8 +63,8 @@ subtype 'Crispr::FileExists',
                 targets => ArrayRef of Crispr::Target objects,
                 all_crisprs => HashRef of Crispr::crRNA objects,
                 annotation_file => String,
-                annotation_tree => Tree::Annotation,
-                off_targets_interval_tree => Tree::GenomicInterval,
+                annotation_tree => Tree::AnnotationTree,
+                off_targets_interval_tree => Tree::GenomicIntervalTree,
                 debug => Int,
   Throws      : If parameters are not the correct type
   Comments    : None
@@ -238,7 +238,7 @@ has 'annotation_file' => (
 
 has 'annotation_tree' => (
     is => 'ro',
-    isa => 'Tree::Annotation',
+    isa => 'Tree::AnnotationTree',
     builder => '_build_annotation_tree',
     lazy => 1,
 );
@@ -256,7 +256,7 @@ has 'annotation_tree' => (
 
 has 'off_targets_interval_tree' => (
     is => 'ro',
-    isa => 'Tree::GenomicInterval',
+    isa => 'Tree::GenomicIntervalTree',
     builder => '_build_interval_tree',
     lazy => 1,
 );
@@ -1205,7 +1205,7 @@ sub _build_annotation_tree {
     }
     else{
         # assume annotation is in gff format
-        $tree = Tree::Annotation->new();
+        $tree = Tree::AnnotationTree->new();
         $tree->add_annotations_from_gff( $self->annotation_file );
     }
     return $tree;
@@ -1222,7 +1222,7 @@ sub _build_annotation_tree {
 
 sub _build_interval_tree {
     my ( $self, ) = @_;
-    return Tree::GenomicInterval->new;
+    return Tree::GenomicIntervalTree->new;
 }
 
 #_build_five_prime_Gs
