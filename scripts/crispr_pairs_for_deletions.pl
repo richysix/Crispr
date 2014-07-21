@@ -139,7 +139,7 @@ Readonly my $WINDOW_SIZE => defined $options{max_off_target_separation}    ?   $
     :                                                                       10000;
 
 Readonly my $MIN_CRISPR_SEPARATION => defined $options{min_crispr_separation}  ?   $options{min_crispr_separation}
-    :                                                               20;
+    :                                                               30;
 Readonly my $MAX_CRISPR_SEPARATION => defined $options{max_crispr_separation}  ?   $options{max_crispr_separation}
     :                                                               60;
 Readonly my $OPT_CRISPR_SEPARATION => defined $options{opt_crispr_separation}  ?   $options{opt_crispr_separation}
@@ -1068,7 +1068,7 @@ Separation is defined above.
 
 The optimum separation for the two crispr sites in a crispr pair.
 If no optimum separation is set, it defaults to half-way between the min and max (i.e. min + (max - min)/2 ).
-With the default settings for min and max this would be 40 bp.
+With the default settings for min and max this would be 45 bp.
 Separation is defined above.
 
 =item B<--max_off_target_separation >
