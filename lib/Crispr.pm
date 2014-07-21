@@ -10,6 +10,7 @@ use autodie qw(:all);
 use List::MoreUtils qw( any );
 use Carp;
 use English qw( -no_match_vars );
+use File::Which;
 
 use Moose;
 use Moose::Util::TypeConstraints;
@@ -277,15 +278,14 @@ has 'debug' => (
     isa => 'Int',
 );
 
-#_seen_crRNA_id
+#_testing
 #
-#Usage       : $crRNA->_seen_crRNA_id;
-#Purpose     : Internal method for checking if a particular crRNA has been seen before
-#Returns     : 1 if crRNA has been seen before, 0 otherwise
-#Parameters  : crRNA name
-#              Target name
+#Usage       : $crRNA->_testing;
+#Purpose     : Internal method for to indicate whether testing is being done.
+#Returns     : value for $testing
+#Parameters  : value to set $testing to  => Int
 #Throws      : 
-#Comments    : 
+#Comments    : If testing is set it alters the behaviour of the off-target methods
 
 my $testing;
 sub _testing {
@@ -908,6 +908,14 @@ sub parse_cr_name {
 
 sub off_targets_bwa {
     my ( $self, $crRNAs, $basename, ) = @_;
+    
+    # check whether bwa is installed in the current PATH
+    my $bwa_path = which( 'bwa' );
+    if( !$bwa_path ){
+        croak join("\n", 'Could not find bwa installed in the current path!',
+            'Either install bwa in the current path or alter the path to include the bwa directory', ), "\n";
+    }
+    
     $basename = $basename  ?   $basename    :   'tmp';
     $self->output_fastq_for_off_targets( $crRNAs, $basename, );
     $self->bwa_align( $basename, );
@@ -922,7 +930,7 @@ sub off_targets_bwa {
   Returns     : 1 on Success
   Parameters  : ArrayRef of Crispr::crRNA objects
                 Basename for tmp output files   (String)
-  Throws      : 
+  Throws      : If output FASTQ file cannot be opened
   Comments    : 
 
 =cut
