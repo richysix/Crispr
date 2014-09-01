@@ -39,6 +39,7 @@ sub load_cfg {
 	open my $fh, '<', $file;
 	while( my $line = <$fh> ) {
 		next if $line =~ /^\s*\#/; # skip comments
+        next if $line eq qq{\n}; # skip empty lines
 		$line =~ s/[\n\r]//g;
         # check if key-value pair is tab-separated
 		if( $line =~ m/^(.+)\t(.+)$/){
@@ -46,7 +47,7 @@ sub load_cfg {
             $self->{ $k } = $v;
         }
         else{
-            warn "Line: $line, is not in correct format. It shoud be KEY VALUE separated by tabs\n";
+            warn "Line: $line, is not in correct format. It should be KEY VALUE separated by tabs\n";
         }
 	}
 	close( $fh );
