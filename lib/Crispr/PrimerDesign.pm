@@ -488,10 +488,16 @@ sub design_primers_multiple_rounds {
 
 sub sort_and_select_primers {
     my ( $self, $primers_to_sort, $type, $round, $targets, $adaptors_for, $re ) = @_;
-
+    
+    my @primers = grep {
+            $_->left_primer->seq &&
+            $_->right_primer->seq &&
+            !defined $targets->{$_->amplicon_name}->{$type . '_primers'}
+        } @{$primers_to_sort};
+    
     foreach my $primer_pair (sort {$a->amplicon_name cmp $b->amplicon_name
                               || $a->pair_penalty <=> $b->pair_penalty
-                              || $a->product_size <=> $b->product_size } @{$primers_to_sort} ) {
+                              || $a->product_size <=> $b->product_size } @primers ) {
         my $id = $primer_pair->amplicon_name;
         #print STDERR join("\t",
         #    $id,
