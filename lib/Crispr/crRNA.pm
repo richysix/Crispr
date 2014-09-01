@@ -644,7 +644,7 @@ sub coding_scores_by_transcript {
     my ( $self, ) = @_;
     my $scores = $self->coding_scores;
     my @scores;
-    foreach ( keys %{$scores} ){
+    foreach ( sort keys %{$scores} ){
         push @scores, join('=', $_, $num->format_number($scores->{$_}) );
     }
     return @scores;
