@@ -33,9 +33,6 @@ if( $options{debug} ){
     use Data::Dumper;
 }
 
-print Dumper( %options );
-exit;
-
 # check registry file
 if( $options{registry_file} ){
     Bio::EnsEMBL::Registry->load_all( $options{registry_file} );
@@ -168,6 +165,9 @@ while(<>){
     
     # get slice for deletion
     my $slice = $slice_adaptor->fetch_by_region( 'toplevel', $chr, $start, $end, 1, );
+    if( !$slice ){
+        die "Couldn't get slice for position, $chr:$start-$end and species, $species!\n";
+    }
     my $design_slice;
     # extend slice
     $design_slice = $slice->expand($SLICE_EXTENDER, $SLICE_EXTENDER);
@@ -276,9 +276,11 @@ if( ( any { !defined $targets->{$_}->{int_primers} } keys %$targets ) && keys %{
 # output primers on their own and with partial Illumina adaptors
 my @targets_to_print;
 Readonly my $LEFT_PARTIAL_ADAPTOR =>
-    $options{left_adaptor} ? $options{left_adaptor} : 'ACACTCTTTCCCTACACGACGCTCTTCCGATCT';
+    exists $options{left_adaptor} && defined $options{left_adaptor}
+        ? $options{left_adaptor} : 'ACACTCTTTCCCTACACGACGCTCTTCCGATCT';
 Readonly my $RIGHT_PARTIAL_ADAPTOR =>
-    $options{right_adaptor} ? $options{right_adaptor} : 'TCGGCATTCCTGCTGAACCGCTCTTCCGATCT';
+    exists $options{right_adaptor} && defined $options{right_adaptor}
+        ? $options{right_adaptor} : 'TCGGCATTCCTGCTGAACCGCTCTTCCGATCT';
 
 foreach my $id ( @ids ){
     my $target_info = $targets->{$id};
@@ -675,6 +677,8 @@ sub get_and_check_options {
         warn 'WARNING: Registry file, ', $options{registry_file},
             " does not exist.\nWill try connecting to Ensembl anonymously...\n";
     }
+    
+    print "Settings:\n", map { join(' - ', $_, defined $options{$_} ? $options{$_} : 'off'),"\n" } sort keys %options if $options{verbose};
     
     return 1;
 }
