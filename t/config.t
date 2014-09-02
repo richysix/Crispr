@@ -17,13 +17,13 @@ print {$tmp_fh} "#key\tvalue\n";
 for my $i ( 1..3 ){
     print {$tmp_fh} join("\t", 'key' . $i, 'value' . $i ), "\n";
 }
-print {$tmp_fh} join("\s", 'key4', 'value4' ), "\n";
+print {$tmp_fh} join(q{ }, 'key4', 'value4' ), "\n";
 close( $tmp_fh );
 
 my $config_obj;
 warning_like { $config_obj = Crispr::Config->new( 'config.tmp' ); }
     qr/Line:.*,\sis\snot\sin\scorrect\sformat.\s
-    It\sshoud\sbe\sKEY\sVALUE\sseparated\sby\stabs/xms,
+    It\sshould\sbe\sKEY\sVALUE\sseparated\sby\stabs/xms,
     "check warning for line that doesn't fit format";
 $tests++;
 
@@ -43,7 +43,7 @@ foreach my $method ( @methods ) {
 for my $i ( 1..3 ){
     my $k = 'key' . $i;
     my $v = 'value' . $i;
-    is( $config_obj->{$k}, $v, 'check keys and values 1');
+    is( $config_obj->{$k}, $v, 'check keys and values ' . $i );
     $tests++;
 }
 
