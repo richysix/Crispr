@@ -39,7 +39,7 @@ if( $options{registry_file} ){
 }
 else{
     Bio::EnsEMBL::Registry->load_registry_from_db(
-      -host    => 'ensembldb.internal.sanger.ac.uk',
+      -host    => 'ensembldb.ensembl.org',
       -user    => 'anonymous',
     );
 }
@@ -465,6 +465,7 @@ sub primer_design {
         foreach my $target_offset ( @target_offsets ){
             ##  PRIMERS - ROUND 1 ##
             $round++;
+            # reset excluded regions to remove effects of repeat/variation masking
             $targets = reset_excluded_regions( $targets, $target_offset, $side, );
             if( $options{debug} == 2 ){
                 print Dumper( $targets );
@@ -523,8 +524,9 @@ sub primer_design {
 #   Parameters  : targets HashRef
 #                 target_offset   Int
 #   Throws      : 
-#   Comments    : None
-# 
+#   Comments    : Also adds an excluded region to one side to make sure that at
+#                 least one of the reads is closer than 125 bp to the crispr cut-site.
+#                 This is biased towards the left side (read1).
 
 
 sub reset_excluded_regions {
