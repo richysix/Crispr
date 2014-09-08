@@ -61,14 +61,6 @@ create table off_target_info (
     FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id)
 )  ENGINE = InnoDB;
 
-#create table off_target_info (
-#    crRNA_id INT UNSIGNED NOT NULL PRIMARY KEY,
-#    off_target_hit VARCHAR(120),
-#    mismatches VARCHAR(60),
-#    annotation ENUM('exon', 'intron', 'nongenic'),
-#    FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id)
-#)  ENGINE = InnoDB;
-
 create table plate (
     plate_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     plate_name CHAR(10) UNIQUE,
