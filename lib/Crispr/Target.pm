@@ -25,7 +25,7 @@ subtype 'Crispr::Target::NOT_EMPTY',
 
   Usage       : my $target = Crispr::Target->new(
 					target_id => undef,
-                    name => 'hspa5_exon1',
+                    target_name => 'hspa5_exon1',
                     assembly => 'Zv9',
 					chr => '5',
 					start => 20103030,
@@ -44,7 +44,7 @@ subtype 'Crispr::Target::NOT_EMPTY',
   Purpose     : Constructor for creating target objects
   Returns     : Crispr::Target object
   Parameters  : target_id => Int
-                name => String
+                target_name => String
                 assembly => String
                 chr => String
                 start => Int
@@ -80,10 +80,10 @@ has 'target_id' => (
     isa => 'Maybe[Int]',
 );
 
-=method name
+=method target_name
 
-  Usage       : $target->name;
-  Purpose     : Getter for name attribute
+  Usage       : $target->target_name;
+  Purpose     : Getter for target_name attribute
   Returns     : String
   Parameters  : 
   Throws      : If input is given
@@ -91,7 +91,7 @@ has 'target_id' => (
 
 =cut
 
-has 'name' => (
+has 'target_name' => (
     is => 'ro',
     isa => 'Crispr::Target::NOT_EMPTY',
 );
@@ -537,7 +537,7 @@ sub length {
 
 sub summary {
     my ( $self, ) = @_;
-    my @info = ( $self->name, );
+    my @info = ( $self->target_name, );
     push @info, ( $self->gene_id || 'NULL' );
     push @info, ( $self->gene_name || 'NULL' );
     push @info, ( $self->requestor || 'NULL' );
@@ -561,7 +561,7 @@ sub info {
     my @info;
     
     push @info, ( $self->target_id || 'NULL' );
-    push @info,   $self->name;
+    push @info,   $self->target_name;
     push @info, ( $self->assembly || 'NULL' );
     push @info, ( $self->chr || 'NULL' );
     push @info,   $self->start;
@@ -649,7 +649,7 @@ __END__
  
     use Crispr::Target;
     my $target = Crispr::Target->new(
-        name => 'SLC39A14',
+        target_name => 'SLC39A14',
         assembly => 'Zv9',
         chr => '5',
         start => 18067321,
