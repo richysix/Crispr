@@ -640,11 +640,6 @@ __END__
 
 =pod
 
-=head1 NAME
- 
-<Crispr::Target> - <Module for Crispr::Target objects.>
-
- 
 =head1 SYNOPSIS
  
     use Crispr::Target;
