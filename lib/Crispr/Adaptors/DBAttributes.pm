@@ -231,7 +231,7 @@ sub fetch_rows_expecting_single_row {
 		die 'TOO MANY ROWS';
     }
     
-    return $result;
+    return $result->[0];
 }
 
 =method fetch_rows_for_generic_select_statement

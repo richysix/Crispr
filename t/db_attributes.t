@@ -8,11 +8,6 @@ plan tests => 2 * $TESTS_FOREACH_DBC;
 
 use TestDB;
 
-# check environment variables have been set
-if( !$ENV{MYSQL_DBNAME} || !$ENV{MYSQL_DBUSER} || !$ENV{MYSQL_DBPASS} ){
-    die "The following environment variables need to be set for connecting to the database!\n",
-        "MYSQL_DBNAME, MYSQL_DBUSER, MYSQL_DBPASS"; 
-}
 
 my %db_connection_params = (
     mysql => {
@@ -33,7 +28,14 @@ my %db_connection_params = (
 # TestDB creates test database, connects to it and gets db handle
 my @db_adaptors;
 foreach my $driver ( keys %db_connection_params ){
-    push @db_adaptors, TestDB->new( $db_connection_params{$driver} );
+    # check environment variables have been set
+    if( $driver eq 'mysql' && ( !defined $ENV{MYSQL_DBNAME} || !defined $ENV{MYSQL_DBUSER} || !defined $ENV{MYSQL_DBPASS} ) ){
+            warn "The following environment variables need to be set for connecting to the MySQL database!\n",
+                "MYSQL_DBNAME, MYSQL_DBUSER, MYSQL_DBPASS\n";
+    }
+    else{
+        push @db_adaptors, TestDB->new( $db_connection_params{$driver} );
+    }
 }
 
 SKIP: {
