@@ -14,8 +14,8 @@ use lib 't/lib';
 use TestMethods;
 
 my $test_method_obj = TestMethods->new();
-$test_method_obj->check_for_test_genome( 'mock_genome_tiny.fa' );
-$test_method_obj->check_for_annotation( 'mock_genome_tiny.gff' );
+$test_method_obj->check_for_test_genome( 'mock_genome.fa' );
+$test_method_obj->check_for_annotation( 'mock_annotation.gff' );
 my $slice_adaptor = $test_method_obj->slice_adaptor;
 
 use Crispr;
@@ -139,10 +139,6 @@ $mock_crRNA1->mock( 'strand', sub{ return '1' });
 $mock_crRNA1->mock( 'sequence', sub{ return 'AACTGATCGGGATCGCTATCTGG' });
 $mock_crRNA1->mock( 'off_target_hits', sub{ my @args = @_; if( $args[1] ){ $off_targets1 = $args[1] }else{ return $off_targets1 } } );
 $mock_crRNA1->mock( 'cut_site', sub{ return 117 });
-$mock_crRNA1->mock( 'coding_score_for',
-    sub{ my @args = @_;
-        if( defined $args[2] ){ $coding_scores1->{ $args[1] } = $args[2]; }
-        else{ return $coding_scores1->{ $args[1] }; }  } );
 
 my $off_targets2;
 my $coding_scores2 = {};
@@ -156,10 +152,6 @@ $mock_crRNA2->mock( 'strand', sub{ return '1' });
 $mock_crRNA2->mock( 'sequence', sub{ return 'GATCAAAGGCTGCAGTGCAGAGG' });
 $mock_crRNA2->mock( 'off_target_hits', sub{ my @args = @_; if( $args[1] ){ $off_targets2 = $args[1] }else{ return $off_targets2 } } );
 $mock_crRNA2->mock( 'cut_site', sub{ return 57 });
-$mock_crRNA2->mock( 'coding_score_for',
-    sub{ my @args = @_;
-        if( defined $args[2] ){ $coding_scores2->{ $args[1] } = $args[2]; }
-        else{ return $coding_scores2->{ $args[1] }; }  } );
 
 my $crisprs_hash = {
     'crRNA:test_chr1:101-123:1' => $mock_crRNA1,
@@ -170,9 +162,9 @@ my $design_obj2 = Crispr->new(
     species => 'zebrafish',
     target_seq => 'NNNNNNNNNNNNNNNNNNNNNGG',
     five_prime_Gs => 0,
-    target_genome => 't/data/mock_genome_tiny.fa',
+    target_genome => 't/data/mock_genome.fa',
     slice_adaptor => $slice_adaptor,
-    annotation_file => 't/data/mock_genome_tiny.gff',
+    annotation_file => 't/data/mock_annotation.gff',
     all_crisprs => $crisprs_hash,
     debug => 0,
 );
@@ -184,6 +176,28 @@ is( $off_targets2->score, 1, 'check off target score 2');
 $tests+=3;
 
 # calculate protein coding scores
+# change output of mock methods
+$mock_crRNA1->mock( 'name', sub{ return 'crRNA:3:5689156-5689178:1' });
+$mock_crRNA1->mock( 'chr', sub{ return '3' });
+$mock_crRNA1->mock( 'start', sub{ return 5689156 });
+$mock_crRNA1->mock( 'end', sub{ return 5689178 });
+$mock_crRNA1->mock( 'cut_site', sub{ return 5689172 });
+$mock_crRNA1->mock( 'coding_score_for',
+    sub{ my @args = @_;
+        if( defined $args[2] ){ $coding_scores1->{ $args[1] } = $args[2]; }
+        else{ return $coding_scores1->{ $args[1] }; }  } );
+
+$mock_crRNA2->mock( 'name', sub{ return 'crRNA:3:5694768-5694790:1' });
+$mock_crRNA2->mock( 'chr', sub{ return '3' });
+$mock_crRNA2->mock( 'start', sub{ return 5694768 });
+$mock_crRNA2->mock( 'end', sub{ return 5694790 });
+$mock_crRNA2->mock( 'cut_site', sub{ return 5694784 });
+$mock_crRNA2->mock( 'coding_score_for',
+    sub{ my @args = @_;
+        if( defined $args[2] ){ $coding_scores2->{ $args[1] } = $args[2]; }
+        else{ return $coding_scores2->{ $args[1] }; }  } );
+
+
 my $gene_adaptor = Bio::EnsEMBL::Registry->get_adaptor( 'zebrafish', 'core', 'gene' );
 my $gene = $gene_adaptor->fetch_by_stable_id( 'ENSDARG00000038399' );
 my $transcripts = $gene->get_all_Transcripts();
