@@ -22,6 +22,7 @@ use Tree::GenomicIntervalTree;
 
 use Bio::Seq;
 use Bio::SeqIO;
+use Bio::DB::Fasta;
 
 subtype 'Crispr::DNA',
     as 'Str',
@@ -1027,7 +1028,8 @@ sub filter_and_score_off_targets {
             my $end = $pos - 1 + length( $seq );
             
             #get slice
-            my $off_target_slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $pos, $end, $strand, );
+            #my $off_target_slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $pos, $end, $strand, );
+            my $off_target_slice = $self->_fetch_sequence( $chr, $pos, $end, $strand, );
             next if( $off_target_slice->seq !~ m/GG\z/xms || $off_target_slice->seq =~ m/N/xms );
             warn $crRNAs->{$crispr_id}->name, "\t", $off_target_slice->seq, "\t", $off_target_slice->strand, "\n" if( $self->debug == 2 );
             $crRNAs = $self->score_off_targets_from_sam_output( $crRNAs, $crispr_id, $chr, $pos, $end, $strand, );
@@ -1101,6 +1103,37 @@ sub score_off_targets_from_sam_output {
 		$crRNA->off_target_hits->increment_bwa_intron_hits;
 	}
 	return $crRNAs;
+}
+
+=method _fetch_sequence
+
+  Usage       : $crispr->_fetch_sequence( $chr, $pos, $end, $strand, );
+  Purpose     : Retrieves sequence for the supplied region using either the Ensembl database or by access the genome fasta file
+  Returns     : Either BioSeq or Bio::EnsEMBL::Slice
+  Parameters  : Str     chr
+                Str     start
+                Str     end
+                Str     strand
+  Throws      : If cannot retrieve the sequence
+  Comments    : 
+
+=cut
+
+sub _fetch_sequence {
+    my ( $self, $chr, $pos, $end, $strand, ) = @_;
+    
+    # try Ensembl db first
+    my $off_target_slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $pos, $end, $strand, );
+    
+    # if slice is undef, try fasta file
+    if( !defined $off_target_slice ){
+        my $db = Bio::DB::Fasta->new( $self->target_genome );
+        my $obj = $db->get_Seq_by_id($chr);
+        my $seq = $obj->seq;
+        my $subseq = $obj->subseq( $pos => $end );
+        $off_target_slice = $strand eq '-1' ?   $subseq->revcom :   $subseq;
+    }
+    return $off_target_slice;
 }
 
 =method calculate_all_pc_coding_scores
