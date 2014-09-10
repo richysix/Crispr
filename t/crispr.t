@@ -14,8 +14,8 @@ use lib 't/lib';
 use TestMethods;
 
 my $test_method_obj = TestMethods->new();
-$test_method_obj->check_for_test_genome();
-$test_method_obj->check_for_annotation();
+$test_method_obj->check_for_test_genome( 'mock_genome_tiny.fa' );
+$test_method_obj->check_for_annotation( 'mock_genome_tiny.gff' );
 my $slice_adaptor = $test_method_obj->slice_adaptor;
 
 use Crispr;
@@ -131,14 +131,14 @@ my $off_targets1;
 my $coding_scores1 = {};
 my $mock_crRNA1 = Test::MockObject->new();
 $mock_crRNA1->set_isa( 'Crispr::crRNA' );
-$mock_crRNA1->mock( 'name', sub{ return 'crRNA:3:5689156-5689178:1' });
-$mock_crRNA1->mock( 'chr', sub{ return '3' });
-$mock_crRNA1->mock( 'start', sub{ return 5689156 });
-$mock_crRNA1->mock( 'end', sub{ return 5689178 });
+$mock_crRNA1->mock( 'name', sub{ return 'crRNA:test_chr1:101-123:1' });
+$mock_crRNA1->mock( 'chr', sub{ return 'test_chr1' });
+$mock_crRNA1->mock( 'start', sub{ return 101 });
+$mock_crRNA1->mock( 'end', sub{ return 123 });
 $mock_crRNA1->mock( 'strand', sub{ return '1' });
 $mock_crRNA1->mock( 'sequence', sub{ return 'AACTGATCGGGATCGCTATCTGG' });
 $mock_crRNA1->mock( 'off_target_hits', sub{ my @args = @_; if( $args[1] ){ $off_targets1 = $args[1] }else{ return $off_targets1 } } );
-$mock_crRNA1->mock( 'cut_site', sub{ return 5689172 });
+$mock_crRNA1->mock( 'cut_site', sub{ return 117 });
 $mock_crRNA1->mock( 'coding_score_for',
     sub{ my @args = @_;
         if( defined $args[2] ){ $coding_scores1->{ $args[1] } = $args[2]; }
@@ -148,39 +148,39 @@ my $off_targets2;
 my $coding_scores2 = {};
 my $mock_crRNA2 = Test::MockObject->new();
 $mock_crRNA2->set_isa( 'Crispr::crRNA' );
-$mock_crRNA2->mock( 'name', sub{ return 'crRNA:3:5694768-5694790:1' });
-$mock_crRNA2->mock( 'chr', sub{ return '3' });
-$mock_crRNA2->mock( 'start', sub{ return 5694768 });
-$mock_crRNA2->mock( 'end', sub{ return 5694790 });
+$mock_crRNA2->mock( 'name', sub{ return 'crRNA:test_chr2:41-63:1' });
+$mock_crRNA2->mock( 'chr', sub{ return 'test_chr2' });
+$mock_crRNA2->mock( 'start', sub{ return 41 });
+$mock_crRNA2->mock( 'end', sub{ return 63 });
 $mock_crRNA2->mock( 'strand', sub{ return '1' });
 $mock_crRNA2->mock( 'sequence', sub{ return 'GATCAAAGGCTGCAGTGCAGAGG' });
 $mock_crRNA2->mock( 'off_target_hits', sub{ my @args = @_; if( $args[1] ){ $off_targets2 = $args[1] }else{ return $off_targets2 } } );
-$mock_crRNA2->mock( 'cut_site', sub{ return 5694784 });
+$mock_crRNA2->mock( 'cut_site', sub{ return 57 });
 $mock_crRNA2->mock( 'coding_score_for',
     sub{ my @args = @_;
         if( defined $args[2] ){ $coding_scores2->{ $args[1] } = $args[2]; }
         else{ return $coding_scores2->{ $args[1] }; }  } );
 
 my $crisprs_hash = {
-    'crRNA:3:5689156-5689178:1_gene1' => $mock_crRNA1,
-    'crRNA:3:5694768-5694790:1_gene1' => $mock_crRNA2,
+    'crRNA:test_chr1:101-123:1' => $mock_crRNA1,
+    'crRNA:test_chr2:41-63:1' => $mock_crRNA2,
 };
 
 my $design_obj2 = Crispr->new(
     species => 'zebrafish',
     target_seq => 'NNNNNNNNNNNNNNNNNNNNNGG',
     five_prime_Gs => 0,
-    target_genome => 't/data/mock_genome.fa',
+    target_genome => 't/data/mock_genome_tiny.fa',
     slice_adaptor => $slice_adaptor,
-    annotation_file => 't/data/mock_annotation.gff',
+    annotation_file => 't/data/mock_genome_tiny.gff',
     all_crisprs => $crisprs_hash,
     debug => 0,
 );
 
 $design_obj2->_testing( 1 );
 ok( $design_obj2->off_targets_bwa( $design_obj2->all_crisprs,  ), 'off_targets' );
-is( $off_targets1->score, 1, 'check off target score 1');
-is( $off_targets2->score, 0.9, 'check off target score 2');
+is( $off_targets1->score, 0.76, 'check off target score 1');
+is( $off_targets2->score, 1, 'check off target score 2');
 $tests+=3;
 
 # calculate protein coding scores
