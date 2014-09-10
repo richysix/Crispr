@@ -6,11 +6,17 @@ use DBIx::Connector;
 
 with 'Crispr::Adaptors::DBAttributes';
 
-has data_source =>(
+has 'data_source' => (
     is => 'rw',
     isa => 'Str',
     builder => '_build_data_source',
     lazy => 1,
+);
+
+has 'debug' => (
+    is => 'rw',
+    isa => 'Int',
+    default => 0,
 );
 
 sub BUILD {
@@ -69,9 +75,10 @@ sub destroy {
     $self->alter_schema( 0 );
     my $dbh = $self->connection->dbh;
     $dbh->disconnect;
-    if ( -e 'test.db' ) {
+    if ( $self->driver eq 'sqlite' && -e 'test.db' ) {
         unlink 'test.db';
     }
+    return 1;
 }
 
 sub alter_schema {
@@ -96,13 +103,16 @@ sub alter_schema {
         
         # Convert MySQL syntax to SQLite?
         if ( $self->driver eq 'sqlite' ) {
-            $sql =~ s/INT/integer/xms;
-            $sql =~ s/UNSIGNED\s+AUTO_INCREMENT//xms;
+            $sql =~ s/[A-Z]*INT\s/integer /xmsg;
+            $sql =~ s/UNSIGNED\s/ /xmsg;
+            $sql =~ s/AUTO_INCREMENT\s/ /xmsg;
             $sql =~ s/\s+ENGINE\s*=\s*\w{6}//xms;
-            # remove enums
-            $sql =~ s/ENUM\(.*\)//xg;
+            $sql =~ s/ENUM\(.*\)//xg; # remove enums
+            $sql =~ s/\z/;/xmsg; # add semi-colon
         }
-        #print $sql, "\n";
+        if( $self->debug == 1 ){
+            print $sql, "\n";
+        }
         
         # Drop table if already exists
         if ( $sql =~ m/CREATE\s+TABLE\s+(\w+)\s+/xmsi ) {
