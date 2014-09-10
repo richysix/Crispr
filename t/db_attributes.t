@@ -1,9 +1,10 @@
 #!/usr/bin/env perl
 # DBA.t
 use Test::More;
+use Test::Exception;
 use Readonly;
 
-Readonly my $TESTS_FOREACH_DBC => 1 + 1 + 8;    # Number of tests in the loop
+Readonly my $TESTS_FOREACH_DBC => 1 + 8 + 5 + 1;    # Number of tests in the loop
 plan tests => 2 * $TESTS_FOREACH_DBC;
 
 use TestDB;
@@ -51,9 +52,6 @@ foreach my $db_adaptor ( @db_adaptors ){
     # check db handle object - 1 test
     isa_ok( $dbh, 'DBI::db', "$driver: check db object");
     
-    # check destroy method - 1 test
-    is( $db_adaptor->destroy, 1, "$driver: destroy db" );
-    
     # check db_params method - 8 tests
     isa_ok( $db_adaptor->db_params, 'HASH', "$driver: check db_params method" );
     is( $db_adaptor->db_params->{driver}, $db_connection_params{$driver}{driver}, "$driver: check db_params->driver" );
@@ -63,4 +61,38 @@ foreach my $db_adaptor ( @db_adaptors ){
     is( $db_adaptor->db_params->{user}, $db_connection_params{$driver}{user}, "$driver: check db_params->user" );
     is( $db_adaptor->db_params->{pass}, $db_connection_params{$driver}{pass}, "$driver: check db_params->pass" );
     is( $db_adaptor->db_params->{dbfile}, $db_connection_params{$driver}{dbfile}, "$driver: check db_params->dbfile" );
+    
+    # add some data to the db to check check_entry_exists_in_db method
+    my $statement_1 = "insert into target values( NULL, 'SLC39A14', 'Zv9', '5',
+        18067321, 18083466, '-1', 'zebrafish', 'y', 'ENSDARG00000090174',
+        'SLC39A14', 'crispr_test', 71, NULL );";
+    my $statement_2 = "insert into target values( NULL, 'SLC39A15', 'Zv9', '5',
+        18067320, 18083470, '1', 'zebrafish', 'y', 'ENSDARG00000090173',
+        'SLC39A15', 'crispr_test', 71, NULL );";
+    
+    my $sth = $dbh->prepare($statement_1);
+    $sth->execute();
+    $sth = $dbh->prepare($statement_2);
+    $sth->execute();
+    $sth->finish();
+    
+    # test entry now exists in db - 5 tests
+    $statement = "select count(*) from target where target_name = ?;";
+    is( $db_adaptor->check_entry_exists_in_db( $statement, [ 'SLC39A14' ] ), 1, "$driver: check entry exists 1" );
+    is( $db_adaptor->check_entry_exists_in_db( $statement, [ 'SLC39A1' ] ), undef, "$driver: check entry exists 2" );
+    $statement = "select * from target where target_name = ?;";
+    is( $db_adaptor->check_entry_exists_in_db( $statement, [ 'SLC39A1' ] ), undef, "$driver: check entry exists 3" );
+    
+    $statement = "select count(*) from target where species = ?;";
+    throws_ok{ $db_adaptor->check_entry_exists_in_db( $statement, [ 'zebrafish' ] ) }
+        qr/TOO\sMANY\sITEMS/xms, "$driver: throws if count is more than 1";
+
+    $statement = "select * from target;";
+    throws_ok{ $db_adaptor->check_entry_exists_in_db( $statement, [ ] ) }
+        qr/TOO\sMANY\sROWS/xms, "$driver: throws if too many rows returned";
+    
+
+    # check destroy method - 1 test
+    is( $db_adaptor->destroy, 1, "$driver: destroy db" );
+    
 }

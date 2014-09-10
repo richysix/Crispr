@@ -183,18 +183,22 @@ sub check_entry_exists_in_db {
     my $sth = $dbh->prepare( $check_statement );
     $sth->execute( @{$params} );
     my $num_rows = 0;
+    my @rows;
     while( my @fields = $sth->fetchrow_array ){
-        $num_rows++;
-        if( $fields[0] == 1 ){
+        push @rows, \@fields;
+    }
+    if( scalar @rows > 1 ){
+        confess "TOO MANY ROWS";
+    }
+    elsif( scalar @rows == 1 ){
+        if( $rows[0]->[0] == 1 ){
             $exists = 1;
         }
-        elsif( $fields[0] > 1 ){
+        elsif( $rows[0]->[0] > 1 ){
             die "TOO MANY ITEMS";
         }
     }
-    if( $num_rows != 1 ){
-        confess "TOO MANY ROWS";
-    }
+    
     return $exists;
 }
 
