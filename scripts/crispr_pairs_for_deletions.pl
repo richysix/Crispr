@@ -121,7 +121,7 @@ if( !@{$crispr_design->targets} ){
 print "Scoring off-targets...\n" if $options{verbose};
 
 # score off targets using bwa
-$crispr_design->off_targets_bwa( $crispr_design->all_crisprs, $basename, );
+$crispr_design->find_off_targets( $crispr_design->all_crisprs, $basename, );
 
 if( $options{debug} ){
     warn "INITIAL crRNAs:\n";
@@ -202,32 +202,31 @@ foreach my $target_id ( keys %{$targets_for} ){
             $relevant_crRNAs_lookup{ $a_crRNA->name } = 1;
             warn Dumper( %relevant_crRNAs_lookup ) if $options{debug};
             #lookup overlapping intervals
-            if( $a_crRNA->off_target_hits->bwa_alignments ){
-                foreach my $off_target_posn ( @{$a_crRNA->off_target_hits->bwa_alignments} ){
-                    my ( $q_chr, $q_range, $q_strand ) = split /:/, $off_target_posn;
-                    my ( $q_start, $q_end ) = split /-/, $q_range;
-                    my $results = $crispr_design->off_targets_interval_tree->fetch_overlapping_intervals( $q_chr, $q_start - $WINDOW_SIZE, $q_end + $WINDOW_SIZE );
-                    warn 'WINDOW: ' . $q_chr . ':' . join('-', $q_start - $WINDOW_SIZE, $q_end + $WINDOW_SIZE, ), "\n" if $options{debug};
+            if( $a_crRNA->off_target_hits->all_off_targets ){
+                foreach my $off_target_obj ( $a_crRNA->off_target_hits->all_off_targets ){
+                    my $results = $crispr_design->off_targets_interval_tree->fetch_overlapping_intervals(
+                        $off_target_obj->chr, off_target_obj->start - $WINDOW_SIZE, $off_target_obj->end + $WINDOW_SIZE );
+                    warn 'WINDOW: ' . off_target_obj->chr . ':' . join('-', off_target_obj->start - $WINDOW_SIZE, off_target_obj->end + $WINDOW_SIZE, ), "\n" if $options{debug};
                     foreach my $off_target_info ( @{$results} ){
                         # check if is the same off-target site
-                        next if( $q_chr eq $off_target_info->{chr} && $q_start == $off_target_info->{start} &&
-                                $q_end == $off_target_info->{end} && $q_strand eq $off_target_info->{strand} );
+                        next if( off_target_obj->chr eq off_target_info->chr && off_target_obj->start == off_target_info->start &&
+                                off_target_obj->end == off_target_info->end && off_target_obj->strand eq off_target_info->strand );
                         # check if it's an off-target that we care about
-                        next if( !exists $relevant_crRNAs_lookup{ $off_target_info->{crRNA_name} } );
+                        next if( !exists $relevant_crRNAs_lookup{ off_target_info->crRNA_name } );
                         # check whether the off-target matches are on opposite strands
-                        next unless( $q_strand * $off_target_info->{strand} eq -1 );
+                        next unless( off_target_obj->strand * off_target_info->strand eq -1 );
                         
                         warn Dumper( $off_target_info ) if $options{debug};
                         
                         # which one has the first cut-site on the chromosome
                         my $overhang;
-                        if( cut_site( $q_start, $q_end, $q_strand ) <=
-                            cut_site( $off_target_info->{start}, $off_target_info->{end}, $off_target_info->{strand} ) ){
-                            if( $q_strand eq '-1' && $off_target_info->{strand} eq '1' ){
+                        if( cut_site( off_target_obj->start, off_target_obj->end, off_target_obj->strand ) <=
+                            cut_site( off_target_info->start, off_target_info->end, off_target_info->strand ) ){
+                            if( off_target_obj->strand eq '-1' && off_target_info->strand eq '1' ){
                                 # 5' overhang
                                 $overhang = '5_prime';
                             }
-                            elsif( $q_strand eq '1' && $off_target_info->{strand} eq '-1' ){
+                            elsif( off_target_obj->strand eq '1' && off_target_info->strand eq '-1' ){
                                 # 3' overhang
                                 $overhang = '3_prime';
                             }
@@ -237,11 +236,11 @@ foreach my $target_id ( keys %{$targets_for} ){
                             }
                         }
                         else{
-                            if( $off_target_info->{strand} eq '-1' && $q_strand eq '1' ){
+                            if( off_target_info->strand eq '-1' && off_target_obj->strand eq '1' ){
                                 # 5' overhang
                                 $overhang = '5_prime';
                             }
-                            elsif( $off_target_info->{strand} eq '1' && $q_strand eq '-1' ){
+                            elsif( off_target_info->strand eq '1' && off_target_obj->strand eq '-1' ){
                                 # 3' overhang
                                 $overhang = '3_prime';
                             }
@@ -255,7 +254,7 @@ foreach my $target_id ( keys %{$targets_for} ){
                         my $increment = $overhang eq '5_prime'  ?   2
                             :                                       1;
                         # find the right crispr pair
-                        my @pairs = grep { $_->name eq $a_crRNA->name . q{_} . $off_target_info->{crRNA_name} } @{ $crispr_pairs_for->{ $target_id } };
+                        my @pairs = grep { $_->name eq $a_crRNA->name . q{_} . off_target_info->crRNA_name } @{ $crispr_pairs_for->{ $target_id } };
                         if( scalar @pairs == 1){
                             $pairs[0]->increment_paired_off_targets( $increment );
                         }

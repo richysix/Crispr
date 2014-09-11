@@ -122,7 +122,7 @@ else{
         }
     }
     print "Scoring Off-Targets...\n" if $options{verbose};
-    $crispr_design->off_targets_bwa( $crispr_design->all_crisprs, $basename, );
+    $crispr_design->find_off_targets( $crispr_design->all_crisprs, $basename, );
     
     if( $options{coding} ){
         warn "Calculating coding scores...\n" if $options{verbose};
