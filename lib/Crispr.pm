@@ -853,12 +853,23 @@ sub create_crRNA_from_crRNA_name {
     my ( $self, $name, $species, ) = @_;
     
     my ( $chr, $start, $end, $strand ) = $self->parse_cr_name( $name );
+    
+    my $sequence;
+    my $seq_obj = $self->_fetch_sequence( $chr, $start, $end, $strand, );
+    if( !$seq_obj ){
+        warn "Couldn't retrieve sequence for crRNA: $name.\n";
+    }
+    else{
+        $sequence = $seq_obj->seq;
+    }
+    
     my $crRNA = Crispr::crRNA->new(
         chr => $chr,
         start => $start,
         end => $end,
         strand => $strand || 1,
         species => $species || undef,
+        sequence => $sequence || '',
     );
     return $crRNA;
 }
