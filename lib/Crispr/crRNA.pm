@@ -242,14 +242,10 @@ has 'five_prime_Gs' => (
 
 has 'off_target_hits' => (
     is => 'rw',
-    isa => 'Maybe[Crispr::OffTarget]',
+    isa => 'Maybe[Crispr::OffTargetInfo]',
     handles => {
         off_target_info => 'info',
         off_target_score => 'score',
-        seed_score => 'seed_score',
-        seed_hits => 'seed_hits',
-        exonerate_score => 'exonerate_score',
-        exonerate_hits => 'exonerate_hits',
     },
 );
 

@@ -17,6 +17,9 @@ use Moose::Util::TypeConstraints;
 use namespace::autoclean;
 use Crispr::crRNA;
 use Crispr::Target;
+use Crispr::OffTarget;
+use Crispr::OffTargetInfo;
+
 use Tree::AnnotationTree;
 use Tree::GenomicIntervalTree;
 
@@ -906,9 +909,9 @@ sub parse_cr_name {
     return ( $chr, $start, $end, $strand );
 }
 
-=method off_targets_bwa
+=method find_off_targets
 
-  Usage       : $crispr->off_targets_bwa( $crRNAs, $basename, );
+  Usage       : $crispr->find_off_targets( $crRNAs, $basename, );
   Purpose     : Searches for potential off-target hits for crRNAs using bwa
   Returns     : ArrayRef of Crispr::crRNA objects
   Parameters  : ArrayRef of Crispr::crRNA objects
@@ -918,7 +921,7 @@ sub parse_cr_name {
 
 =cut
 
-sub off_targets_bwa {
+sub find_off_targets {
     my ( $self, $crRNAs, $basename, ) = @_;
     
     # check whether bwa is installed in the current PATH
@@ -1023,8 +1026,10 @@ sub filter_and_score_off_targets {
 			:								'1';
         
         my $end = $start - 1 + length( $seq );
+        my @mismatches = grep { m/\A NM:i:/xms } @tags;
+        $mismatches[0] =~ s/NM:i://xms;
         $self->score_off_targets_from_sam_output( $crRNAs, $crispr_id, $chr,
-                                                 $start, $end, $strand, );
+                                                 $start, $end, $strand, $mismatches[0], );
         
         my @supp_alignments = grep { m/\A XA:Z:/xms } @tags;
         foreach my $supp_align ( map { my $align = $_;
@@ -1043,7 +1048,7 @@ sub filter_and_score_off_targets {
             my $off_target_slice = $self->_fetch_sequence( $chr, $pos, $end, $strand, );
             next if( $off_target_slice->seq !~ m/GG\z/xms || $off_target_slice->seq =~ m/N/xms );
             warn $crRNAs->{$crispr_id}->name, "\t", $off_target_slice->seq, "\t", $off_target_slice->strand, "\n" if( $self->debug == 2 );
-            $crRNAs = $self->score_off_targets_from_sam_output( $crRNAs, $crispr_id, $chr, $pos, $end, $strand, );
+            $crRNAs = $self->score_off_targets_from_sam_output( $crRNAs, $crispr_id, $chr, $pos, $end, $strand, $mismatch, );
         }
 	}
 	return $crRNAs;
@@ -1066,53 +1071,44 @@ sub filter_and_score_off_targets {
 =cut
 
 sub score_off_targets_from_sam_output {
-	my ( $self, $crRNAs, $id, $chr, $start, $end, $strand, ) = @_;
+	my ( $self, $crRNAs, $id, $chr, $start, $end, $strand, $mismatch, ) = @_;
 	
 	return $crRNAs if( !exists $crRNAs->{$id} );
 	my $crRNA = $crRNAs->{$id};
 	
 	if( !defined $crRNA->off_target_hits ){
-		my $off_target_object = Crispr::OffTarget->new(
-			crRNA_name => $crRNA->name,
-			number_bwa_intron_hits => 0,
-			number_bwa_nongenic_hits => 0,
-			number_exonerate_intron_hits => 0,
-			number_exonerate_nongenic_hits => 0,
-			number_seed_intron_hits => 0,
-			number_seed_nongenic_hits => 0,
-            bwa_alignments => [],
-            bwa_exon_alignments => [],
-		);
-		$crRNA->off_target_hits( $off_target_object );
+		$crRNA->off_target_hits( Crispr::OffTargetInfo->new() );
 	}
 	#return $crRNAs if( $crRNA->off_target_hits->score < 0.001 );
 	return $crRNAs if( defined $crRNA->chr && $crRNA->chr eq $chr && $crRNA->start == $start && $crRNA->end == $end );
-	my $alignments_posn = $chr . ':' . $start . '-' . $end . ':' . $strand;
-	# add to off-target object
-	$crRNA->off_target_hits->bwa_alignments( $alignments_posn );
 	
-	# add to interval tree
-	my $off_target_info = {
+	# check annotation
+	my $annotations = $self->annotation_tree->fetch_overlapping_annotations( $chr, $start, $end );
+    my $type;
+	if( !@{$annotations} ){
+		$type = 'nongenic';
+	}
+	elsif( any { $_ eq 'exon' } @{$annotations} ){
+		$type = 'exon';
+	}
+	elsif( any { $_ eq 'intron' } @{$annotations} ){
+		$type = 'intron';
+	}
+
+	# make an off target object and add it to interval tree
+	my $off_target_obj = Crispr::OffTarget->new(
 		crRNA_name => $id,
 		chr => $chr,
 		start => $start,
 		end => $end,
 		strand => $strand,
-	};
+        mismatches => $mismatch,
+        annotation => $type,
+	);
 	
-	$self->off_targets_interval_tree->insert_interval_into_tree( $chr, $start, $end, $off_target_info );
-	
-	# check annotation
-	my $annotations = $self->annotation_tree->fetch_overlapping_annotations( $chr, $start, $end );
-	if( !@{$annotations} ){
-		$crRNA->off_target_hits->increment_bwa_nongenic_hits;
-	}
-	elsif( any { $_ eq 'exon' } @{$annotations} ){
-		$crRNA->off_target_hits->bwa_exon_alignments($alignments_posn);
-	}
-	elsif( any { $_ eq 'intron' } @{$annotations} ){
-		$crRNA->off_target_hits->increment_bwa_intron_hits;
-	}
+	$self->off_targets_interval_tree->insert_interval_into_tree( $chr, $start, $end, $off_target_obj );
+    $crRNA->off_target_hits->add_off_target( $off_target_obj );
+    
 	return $crRNAs;
 }
 
@@ -1351,7 +1347,7 @@ __END__
     ( $chr, $start, $end, $strand ) = $crispr_design->parse_cr_name( $crRNA->name );
     
     # calculate potential off target sites for targets
-    $crispr_design->off_targets_bwa( $crispr_design->all_crisprs );
+    $crispr_design->find_off_targets( $crispr_design->all_crisprs );
     
     # calculate protein-coding scores
     $crispr_design->calculate_all_pc_coding_scores( $crRNA, $transcripts );

@@ -6,26 +6,20 @@ use Test::Warn;
 use Test::MockObject;
 use Data::Dumper;
 
-plan tests => 1 + 33 + 4 + 4 + 1 + 4 + 4 + 4 + 1 + 3 + 3 + 5 + 2 + 7 + 4 + 4 + 2 + 2 + 2 + 1;
+plan tests => 1 + 35 + 4 + 4 + 1 + 4 + 4 + 4 + 1 + 3 + 3 + 5 + 2 + 7 + 4 + 4 + 2 + 2 + 2 + 1;
 
 my $species = 'zebrafish';
 
 use Crispr::crRNA;
 
 # make a mock off-target object
+my @exon_hits = ( qw{  } );
 my $mock_off_target_object = Test::MockObject->new();
-$mock_off_target_object->set_isa( 'Crispr::OffTarget' );
+$mock_off_target_object->set_isa( 'Crispr::OffTargetInfo' );
 $mock_off_target_object->mock( 'score', sub{ return 0.223 } );
-$mock_off_target_object->mock( 'number_seed_exon_hits', sub{ return 1 } );
-$mock_off_target_object->mock( 'seed_exon_alignments', sub{ return [ '17:403-425:-1' ] } );
-$mock_off_target_object->mock( 'number_seed_intron_hits', sub{ return 2 } );
-$mock_off_target_object->mock( 'number_seed_nongenic_hits', sub{ return 4 } );
-$mock_off_target_object->mock( 'seed_score', sub{ return 0.528 } );
-$mock_off_target_object->mock( 'number_exon_hits', sub{ return 2 } );
-$mock_off_target_object->mock( 'exon_alignments', sub{ return [ qw{ 17:403-425:-1 Zv9_NA1:403-425:-1 } ] } );
+$mock_off_target_object->mock( 'number_exon_hits', sub{ return 1 } );
 $mock_off_target_object->mock( 'number_intron_hits', sub{ return 2 } );
 $mock_off_target_object->mock( 'number_nongenic_hits', sub{ return 4 } );
-$mock_off_target_object->mock( 'exonerate_score', sub{ return 0.422 } );
 $mock_off_target_object->mock( 'info', sub { return qw( 0.223 0.528 17:403-425:-1/2/4 0.422 17:403-425:-1,Zv9_NA1:403-425:-1/2/4 ) } );
 
 my $mock_target_object = Test::MockObject->new();
@@ -81,14 +75,14 @@ my $crRNA_2 = Crispr::crRNA->new(
 # 1 test
 isa_ok( $crRNA, 'Crispr::crRNA' );
 
-# check method calls 33 tests
+# check method calls 35 tests
 my @methods = qw( crRNA_id target chr start end
     strand sequence species five_prime_Gs off_target_hits
-    coding_scores unique_restriction_sites plasmid_backbone primer_pairs crRNA_adaptor
-    _parse_strand_input _parse_species top_restriction_sites info target_info_plus_crRNA_info
-    target_summary_plus_crRNA_info coding_score_for coding_scores_by_transcript name _build_species
-    _build_five_prime_Gs core_sequence _build_oligo forward_oligo reverse_oligo
-    _build_backbone coding_score score
+    off_target_info off_target_score coding_scores unique_restriction_sites plasmid_backbone
+    primer_pairs crRNA_adaptor _parse_strand_input _parse_species top_restriction_sites
+    info target_info_plus_crRNA_info target_summary_plus_crRNA_info coding_score_for coding_scores_by_transcript
+    name _build_species _build_five_prime_Gs core_sequence _build_oligo
+    forward_oligo reverse_oligo _build_backbone coding_score score
 );
 
 foreach my $method ( @methods ) {
