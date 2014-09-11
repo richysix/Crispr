@@ -21,7 +21,7 @@ use Crispr::Target;
 # make a new target - designed should be undef
 # have not defined crRNAs
 my $target = Crispr::Target->new(
-    name => 'SLC39A14',
+    target_name => 'SLC39A14',
     assembly => 'Zv9',
     chr => '5',
     start => 18067321,
@@ -64,7 +64,7 @@ $target->target_adaptor( $ta );
 
 # new target without a chr, assembly, strand, gene_id, gene_name, ensembl_version
 my $target_2 = Crispr::Target->new(
-    name => 'gfp_50_100',
+    target_name => 'gfp_50_100',
     start => 50,
     end => 60,
     species => 'Aequorea_victoria',
@@ -81,7 +81,7 @@ is( $target_2->target_adaptor, undef, 'target_adaptor2');
 isa_ok( $target, 'Crispr::Target' );
 
 # check method calls 17 tests
-my @methods = qw( target_id name assembly chr start
+my @methods = qw( target_id target_name assembly chr start
     end strand species requires_enzyme gene_id
     gene_name requestor ensembl_version designed target_adaptor
     region info );
@@ -98,12 +98,12 @@ is( $tmp_target->target_id, '1', 'Set id' );
 throws_ok { Crispr::Target->new( target_id => 'string') } qr/Validation failed/ms, 'string id';
 throws_ok { Crispr::Target->new( target_id => '' ) } qr/Validation failed/ms, 'Empty string id';
 
-# 4 tests - check type constraints for name
-is( $target->name, 'SLC39A14', 'Get name' );
-throws_ok { Crispr::Target->new( name => '' ) } qr/Attribute is empty/, 'empty name';
-$tmp_target = Crispr::Target->new( name => 1 ); #coerced to string '1'
-is( $tmp_target->name, '1', 'Number as string');
-is( $target_2->name, 'gfp_50_100', 'Name 2');
+# 4 tests - check type constraints for target_name
+is( $target->target_name, 'SLC39A14', 'Get target_name' );
+throws_ok { Crispr::Target->new( target_name => '' ) } qr/Attribute is empty/, 'empty target_name';
+$tmp_target = Crispr::Target->new( target_name => 1 ); #coerced to string '1'
+is( $tmp_target->target_name, '1', 'Number as string');
+is( $target_2->target_name, 'gfp_50_100', 'Name 2');
 
 # assembly - 2 tests
 is( $target->assembly, 'Zv9', 'Assembly1');
@@ -206,7 +206,7 @@ like( join("\t", $target_2->info ),
 
 $tmp_target = Crispr::Target->new(
     target_id => 1,
-    name => 'SLC39A14',
+    target_name => 'SLC39A14',
     assembly => 'Zv9',
     chr => '5',
     start => 18067321,
@@ -225,7 +225,7 @@ like( join("\t", $tmp_target->info ),
 
 # create object with hash and hash_ref
 my %args = (
-    name => 'gfp_50_100',
+    target_name => 'gfp_50_100',
     start => 50,
     end => 60,
     species => 'Aequorea_victoria',
@@ -235,9 +235,9 @@ my %args = (
 my $target_3 = Crispr::Target->new( %args );
 my $target_4 = Crispr::Target->new( \%args );
 
-# check name and chr set properly - 4 tests
-is( $target_3->name, 'gfp_50_100', 'check name is set with hash calling style' );
-is( $target_4->name, 'gfp_50_100', 'check name is set with hashref calling style' );
+# check target_name and chr set properly - 4 tests
+is( $target_3->target_name, 'gfp_50_100', 'check target_name is set with hash calling style' );
+is( $target_4->target_name, 'gfp_50_100', 'check target_name is set with hashref calling style' );
 is( $target_3->chr, undef, 'check chr is set with hash calling style' );
 is( $target_4->chr, undef, 'check chr is set with hashref calling style' );
 

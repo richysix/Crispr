@@ -6,6 +6,9 @@ use Test::Exception;
 use Test::Warn;
 use Test::MockObject;
 use Data::Dumper;
+use Crispr::Target;
+
+use File::Spec;
 
 #plan tests => 15 + 36 + 3 + 4 + 6;
 $tests = 0;
@@ -92,7 +95,7 @@ $tests+=6;
 my $crRNAs;
 $mock_target = Test::MockObject->new();
 $mock_target->set_isa( 'Crispr::Target' );
-$mock_target->mock( 'name', sub{ return '5:46628364-46628423_b' });
+$mock_target->mock( 'target_name', sub{ return '5:46628364-46628423_b' });
 $mock_target->mock( 'crRNAs', sub{ my @args = @_; if( $args[1] ){ $crRNAs = $args[1] }else{ return $crRNAs } } );
 $mock_target->mock( 'region', sub{ return undef });
 
@@ -103,17 +106,17 @@ throws_ok { $design_obj->find_crRNAs_by_target( 'target' ) }
 throws_ok { $design_obj->find_crRNAs_by_target( $mock_target ) }
     qr/This\starget\sdoes\snot\shave\san\sassociated\sregion/, 'find crRNAs by target - no region';
 
-$mock_target->mock( 'name', sub{ return '5:46628364-46628423_c' });
+$mock_target->mock( 'target_name', sub{ return '5:46628364-46628423_c' });
 $mock_target->mock( 'region', sub{ return '46628364-46628423' });
 throws_ok { $design_obj->find_crRNAs_by_target( $mock_target ) }
     qr/Couldn't\sunderstand\sthe\starget's\sregion/, 'find crRNAs by target - incorrect region format';
 
 $mock_target->mock( 'region', sub{ return '5:46628364-46628423:1' });
-$mock_target->mock( 'name', sub{ return '5:46628364-46628423_d' });
+$mock_target->mock( 'target_name', sub{ return '5:46628364-46628423_d' });
 throws_ok { $design_obj_no_target_seq->find_crRNAs_by_target( $mock_target ) } qr/The\starget_seq\sattribute\smust\sbe\sdefined\sto\ssearch\sfor\scrRNAs/,
     'find crRNAs by target - no target_seq';
 
-$mock_target->mock( 'name', sub{ return '5:46628364-46628423_e' });
+$mock_target->mock( 'target_name', sub{ return '5:46628364-46628423_e' });
 ok( $design_obj->find_crRNAs_by_target( $mock_target ), 'find crRNAs by target');
 is( scalar @{ $design_obj->targets }, 1, 'check number of targets');
 ok( $design_obj->filter_crRNAs_from_target_by_strand( $mock_target, '1' ), 'filter crRNAs by strand');

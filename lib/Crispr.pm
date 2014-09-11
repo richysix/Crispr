@@ -364,7 +364,7 @@ sub find_crRNAs_by_region {
 		croak "The target_seq attribute must be defined to search for crRNAs!\n";
 	}
     # get target name. If no target, use region as name.
-    my $target_name = defined $target   ?   $target->name   :   $region;
+    my $target_name = defined $target   ?   $target->target_name   :   $region;
     
 	my @crRNAs;
     # create regex from target sequence for forward and reverse
@@ -507,8 +507,8 @@ sub find_crRNAs_by_target {
         croak "A Crispr::Target object is required for find_crRNAs_by_target",
             "not a ", ref $target, ".\n";
     }
-	if( $self->_seen_target_name( $target->name ) ){
-		croak "This target, ", $target->name,", has been seen before.\n";
+	if( $self->_seen_target_name( $target->target_name ) ){
+		croak "This target, ", $target->target_name,", has been seen before.\n";
 	}
 	my $crRNAs;
     eval {
@@ -522,7 +522,7 @@ sub find_crRNAs_by_target {
         }
         elsif( $EVAL_ERROR =~ m/Couldn't\sunderstand\sregion/xms ){
             croak join("\n", "Couldn't understand the target's region!",
-                join(q{ }, 'Target:', $target->name,),
+                join(q{ }, 'Target:', $target->target_name,),
                 join(q{ }, 'Region:', $target->region,), ), "\n";
         }
         else{
@@ -674,7 +674,7 @@ sub remove_target {
 		croak "The supplied object is not a Crispr::Target object, it's a ",
                 ref $target, ".\n";
 	}
-	my @targets_to_keep = grep { $_->name ne $target->name } @{$self->targets};
+	my @targets_to_keep = grep { $_->target_name ne $target->target_name } @{$self->targets};
 	$self->_set_targets( \@targets_to_keep );
     
     return 1;
@@ -716,7 +716,7 @@ sub add_crisprs {
 		my $crispr_ref = $self->all_crisprs;
 		$crispr_ref = {} if( !defined $crispr_ref );
 		foreach my $crRNA ( @{$crRNAs} ){
-            $target_name = !$target_name    ?   $crRNA->target->name
+            $target_name = !$target_name    ?   $crRNA->target->target_name
                 :                               $target_name;
 			$crispr_ref->{$crRNA->name . q{_} . $target_name} = $crRNA;
 		}
@@ -738,7 +738,7 @@ sub add_crisprs {
 		$crispr_ref = {} if( !defined $crispr_ref );
 		foreach my $crRNA_name ( keys %{$crRNAs} ){
             my $crRNA = $crRNAs->{$crRNA_name};
-            $target_name = !$target_name    ?   $crRNA->target->name
+            $target_name = !$target_name    ?   $crRNA->target->target_name
                 :                               $target_name;
 			$crispr_ref->{$crRNA_name . q{_} . $target_name} = $crRNA;
 		}
@@ -784,7 +784,7 @@ sub remove_crisprs {
 		my $crispr_ref = $self->all_crisprs;
 		$crispr_ref = {} if( !defined $crispr_ref );
 		foreach my $crRNA ( @{$crRNAs} ){
-			delete $crispr_ref->{$crRNA->name . q{_} . $crRNA->target->name};
+			delete $crispr_ref->{$crRNA->name . q{_} . $crRNA->target->target_name};
 		}
 		$self->_set_all_crisprs( $crispr_ref );
 	}
@@ -804,7 +804,7 @@ sub remove_crisprs {
 		$crispr_ref = {} if( !defined $crispr_ref );
 		foreach my $crRNA_name ( keys %{$crRNAs} ){
             my $crRNA = $crRNAs->{$crRNA_name};
-			delete $crispr_ref->{$crRNA_name . q{_} . $crRNA->target->name};
+			delete $crispr_ref->{$crRNA_name . q{_} . $crRNA->target->target_name};
 		}
 		$self->_set_all_crisprs( $crispr_ref );
 	}
@@ -1435,7 +1435,7 @@ This means that C<find_crRNAs_by_target> was called without a defined Crispr::Ta
 
 This means that C<find_crRNAs_by_target> was called with an object that is not a Crispr::Target object.
 
-=item This target, ", $target->name,", has been seen before.
+=item This target, ", $target->target_name,", has been seen before.
 
 This means that the name of the Crispr::Target supplied to C<find_crRNAs_by_target> has been seen before.
 A Crispr object keeps a record of the targets that it has found crRNAs for so that duplicate crRNAs found in the all_crisprs attribute.
