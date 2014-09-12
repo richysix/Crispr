@@ -291,14 +291,14 @@ my @header_columns = ( qw{
     crRNA_1_name crRNA_1_chr crRNA_1_start crRNA_1_end crRNA_1_strand
     crRNA_1_score crRNA_1_sequence crRNA_1_oligo1 crRNA_1_oligo2 crRNA_1_off_target_score
     crRNA_1_off_target_counts crRNA_1_off_target_hits crRNA_1_coding_score
-    crRNA_1_coding_scores_by_transcript crRNA_1_five_prime_Gs crRNA_1_plasmid_backbone
+    crRNA_1_coding_scores_by_transcript crRNA_1_five_prime_Gs crRNA_1_plasmid_backbone crRNA_1_GC_content 
     target_2_id target_2_name target_2_assembly target_2_chr target_2_start
     target_2_end target_2_strand target_2_species target_2_requires_enzyme
     target_2_gene_id target_2_gene_name target_2_requestor target_2_ensembl_version target_2_designed     
     crRNA_2_name crRNA_2_chr crRNA_2_start crRNA_2_end crRNA_2_strand
     crRNA_2_score crRNA_2_sequence crRNA_2_oligo1 crRNA_2_oligo2 crRNA_2_off_target_score
     crRNA_2_off_target_counts crRNA_2_off_target_hits crRNA_2_coding_score
-    crRNA_2_coding_scores_by_transcript crRNA_2_five_prime_Gs crRNA_2_plasmid_backbone
+    crRNA_2_coding_scores_by_transcript crRNA_2_five_prime_Gs crRNA_2_plasmid_backbone crRNA_2_GC_content
     combined_distance_from_targets five_prime_score difference_from_optimum_deletion_size } );
     
 print $out_fh_1 join("\t", @header_columns, ), "\n";

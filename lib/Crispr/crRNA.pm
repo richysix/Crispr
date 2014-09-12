@@ -524,7 +524,9 @@ sub info {
         push @info, qw{NULL NULL};
     }
     
-	push @info, $self->five_prime_Gs, $self->plasmid_backbone;
+    my $base_comp = $self->base_composition();
+    my $gc_content = $base_comp->{C} + $base_comp->{G};
+	push @info, $self->five_prime_Gs, $self->plasmid_backbone, $gc_content;
     return @info;
 }
 
@@ -674,6 +676,30 @@ sub name{
         $self->strand,
     );
     return $name;
+}
+
+=method base_composition
+
+  Usage       : $crRNA->base_composition;
+  Purpose     : Returns the base_composition for the crRNA as a hash keyed by base
+  Returns     : HashRef
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
+sub base_composition {
+    my ( $self, ) = @_;
+    
+    my $sequence = substr($self->sequence, 0, 20 );
+    my $count_hash;
+    $count_hash->{A} = ($sequence =~ tr/A//)/20;
+    $count_hash->{C} = ($sequence =~ tr/C//)/20;
+    $count_hash->{G} = ($sequence =~ tr/G//)/20;
+    $count_hash->{T} = ($sequence =~ tr/T//)/20;
+    
+    return $count_hash;
 }
 
 #_build_species

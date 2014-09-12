@@ -28,15 +28,14 @@ my $date_obj = DateTime->now();
 my $todays_date = $date_obj->ymd;
 
 # check registry file
-if( $options{registry_file} ){
-    Bio::EnsEMBL::Registry->load_all( $options{registry_file} );
+if( $options{registry} ){
+    Bio::EnsEMBL::Registry->load_all( $options{registry} );
 }
 else{
     # if no registry file connect anonymously to the public server
     Bio::EnsEMBL::Registry->load_registry_from_db(
       -host    => 'ensembldb.ensembl.org',
       -user    => 'anonymous',
-      -port    => 5306,
     );
 }
 my $ensembl_version = Bio::EnsEMBL::ApiVersion::software_version();
@@ -146,7 +145,8 @@ Readonly my @columns => (
         species requires_enzyme gene_id gene_name requestor ensembl_version
         designed crRNA_name chr start end strand score sequence oligo1 oligo2
         off_target_score off_target_counts off_target_hits
-        coding_score coding_scores_by_transcript five_prime_Gs plasmid_backbone }
+        coding_score coding_scores_by_transcript five_prime_Gs plasmid_backbone
+        GC_content notes }
 );
 
 if( $options{no_crRNA} ){
@@ -165,24 +165,31 @@ foreach my $target ( @{ $crispr_design->targets } ){
             print join("\t",
                 $crRNA->target_info_plus_crRNA_info,
             ), "\t";
+            
+            my @notes;
             # check composition
-            my $sequence = substr($crRNA->sequence, 0, 20 );
-            my $A_count = $sequence =~ tr/A//;
-            my $C_count = $sequence =~ tr/C//;
-            my $G_count = $sequence =~ tr/G//;
-            my $T_count = $sequence =~ tr/T//;
-            my $not_ideal = 0;
-            foreach my $count ( $A_count, $C_count, $G_count, $T_count ){
-                if( $count/20 < 0.1 || $count/20 > 0.4 ){
+            my $base_composition = $crRNA->base_composition;
+            my $not_ideal;
+            foreach my $base ( qw{ A C G T } ){
+                if( $base_composition->{$base} < 0.1 || $base_composition->{$base} > 0.4 ){
                     $not_ideal = 1;
                 }
             }
             if( $not_ideal ){
-                print "Base Composition is not ideal!\n";
+                push @notes, "Base Composition is not ideal!";
             }
-            else{
-                print "\n";
+            
+            # check GC content
+            if( $base_composition->{C} + $base_composition->{G} < 0.4 ){
+                push @notes, "GC content less than 40%!";
             }
+            
+            # check pre-PAM base
+            my $pre_pam_base = substr($crRNA->sequence, 19, 1);
+            if( $pre_pam_base eq 'G' ){
+                push @notes, "base19 is a G";
+            }
+            print join(';', @notes, ), "\n";
         }
     }
 }

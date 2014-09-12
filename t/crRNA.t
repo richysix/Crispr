@@ -6,7 +6,7 @@ use Test::Warn;
 use Test::MockObject;
 use Data::Dumper;
 
-plan tests => 1 + 35 + 4 + 4 + 1 + 4 + 4 + 4 + 1 + 3 + 3 + 5 + 2 + 7 + 4 + 4 + 2 + 2 + 2 + 1;
+plan tests => 1 + 36 + 4 + 4 + 1 + 4 + 4 + 4 + 1 + 3 + 3 + 5 + 2 + 7 + 4 + 4 + 5 + 2 + 2 + 2 + 1;
 
 my $species = 'zebrafish';
 
@@ -75,14 +75,15 @@ my $crRNA_2 = Crispr::crRNA->new(
 # 1 test
 isa_ok( $crRNA, 'Crispr::crRNA' );
 
-# check method calls 35 tests
+# check method calls 36 tests
 my @methods = qw( crRNA_id target chr start end
     strand sequence species five_prime_Gs off_target_hits
     off_target_info off_target_score coding_scores unique_restriction_sites plasmid_backbone
     primer_pairs crRNA_adaptor _parse_strand_input _parse_species top_restriction_sites
     info target_info_plus_crRNA_info target_summary_plus_crRNA_info coding_score_for coding_scores_by_transcript
-    name _build_species _build_five_prime_Gs core_sequence _build_oligo
-    forward_oligo reverse_oligo _build_backbone coding_score score
+    name base_composition _build_species _build_five_prime_Gs core_sequence
+    _build_oligo forward_oligo reverse_oligo _build_backbone coding_score
+    score
 );
 
 foreach my $method ( @methods ) {
@@ -193,12 +194,21 @@ $crRNA_no_chr->target( $mock_target_object_2 );
 is( $crRNA_no_chr->name, 'crRNA:gfp:50-60:1', 'Get name without chr but with gene_name');
 is( $crRNA_2->name, 'crRNA:5:18078991-18079013:-1', 'Get name 2');
 
+# check base_composition - 5 tests
+# sequence without PAM is GGCCTTCGGGTTTGACCCCA
+my $base_composition = $crRNA->base_composition();
+is( ref $base_composition, 'HASH', 'base composition - check return value is a hashref');
+is( abs($base_composition->{A} - 0.100) < 0.001, 1, 'check A base composition');
+is( abs($base_composition->{C} - 0.350) < 0.001, 1, 'check C base composition');
+is( abs($base_composition->{G} - 0.300) < 0.001, 1, 'check G base composition');
+is( abs($base_composition->{T} - 0.250) < 0.001, 1, 'check T base composition');
+
 # crRNA_info - 2 tests
 like( join("\t", $crRNA->info ),
     qr/crRNA:5:18078991-18079013:1\t5\t18078991\t18079013\t1\t0.099\tGGCCTTCGGGTTTGACCCCATGG\tTAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGG\t0.223\t0.528\t17:403-425:-1\/2\/4\t0.422\t17:403-425:-1,Zv9_NA1:403-425:-1\/2\/4\t0.445\tENSDART00000037671=0.1;ENSDART00000037681=0.5;ENSDART00000037691=0.734/,
     'check info' );
 like( join("\t", $crRNA_2->info ),
-    qr/crRNA:5:18078991-18079013:-1\t5\t18078991\t18079013\t-1\tNULL\tGGCCTTCGGGTTTGACCCCATGG\tATAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGGC\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL/,
+    qr/crRNA:5:18078991-18079013:-1\t5\t18078991\t18079013\t-1\tNULL\tGGCCTTCGGGTTTGACCCCATGG\tATAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGGC\tNULL\tNULL\tNULL\tNULL\tNULL\t1\tpGERETY-1260/,
     'check info 2');
 
 # crRNA target_summary_plus_crRNA_info & target_info_plus_crRNA_info
