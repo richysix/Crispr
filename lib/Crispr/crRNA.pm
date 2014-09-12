@@ -513,7 +513,7 @@ sub info {
         push @info, $self->off_target_info;
     }
 	else{
-		push @info, qw{NULL NULL NULL NULL NULL };
+		push @info, qw{NULL NULL NULL};
 	}
     
 	# protein-coding score and detail on protein-coding scores by transcript

@@ -142,10 +142,10 @@ else{
 
 warn "Outputting results...\n" if $options{verbose};
 Readonly my @columns => (
-    qw{ target_id name assembly chr start end strand
+    qw{ target_id target_name assembly chr start end strand
         species requires_enzyme gene_id gene_name requestor ensembl_version
         designed crRNA_name chr start end strand score sequence oligo1 oligo2
-        off_target_score bwa_score bwa_hits NULL NULL
+        off_target_score off_target_counts off_target_hits
         coding_score coding_scores_by_transcript five_prime_Gs plasmid_backbone }
 );
 
@@ -214,7 +214,7 @@ sub get_exon {
         # get gene id and transcripts
         $gene = $gene_adaptor->fetch_by_exon_stable_id( $exon_id );
         my $target = Crispr::Target->new(
-            name => $exon_id,
+            target_name => $exon_id,
             assembly => $options{assembly},
             chr => $chr,
             start => $exon->seq_region_start,
@@ -249,7 +249,7 @@ sub get_exon {
                 $success = 1;
             }
             else{
-                warn "No crRNAs for ", $target->name, "\n";
+                warn "No crRNAs for ", $target->target_name, "\n";
                 $crispr_design->remove_target( $target );
             }
         }
@@ -311,7 +311,7 @@ sub get_gene {
             
             foreach my $exon ( @{$exons} ){
                 my $target = Crispr::Target->new(
-                    name => $exon->stable_id,
+                    target_name => $exon->stable_id,
                     assembly => $options{assembly},
                     chr => $exon->seq_region_name,
                     start => $exon->seq_region_start,
@@ -345,7 +345,7 @@ sub get_gene {
                         $success = 1;
                     }
                     else{
-                        warn "No crRNAs for ", $target->name, "\n";
+                        warn "No crRNAs for ", $target->target_name, "\n";
                         $crispr_design->remove_target( $target );
                     }
                 }
@@ -393,7 +393,7 @@ sub get_transcript {
         
         foreach my $exon ( @{$exons} ){
             my $target = Crispr::Target->new(
-                name => $exon->stable_id,
+                target_name => $exon->stable_id,
                 assembly => $options{assembly},
                 chr => $exon->seq_region_name,
                 start => $exon->seq_region_start,
@@ -427,7 +427,7 @@ sub get_transcript {
                     $success = 1;
                 }
                 else{
-                    warn "No crRNAs for ", $target->name, "\n";
+                    warn "No crRNAs for ", $target->target_name, "\n";
                     $crispr_design->remove_target( $target );
                 }
             }
@@ -500,7 +500,7 @@ sub get_posn {
         }
         
         my $target = Crispr::Target->new(
-            name => $target_name,
+            target_name => $target_name,
             assembly => $options{assembly},
             chr => $chr,
             start => $start_position,
@@ -534,7 +534,7 @@ sub get_posn {
                 $success = 1;
             }
             else{
-                warn "No crRNAs for ", $target->name, "\n";
+                warn "No crRNAs for ", $target->target_name, "\n";
                 $crispr_design->remove_target( $target );
             }
         }

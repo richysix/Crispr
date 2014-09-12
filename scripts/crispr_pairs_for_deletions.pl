@@ -152,7 +152,7 @@ foreach my $target_id ( keys %{$targets_for} ){
         my $existing_pairs;
         my $a_target = $targets->[0];
         my $b_target = $targets->[1];
-        my $target_name = $a_target->name;
+        my $target_name = $a_target->target_name;
         $target_name =~ s/_del_a//xms;
         
         # make a paired crispr object for each combo of a_crRNAs and other crRNAs
@@ -290,14 +290,14 @@ my @header_columns = ( qw{
     target_1_gene_id target_1_gene_name target_1_requestor target_1_ensembl_version target_1_designed
     crRNA_1_name crRNA_1_chr crRNA_1_start crRNA_1_end crRNA_1_strand
     crRNA_1_score crRNA_1_sequence crRNA_1_oligo1 crRNA_1_oligo2 crRNA_1_off_target_score
-    crRNA_1_align_score crRNA_1_bwa_hits crRNA_1_seed_score crRNA_1_seed_hits crRNA_1_coding_score
+    crRNA_1_off_target_counts crRNA_1_off_target_hits crRNA_1_coding_score
     crRNA_1_coding_scores_by_transcript crRNA_1_five_prime_Gs crRNA_1_plasmid_backbone
     target_2_id target_2_name target_2_assembly target_2_chr target_2_start
     target_2_end target_2_strand target_2_species target_2_requires_enzyme
     target_2_gene_id target_2_gene_name target_2_requestor target_2_ensembl_version target_2_designed     
     crRNA_2_name crRNA_2_chr crRNA_2_start crRNA_2_end crRNA_2_strand
     crRNA_2_score crRNA_2_sequence crRNA_2_oligo1 crRNA_2_oligo2 crRNA_2_off_target_score
-    crRNA_2_align_score crRNA_2_bwa_hits crRNA_2_seed_score crRNA_2_seed_hits crRNA_2_coding_score
+    crRNA_2_off_target_counts crRNA_2_off_target_hits crRNA_2_coding_score
     crRNA_2_coding_scores_by_transcript crRNA_2_five_prime_Gs crRNA_2_plasmid_backbone
     combined_distance_from_targets five_prime_score difference_from_optimum_deletion_size } );
     
@@ -422,7 +422,7 @@ sub targets_from_gene {
             # check that there are crisprs for both the a and b targets
             # otherwise add to targets under target_id
             if( !@{$targets->[0]->crRNAs} || !@{$targets->[1]->crRNAs} ){
-                warn join(q{ }, '##', $columns->[0], ': NO crRNAs for one of', $targets->[0]->name, 'and', $targets->[1]->name, ), ".\n";
+                warn join(q{ }, '##', $columns->[0], ': NO crRNAs for one of', $targets->[0]->target_name, 'and', $targets->[1]->target_name, ), ".\n";
                 $crispr_design->remove_target( $targets->[0] );
                 $crispr_design->remove_target( $targets->[1] );
             }
@@ -473,7 +473,7 @@ sub targets_from_transcript {
         # check that there are crisprs for both the a and b targets
         # otherwise add to targets under target_id
         if( !@{$targets->[0]->crRNAs} || !@{$targets->[1]->crRNAs} ){
-            warn join(q{ }, '##', $columns->[0], ': NO crRNAs for one of', $targets->[0]->name, 'and', $targets->[1]->name, ), ".\n";
+            warn join(q{ }, '##', $columns->[0], ': NO crRNAs for one of', $targets->[0]->target_name, 'and', $targets->[1]->target_name, ), ".\n";
             $crispr_design->remove_target( $targets->[0] );
             $crispr_design->remove_target( $targets->[1] );
         }
@@ -518,7 +518,7 @@ sub targets_from_exon {
     # check that there are crisprs for both the a and b targets
     # otherwise add to targets under target_id
     if( !@{$targets->[0]->crRNAs} || !@{$targets->[1]->crRNAs} ){
-        warn join(q{ }, '##', $columns->[0], ': NO crRNAs for one of', $targets->[0]->name, 'and', $targets->[1]->name, ), ".\n";
+        warn join(q{ }, '##', $columns->[0], ': NO crRNAs for one of', $targets->[0]->target_name, 'and', $targets->[1]->target_name, ), ".\n";
         $crispr_design->remove_target( $targets->[0] );
         $crispr_design->remove_target( $targets->[1] );
     }
@@ -563,7 +563,7 @@ sub targets_from_posn {
     # check that there are crisprs for both the a and b targets
     # otherwise add to targets under target_id
     if( !@{$targets->[0]->crRNAs} || !@{$targets->[1]->crRNAs} ){
-        warn join(q{ }, '##', $columns->[0], ': NO crRNAs for one of', $targets->[0]->name, 'and', $targets->[1]->name, ), ".\n";
+        warn join(q{ }, '##', $columns->[0], ': NO crRNAs for one of', $targets->[0]->target_name, 'and', $targets->[1]->target_name, ), ".\n";
         $crispr_design->remove_target( $targets->[0] );
         $crispr_design->remove_target( $targets->[1] );
     }
@@ -600,7 +600,7 @@ sub make_targets_and_fetch_crRNAs {
     my $gene_name = $gene   ?   $gene->external_name    :  undef;
     
     my $a_target = Crispr::Target->new(
-        name => $target_id . '_del_a',
+        target_name => $target_id . '_del_a',
         assembly => $options{assembly},
         chr => $chr,
         start => $start,
@@ -615,7 +615,7 @@ sub make_targets_and_fetch_crRNAs {
     );
     
     my $b_target = Crispr::Target->new(
-        name => $target_id . '_del_b',
+        target_name => $target_id . '_del_b',
         assembly => $options{assembly},
         chr => $chr,
         start => $start,
@@ -641,7 +641,7 @@ sub make_targets_and_fetch_crRNAs {
                 map {warn $_->name, "\n";} @{$target->crRNAs};
             }
             else{
-                warn $target->name, ": NO crRNAs.\n";
+                warn $target->target_name, ": NO crRNAs.\n";
             }
         }
     }
@@ -659,7 +659,7 @@ sub make_targets_and_fetch_crRNAs {
                 map {warn $_->name, "\n";} @{$target->crRNAs};
             }
             else{
-                warn $target->name, ": NO crRNAs.\n";
+                warn $target->target_name, ": NO crRNAs.\n";
             }
         }
     }
