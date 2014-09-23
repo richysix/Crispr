@@ -1130,8 +1130,11 @@ sub _fetch_sequence {
     my ( $self, $chr, $pos, $end, $strand, ) = @_;
     
     # try Ensembl db first
-    my $off_target_slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $pos, $end, $strand, );
-    
+    my $off_target_slice;
+    if( defined $self->slice_adaptor ){
+        $off_target_slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $pos, $end, $strand, );
+    }
+
     # if slice is undef, try fasta file
     if( !defined $off_target_slice ){
         my $db = Bio::DB::Fasta->new( $self->target_genome );
