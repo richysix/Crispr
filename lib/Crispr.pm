@@ -857,23 +857,28 @@ sub create_crRNA_from_crRNA_name {
     
     my ( $chr, $start, $end, $strand ) = $self->parse_cr_name( $name );
     
-    my $sequence;
-    my $seq_obj = $self->_fetch_sequence( $chr, $start, $end, $strand, );
-    if( !$seq_obj ){
-        warn "Couldn't retrieve sequence for crRNA: $name.\n";
-    }
-    else{
-        $sequence = $seq_obj->seq;
-    }
-    
-    my $crRNA = Crispr::crRNA->new(
+    my %args = (
         chr => $chr,
         start => $start,
         end => $end,
         strand => $strand || 1,
         species => $species || undef,
-        sequence => $sequence || '',
     );
+    
+    # get sequence if possible
+    my $sequence;
+    my $seq_obj = $self->_fetch_sequence( $chr, $start, $end, $strand, );
+    if( !$seq_obj ){
+        warn "Couldn't retrieve sequence for crRNA: $name. Continuing without it...\n";
+    }
+    else{
+        $sequence = $seq_obj->seq;
+    }
+    if( defined $sequence ){
+        $args{sequence} = $sequence;
+    }
+    
+    my $crRNA = Crispr::crRNA->new( \%args );
     return $crRNA;
 }
 
@@ -1136,7 +1141,7 @@ sub _fetch_sequence {
     }
 
     # if slice is undef, try fasta file
-    if( !defined $off_target_slice ){
+    if( !defined $off_target_slice && defined $self->target_genome ){
         my $db = Bio::DB::Fasta->new( $self->target_genome );
         my $obj = $db->get_Seq_by_id($chr);
         my $seq = $obj->seq;
