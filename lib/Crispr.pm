@@ -17,11 +17,15 @@ use Moose::Util::TypeConstraints;
 use namespace::autoclean;
 use Crispr::crRNA;
 use Crispr::Target;
+use Crispr::OffTarget;
+use Crispr::OffTargetInfo;
+
 use Tree::AnnotationTree;
 use Tree::GenomicIntervalTree;
 
 use Bio::Seq;
 use Bio::SeqIO;
+use Bio::DB::Fasta;
 
 subtype 'Crispr::DNA',
     as 'Str',
@@ -363,7 +367,7 @@ sub find_crRNAs_by_region {
 		croak "The target_seq attribute must be defined to search for crRNAs!\n";
 	}
     # get target name. If no target, use region as name.
-    my $target_name = defined $target   ?   $target->name   :   $region;
+    my $target_name = defined $target   ?   $target->target_name   :   $region;
     
 	my @crRNAs;
     # create regex from target sequence for forward and reverse
@@ -506,8 +510,8 @@ sub find_crRNAs_by_target {
         croak "A Crispr::Target object is required for find_crRNAs_by_target",
             "not a ", ref $target, ".\n";
     }
-	if( $self->_seen_target_name( $target->name ) ){
-		croak "This target, ", $target->name,", has been seen before.\n";
+	if( $self->_seen_target_name( $target->target_name ) ){
+		croak "This target, ", $target->target_name,", has been seen before.\n";
 	}
 	my $crRNAs;
     eval {
@@ -521,7 +525,7 @@ sub find_crRNAs_by_target {
         }
         elsif( $EVAL_ERROR =~ m/Couldn't\sunderstand\sregion/xms ){
             croak join("\n", "Couldn't understand the target's region!",
-                join(q{ }, 'Target:', $target->name,),
+                join(q{ }, 'Target:', $target->target_name,),
                 join(q{ }, 'Region:', $target->region,), ), "\n";
         }
         else{
@@ -673,7 +677,7 @@ sub remove_target {
 		croak "The supplied object is not a Crispr::Target object, it's a ",
                 ref $target, ".\n";
 	}
-	my @targets_to_keep = grep { $_->name ne $target->name } @{$self->targets};
+	my @targets_to_keep = grep { $_->target_name ne $target->target_name } @{$self->targets};
 	$self->_set_targets( \@targets_to_keep );
     
     return 1;
@@ -715,7 +719,7 @@ sub add_crisprs {
 		my $crispr_ref = $self->all_crisprs;
 		$crispr_ref = {} if( !defined $crispr_ref );
 		foreach my $crRNA ( @{$crRNAs} ){
-            $target_name = !$target_name    ?   $crRNA->target->name
+            $target_name = !$target_name    ?   $crRNA->target->target_name
                 :                               $target_name;
 			$crispr_ref->{$crRNA->name . q{_} . $target_name} = $crRNA;
 		}
@@ -737,7 +741,7 @@ sub add_crisprs {
 		$crispr_ref = {} if( !defined $crispr_ref );
 		foreach my $crRNA_name ( keys %{$crRNAs} ){
             my $crRNA = $crRNAs->{$crRNA_name};
-            $target_name = !$target_name    ?   $crRNA->target->name
+            $target_name = !$target_name    ?   $crRNA->target->target_name
                 :                               $target_name;
 			$crispr_ref->{$crRNA_name . q{_} . $target_name} = $crRNA;
 		}
@@ -783,7 +787,7 @@ sub remove_crisprs {
 		my $crispr_ref = $self->all_crisprs;
 		$crispr_ref = {} if( !defined $crispr_ref );
 		foreach my $crRNA ( @{$crRNAs} ){
-			delete $crispr_ref->{$crRNA->name . q{_} . $crRNA->target->name};
+			delete $crispr_ref->{$crRNA->name . q{_} . $crRNA->target->target_name};
 		}
 		$self->_set_all_crisprs( $crispr_ref );
 	}
@@ -803,7 +807,7 @@ sub remove_crisprs {
 		$crispr_ref = {} if( !defined $crispr_ref );
 		foreach my $crRNA_name ( keys %{$crRNAs} ){
             my $crRNA = $crRNAs->{$crRNA_name};
-			delete $crispr_ref->{$crRNA_name . q{_} . $crRNA->target->name};
+			delete $crispr_ref->{$crRNA_name . q{_} . $crRNA->target->target_name};
 		}
 		$self->_set_all_crisprs( $crispr_ref );
 	}
@@ -844,7 +848,9 @@ sub target_seq_length {
   Parameters  : valid crRNA name    String
                 species: optional
   Throws      : If crRNA name is not valid
-  Comments    : 
+  Comments    : method attempts to fetch sequence for the crRNA if there is a
+                connection to the Ensembl db or from a reference fasta file.
+                If no sequence can be retrieved it is left undefined.
 
 =cut
 
@@ -852,13 +858,29 @@ sub create_crRNA_from_crRNA_name {
     my ( $self, $name, $species, ) = @_;
     
     my ( $chr, $start, $end, $strand ) = $self->parse_cr_name( $name );
-    my $crRNA = Crispr::crRNA->new(
+    
+    my %args = (
         chr => $chr,
         start => $start,
         end => $end,
         strand => $strand || 1,
         species => $species || undef,
     );
+    
+    # get sequence if possible
+    my $sequence;
+    my $seq_obj = $self->_fetch_sequence( $chr, $start, $end, $strand, );
+    if( !$seq_obj ){
+        warn "Couldn't retrieve sequence for crRNA: $name. Continuing without it...\n";
+    }
+    else{
+        $sequence = $seq_obj->seq;
+    }
+    if( defined $sequence ){
+        $args{sequence} = $sequence;
+    }
+    
+    my $crRNA = Crispr::crRNA->new( \%args );
     return $crRNA;
 }
 
@@ -894,9 +916,9 @@ sub parse_cr_name {
     return ( $chr, $start, $end, $strand );
 }
 
-=method off_targets_bwa
+=method find_off_targets
 
-  Usage       : $crispr->off_targets_bwa( $crRNAs, $basename, );
+  Usage       : $crispr->find_off_targets( $crRNAs, $basename, );
   Purpose     : Searches for potential off-target hits for crRNAs using bwa
   Returns     : ArrayRef of Crispr::crRNA objects
   Parameters  : ArrayRef of Crispr::crRNA objects
@@ -906,7 +928,7 @@ sub parse_cr_name {
 
 =cut
 
-sub off_targets_bwa {
+sub find_off_targets {
     my ( $self, $crRNAs, $basename, ) = @_;
     
     # check whether bwa is installed in the current PATH
@@ -1011,8 +1033,10 @@ sub filter_and_score_off_targets {
 			:								'1';
         
         my $end = $start - 1 + length( $seq );
+        my @mismatches = grep { m/\A NM:i:/xms } @tags;
+        $mismatches[0] =~ s/NM:i://xms;
         $self->score_off_targets_from_sam_output( $crRNAs, $crispr_id, $chr,
-                                                 $start, $end, $strand, );
+                                                 $start, $end, $strand, $mismatches[0], );
         
         my @supp_alignments = grep { m/\A XA:Z:/xms } @tags;
         foreach my $supp_align ( map { my $align = $_;
@@ -1027,10 +1051,11 @@ sub filter_and_score_off_targets {
             my $end = $pos - 1 + length( $seq );
             
             #get slice
-            my $off_target_slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $pos, $end, $strand, );
+            #my $off_target_slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $pos, $end, $strand, );
+            my $off_target_slice = $self->_fetch_sequence( $chr, $pos, $end, $strand, );
             next if( $off_target_slice->seq !~ m/GG\z/xms || $off_target_slice->seq =~ m/N/xms );
             warn $crRNAs->{$crispr_id}->name, "\t", $off_target_slice->seq, "\t", $off_target_slice->strand, "\n" if( $self->debug == 2 );
-            $crRNAs = $self->score_off_targets_from_sam_output( $crRNAs, $crispr_id, $chr, $pos, $end, $strand, );
+            $crRNAs = $self->score_off_targets_from_sam_output( $crRNAs, $crispr_id, $chr, $pos, $end, $strand, $mismatch, );
         }
 	}
 	return $crRNAs;
@@ -1053,54 +1078,79 @@ sub filter_and_score_off_targets {
 =cut
 
 sub score_off_targets_from_sam_output {
-	my ( $self, $crRNAs, $id, $chr, $start, $end, $strand, ) = @_;
+	my ( $self, $crRNAs, $id, $chr, $start, $end, $strand, $mismatch, ) = @_;
 	
 	return $crRNAs if( !exists $crRNAs->{$id} );
 	my $crRNA = $crRNAs->{$id};
 	
 	if( !defined $crRNA->off_target_hits ){
-		my $off_target_object = Crispr::OffTarget->new(
-			crRNA_name => $crRNA->name,
-			number_bwa_intron_hits => 0,
-			number_bwa_nongenic_hits => 0,
-			number_exonerate_intron_hits => 0,
-			number_exonerate_nongenic_hits => 0,
-			number_seed_intron_hits => 0,
-			number_seed_nongenic_hits => 0,
-            bwa_alignments => [],
-            bwa_exon_alignments => [],
-		);
-		$crRNA->off_target_hits( $off_target_object );
+		$crRNA->off_target_hits( Crispr::OffTargetInfo->new() );
 	}
 	#return $crRNAs if( $crRNA->off_target_hits->score < 0.001 );
 	return $crRNAs if( defined $crRNA->chr && $crRNA->chr eq $chr && $crRNA->start == $start && $crRNA->end == $end );
-	my $alignments_posn = $chr . ':' . $start . '-' . $end . ':' . $strand;
-	# add to off-target object
-	$crRNA->off_target_hits->bwa_alignments( $alignments_posn );
 	
-	# add to interval tree
-	my $off_target_info = {
+	# check annotation
+	my $annotations = $self->annotation_tree->fetch_overlapping_annotations( $chr, $start, $end );
+    my $type;
+	if( !@{$annotations} ){
+		$type = 'nongenic';
+	}
+	elsif( any { $_ eq 'exon' } @{$annotations} ){
+		$type = 'exon';
+	}
+	elsif( any { $_ eq 'intron' } @{$annotations} ){
+		$type = 'intron';
+	}
+
+	# make an off target object and add it to interval tree
+	my $off_target_obj = Crispr::OffTarget->new(
 		crRNA_name => $id,
 		chr => $chr,
 		start => $start,
 		end => $end,
 		strand => $strand,
-	};
+        mismatches => $mismatch,
+        annotation => $type,
+	);
 	
-	$self->off_targets_interval_tree->insert_interval_into_tree( $chr, $start, $end, $off_target_info );
-	
-	# check annotation
-	my $annotations = $self->annotation_tree->fetch_overlapping_annotations( $chr, $start, $end );
-	if( !@{$annotations} ){
-		$crRNA->off_target_hits->increment_bwa_nongenic_hits;
-	}
-	elsif( any { $_ eq 'exon' } @{$annotations} ){
-		$crRNA->off_target_hits->bwa_exon_alignments($alignments_posn);
-	}
-	elsif( any { $_ eq 'intron' } @{$annotations} ){
-		$crRNA->off_target_hits->increment_bwa_intron_hits;
-	}
+	$self->off_targets_interval_tree->insert_interval_into_tree( $chr, $start, $end, $off_target_obj );
+    $crRNA->off_target_hits->add_off_target( $off_target_obj );
+    
 	return $crRNAs;
+}
+
+=method _fetch_sequence
+
+  Usage       : $crispr->_fetch_sequence( $chr, $pos, $end, $strand, );
+  Purpose     : Retrieves sequence for the supplied region using either the Ensembl database or by access the genome fasta file
+  Returns     : Either BioSeq or Bio::EnsEMBL::Slice
+  Parameters  : Str     chr
+                Str     start
+                Str     end
+                Str     strand
+  Throws      : If cannot retrieve the sequence
+  Comments    : 
+
+=cut
+
+sub _fetch_sequence {
+    my ( $self, $chr, $pos, $end, $strand, ) = @_;
+    
+    # try Ensembl db first
+    my $off_target_slice;
+    if( defined $self->slice_adaptor ){
+        $off_target_slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $pos, $end, $strand, );
+    }
+
+    # if slice is undef, try fasta file
+    if( !defined $off_target_slice && defined $self->target_genome ){
+        my $db = Bio::DB::Fasta->new( $self->target_genome );
+        my $obj = $db->get_Seq_by_id($chr);
+        my $seq = $obj->seq;
+        my $subseq = $obj->subseq( $pos => $end );
+        $off_target_slice = $strand eq '-1' ?   $subseq->revcom :   $subseq;
+    }
+    return $off_target_slice;
 }
 
 =method calculate_all_pc_coding_scores
@@ -1307,7 +1357,7 @@ __END__
     ( $chr, $start, $end, $strand ) = $crispr_design->parse_cr_name( $crRNA->name );
     
     # calculate potential off target sites for targets
-    $crispr_design->off_targets_bwa( $crispr_design->all_crisprs );
+    $crispr_design->find_off_targets( $crispr_design->all_crisprs );
     
     # calculate protein-coding scores
     $crispr_design->calculate_all_pc_coding_scores( $crRNA, $transcripts );
@@ -1402,7 +1452,7 @@ This means that C<find_crRNAs_by_target> was called without a defined Crispr::Ta
 
 This means that C<find_crRNAs_by_target> was called with an object that is not a Crispr::Target object.
 
-=item This target, ", $target->name,", has been seen before.
+=item This target, ", $target->target_name,", has been seen before.
 
 This means that the name of the Crispr::Target supplied to C<find_crRNAs_by_target> has been seen before.
 A Crispr object keeps a record of the targets that it has found crRNAs for so that duplicate crRNAs found in the all_crisprs attribute.

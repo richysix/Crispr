@@ -98,7 +98,7 @@ is( $tmp_target->target_id, '1', 'Set id' );
 throws_ok { Crispr::Target->new( target_id => 'string') } qr/Validation failed/ms, 'string id';
 throws_ok { Crispr::Target->new( target_id => '' ) } qr/Validation failed/ms, 'Empty string id';
 
-# 4 tests - check type constraints for name
+# 4 tests - check type constraints for target_name
 is( $target->target_name, 'SLC39A14', 'Get target_name' );
 throws_ok { Crispr::Target->new( target_name => '' ) } qr/Attribute is empty/, 'empty target_name';
 $tmp_target = Crispr::Target->new( target_name => 1 ); #coerced to string '1'

@@ -108,7 +108,7 @@ has 'target' => (
     isa => 'Crispr::Target',
     handles => {
         target_id => 'target_id',
-        target_name => 'name',
+        target_name => 'target_name',
 		target_summary => 'summary',
         target_info => 'info',
         assembly => 'assembly',
@@ -242,14 +242,10 @@ has 'five_prime_Gs' => (
 
 has 'off_target_hits' => (
     is => 'rw',
-    isa => 'Maybe[Crispr::OffTarget]',
+    isa => 'Maybe[Crispr::OffTargetInfo]',
     handles => {
         off_target_info => 'info',
         off_target_score => 'score',
-        seed_score => 'seed_score',
-        seed_hits => 'seed_hits',
-        exonerate_score => 'exonerate_score',
-        exonerate_hits => 'exonerate_hits',
     },
 );
 
@@ -517,7 +513,7 @@ sub info {
         push @info, $self->off_target_info;
     }
 	else{
-		push @info, qw{NULL NULL NULL NULL NULL };
+		push @info, qw{NULL NULL NULL};
 	}
     
 	# protein-coding score and detail on protein-coding scores by transcript
@@ -528,7 +524,9 @@ sub info {
         push @info, qw{NULL NULL};
     }
     
-	push @info, $self->five_prime_Gs, $self->plasmid_backbone;
+    my $base_comp = $self->base_composition();
+    my $gc_content = $base_comp->{C} + $base_comp->{G};
+	push @info, $self->five_prime_Gs, $self->plasmid_backbone, $gc_content;
     return @info;
 }
 
@@ -678,6 +676,30 @@ sub name{
         $self->strand,
     );
     return $name;
+}
+
+=method base_composition
+
+  Usage       : $crRNA->base_composition;
+  Purpose     : Returns the base_composition for the crRNA as a hash keyed by base
+  Returns     : HashRef
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
+sub base_composition {
+    my ( $self, ) = @_;
+    
+    my $sequence = substr($self->sequence, 0, 20 );
+    my $count_hash;
+    $count_hash->{A} = ($sequence =~ tr/A//)/20;
+    $count_hash->{C} = ($sequence =~ tr/C//)/20;
+    $count_hash->{G} = ($sequence =~ tr/G//)/20;
+    $count_hash->{T} = ($sequence =~ tr/T//)/20;
+    
+    return $count_hash;
 }
 
 #_build_species

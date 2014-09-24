@@ -6,6 +6,9 @@ use Test::Exception;
 use Test::Warn;
 use Test::MockObject;
 use Data::Dumper;
+use Crispr::Target;
+
+use File::Spec;
 
 #plan tests => 15 + 36 + 3 + 4 + 6;
 $tests = 0;
@@ -14,8 +17,8 @@ use lib 't/lib';
 use TestMethods;
 
 my $test_method_obj = TestMethods->new();
-$test_method_obj->check_for_test_genome();
-$test_method_obj->check_for_annotation();
+$test_method_obj->check_for_test_genome( 'mock_genome.fa' );
+$test_method_obj->check_for_annotation( 'mock_annotation.gff' );
 my $slice_adaptor = $test_method_obj->slice_adaptor;
 
 use Crispr;
@@ -40,7 +43,7 @@ my @methods = qw(
 _seen_crRNA_id _seen_target_name find_crRNAs_by_region _construct_regex_from_target_seq find_crRNAs_by_target
 filter_crRNAs_from_target_by_strand filter_crRNAs_from_target_by_score add_targets add_target remove_target 
 add_crisprs remove_crisprs target_seq_length create_crRNA_from_crRNA_name parse_cr_name
-off_targets_bwa output_fastq_for_off_targets bwa_align filter_and_score_off_targets score_off_targets_from_sam_output
+find_off_targets output_fastq_for_off_targets bwa_align filter_and_score_off_targets score_off_targets_from_sam_output
 calculate_all_pc_coding_scores calculate_pc_coding_score _build_annotation_tree _build_interval_tree _build_five_prime_Gs );
 
 foreach my $method ( @attributes, @methods ) {
@@ -92,7 +95,7 @@ $tests+=6;
 my $crRNAs;
 $mock_target = Test::MockObject->new();
 $mock_target->set_isa( 'Crispr::Target' );
-$mock_target->mock( 'name', sub{ return '5:46628364-46628423_b' });
+$mock_target->mock( 'target_name', sub{ return '5:46628364-46628423_b' });
 $mock_target->mock( 'crRNAs', sub{ my @args = @_; if( $args[1] ){ $crRNAs = $args[1] }else{ return $crRNAs } } );
 $mock_target->mock( 'region', sub{ return undef });
 
@@ -103,17 +106,17 @@ throws_ok { $design_obj->find_crRNAs_by_target( 'target' ) }
 throws_ok { $design_obj->find_crRNAs_by_target( $mock_target ) }
     qr/This\starget\sdoes\snot\shave\san\sassociated\sregion/, 'find crRNAs by target - no region';
 
-$mock_target->mock( 'name', sub{ return '5:46628364-46628423_c' });
+$mock_target->mock( 'target_name', sub{ return '5:46628364-46628423_c' });
 $mock_target->mock( 'region', sub{ return '46628364-46628423' });
 throws_ok { $design_obj->find_crRNAs_by_target( $mock_target ) }
     qr/Couldn't\sunderstand\sthe\starget's\sregion/, 'find crRNAs by target - incorrect region format';
 
 $mock_target->mock( 'region', sub{ return '5:46628364-46628423:1' });
-$mock_target->mock( 'name', sub{ return '5:46628364-46628423_d' });
+$mock_target->mock( 'target_name', sub{ return '5:46628364-46628423_d' });
 throws_ok { $design_obj_no_target_seq->find_crRNAs_by_target( $mock_target ) } qr/The\starget_seq\sattribute\smust\sbe\sdefined\sto\ssearch\sfor\scrRNAs/,
     'find crRNAs by target - no target_seq';
 
-$mock_target->mock( 'name', sub{ return '5:46628364-46628423_e' });
+$mock_target->mock( 'target_name', sub{ return '5:46628364-46628423_e' });
 ok( $design_obj->find_crRNAs_by_target( $mock_target ), 'find crRNAs by target');
 is( scalar @{ $design_obj->targets }, 1, 'check number of targets');
 ok( $design_obj->filter_crRNAs_from_target_by_strand( $mock_target, '1' ), 'filter crRNAs by strand');
@@ -131,39 +134,31 @@ my $off_targets1;
 my $coding_scores1 = {};
 my $mock_crRNA1 = Test::MockObject->new();
 $mock_crRNA1->set_isa( 'Crispr::crRNA' );
-$mock_crRNA1->mock( 'name', sub{ return 'crRNA:3:5689156-5689178:1' });
-$mock_crRNA1->mock( 'chr', sub{ return '3' });
-$mock_crRNA1->mock( 'start', sub{ return 5689156 });
-$mock_crRNA1->mock( 'end', sub{ return 5689178 });
+$mock_crRNA1->mock( 'name', sub{ return 'crRNA:test_chr1:101-123:1' });
+$mock_crRNA1->mock( 'chr', sub{ return 'test_chr1' });
+$mock_crRNA1->mock( 'start', sub{ return 101 });
+$mock_crRNA1->mock( 'end', sub{ return 123 });
 $mock_crRNA1->mock( 'strand', sub{ return '1' });
 $mock_crRNA1->mock( 'sequence', sub{ return 'AACTGATCGGGATCGCTATCTGG' });
 $mock_crRNA1->mock( 'off_target_hits', sub{ my @args = @_; if( $args[1] ){ $off_targets1 = $args[1] }else{ return $off_targets1 } } );
-$mock_crRNA1->mock( 'cut_site', sub{ return 5689172 });
-$mock_crRNA1->mock( 'coding_score_for',
-    sub{ my @args = @_;
-        if( defined $args[2] ){ $coding_scores1->{ $args[1] } = $args[2]; }
-        else{ return $coding_scores1->{ $args[1] }; }  } );
+$mock_crRNA1->mock( 'cut_site', sub{ return 117 });
 
 my $off_targets2;
 my $coding_scores2 = {};
 my $mock_crRNA2 = Test::MockObject->new();
 $mock_crRNA2->set_isa( 'Crispr::crRNA' );
-$mock_crRNA2->mock( 'name', sub{ return 'crRNA:3:5694768-5694790:1' });
-$mock_crRNA2->mock( 'chr', sub{ return '3' });
-$mock_crRNA2->mock( 'start', sub{ return 5694768 });
-$mock_crRNA2->mock( 'end', sub{ return 5694790 });
+$mock_crRNA2->mock( 'name', sub{ return 'crRNA:test_chr2:41-63:1' });
+$mock_crRNA2->mock( 'chr', sub{ return 'test_chr2' });
+$mock_crRNA2->mock( 'start', sub{ return 41 });
+$mock_crRNA2->mock( 'end', sub{ return 63 });
 $mock_crRNA2->mock( 'strand', sub{ return '1' });
 $mock_crRNA2->mock( 'sequence', sub{ return 'GATCAAAGGCTGCAGTGCAGAGG' });
 $mock_crRNA2->mock( 'off_target_hits', sub{ my @args = @_; if( $args[1] ){ $off_targets2 = $args[1] }else{ return $off_targets2 } } );
-$mock_crRNA2->mock( 'cut_site', sub{ return 5694784 });
-$mock_crRNA2->mock( 'coding_score_for',
-    sub{ my @args = @_;
-        if( defined $args[2] ){ $coding_scores2->{ $args[1] } = $args[2]; }
-        else{ return $coding_scores2->{ $args[1] }; }  } );
+$mock_crRNA2->mock( 'cut_site', sub{ return 57 });
 
 my $crisprs_hash = {
-    'crRNA:3:5689156-5689178:1_gene1' => $mock_crRNA1,
-    'crRNA:3:5694768-5694790:1_gene1' => $mock_crRNA2,
+    'crRNA:test_chr1:101-123:1' => $mock_crRNA1,
+    'crRNA:test_chr2:41-63:1' => $mock_crRNA2,
 };
 
 my $design_obj2 = Crispr->new(
@@ -178,12 +173,99 @@ my $design_obj2 = Crispr->new(
 );
 
 $design_obj2->_testing( 1 );
-ok( $design_obj2->off_targets_bwa( $design_obj2->all_crisprs,  ), 'off_targets' );
-is( $off_targets1->score, 1, 'check off target score 1');
-is( $off_targets2->score, 0.9, 'check off target score 2');
+ok( $design_obj2->find_off_targets( $design_obj2->all_crisprs,  ), 'off_targets' );
+is( $mock_crRNA1->off_target_hits->score, 0.76, 'check off target score 1');
+is( $mock_crRNA2->off_target_hits->score, 1, 'check off target score 2');
 $tests+=3;
 
+# check if full genome exists and is indexed and test off-target
+# skip if genome isn't there or not indexed
+SKIP: {
+    my $skip = 0;
+    my $test_num = 2;
+    my $genome_base = File::Spec->catfile('t', 'data', 'zv9_toplevel_unmasked.fa');
+    if( ! -e $genome_base ){
+        $skip = 1;
+    }
+    
+    
+    foreach my $suffix ( qw{ amb ann bwt pac rbwt rpac rsa sa  } ){
+        my $index_file = join('.', $genome_base, $suffix );
+        if( ! -e $index_file ){
+            $skip = 1;
+        }
+    }
+    
+    $tests += $test_num;
+    skip "Could not find full genome file or index. Skipping...", $test_num if $skip; 
+
+    my $design_obj = Crispr->new(
+        species => 'zebrafish',
+        target_seq => 'NNNNNNNNNNNNNNNNNNNNNGG',
+        target_genome => 't/data/zv9_toplevel_unmasked.fa',
+        slice_adaptor => $slice_adaptor,
+        annotation_file => 't/data/e75_annotation.gff',
+        debug => 0,
+    );
+    
+    my $target = Crispr::Target->new(
+        target_name => 'ENSDARE00000701362',
+        chr => '5',
+        start => 75451438,
+        end => 75451817,
+        strand => '1',
+        species => 'zebrafish',
+        gene_id => 'ENSDARG00000024894',
+        gene_name => 'tbx5a',
+        requestor => 'crispr_test',
+        ensembl_version => 70,
+    );
+    
+    $design_obj->add_target( $target );
+    
+    my $crRNA_1 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:5:75452465-75452487:-1', 'zebrafish' );
+    my $crRNA_2 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:5:75476562-75476584:-1', 'zebrafish' );
+    my $crRNA_3 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:5:75474661-75474683:-1', 'zebrafish' );
+    my $crRNA_4 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:5:75457752-75457774:-1', 'zebrafish' );
+    
+    ok( $design_obj->add_crisprs( [ $crRNA_1, $crRNA_2, $crRNA_3, $crRNA_4, ], $target->target_name ), 'add_crisprs' );
+    
+    ok( $design_obj->find_off_targets( $design_obj->all_crisprs, ), 'check off targets' );
+    
+    #foreach my $crRNA ( $crRNA_1, $crRNA_2, $crRNA_3, $crRNA_4, ){
+    #    my @hits = $crRNA->off_target_hits->off_target_hits;
+    #    print join("\t", $crRNA->name,
+    #               join(": ", 'exon', @{$hits[0]}, ),
+    #               join(": ", 'intron', @{$hits[1]}, ),
+    #               join(": ", 'nongenic', @{$hits[2]}, ),
+    #            ), "\n";
+    #}
+};
+
+
 # calculate protein coding scores
+# change output of mock methods
+$mock_crRNA1->mock( 'name', sub{ return 'crRNA:3:5689156-5689178:1' });
+$mock_crRNA1->mock( 'chr', sub{ return '3' });
+$mock_crRNA1->mock( 'start', sub{ return 5689156 });
+$mock_crRNA1->mock( 'end', sub{ return 5689178 });
+$mock_crRNA1->mock( 'cut_site', sub{ return 5689172 });
+$mock_crRNA1->mock( 'coding_score_for',
+    sub{ my @args = @_;
+        if( defined $args[2] ){ $coding_scores1->{ $args[1] } = $args[2]; }
+        else{ return $coding_scores1->{ $args[1] }; }  } );
+
+$mock_crRNA2->mock( 'name', sub{ return 'crRNA:3:5694768-5694790:1' });
+$mock_crRNA2->mock( 'chr', sub{ return '3' });
+$mock_crRNA2->mock( 'start', sub{ return 5694768 });
+$mock_crRNA2->mock( 'end', sub{ return 5694790 });
+$mock_crRNA2->mock( 'cut_site', sub{ return 5694784 });
+$mock_crRNA2->mock( 'coding_score_for',
+    sub{ my @args = @_;
+        if( defined $args[2] ){ $coding_scores2->{ $args[1] } = $args[2]; }
+        else{ return $coding_scores2->{ $args[1] }; }  } );
+
+
 my $gene_adaptor = Bio::EnsEMBL::Registry->get_adaptor( 'zebrafish', 'core', 'gene' );
 my $gene = $gene_adaptor->fetch_by_stable_id( 'ENSDARG00000038399' );
 my $transcripts = $gene->get_all_Transcripts();

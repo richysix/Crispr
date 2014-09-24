@@ -121,7 +121,7 @@ if( !@{$crispr_design->targets} ){
 print "Scoring off-targets...\n" if $options{verbose};
 
 # score off targets using bwa
-$crispr_design->off_targets_bwa( $crispr_design->all_crisprs, $basename, );
+$crispr_design->find_off_targets( $crispr_design->all_crisprs, $basename, );
 
 if( $options{debug} ){
     warn "INITIAL crRNAs:\n";
@@ -152,7 +152,7 @@ foreach my $target_id ( keys %{$targets_for} ){
         my $existing_pairs;
         my $a_target = $targets->[0];
         my $b_target = $targets->[1];
-        my $target_name = $a_target->name;
+        my $target_name = $a_target->target_name;
         $target_name =~ s/_del_a//xms;
         
         # make a paired crispr object for each combo of a_crRNAs and other crRNAs
@@ -202,32 +202,31 @@ foreach my $target_id ( keys %{$targets_for} ){
             $relevant_crRNAs_lookup{ $a_crRNA->name } = 1;
             warn Dumper( %relevant_crRNAs_lookup ) if $options{debug};
             #lookup overlapping intervals
-            if( $a_crRNA->off_target_hits->bwa_alignments ){
-                foreach my $off_target_posn ( @{$a_crRNA->off_target_hits->bwa_alignments} ){
-                    my ( $q_chr, $q_range, $q_strand ) = split /:/, $off_target_posn;
-                    my ( $q_start, $q_end ) = split /-/, $q_range;
-                    my $results = $crispr_design->off_targets_interval_tree->fetch_overlapping_intervals( $q_chr, $q_start - $WINDOW_SIZE, $q_end + $WINDOW_SIZE );
-                    warn 'WINDOW: ' . $q_chr . ':' . join('-', $q_start - $WINDOW_SIZE, $q_end + $WINDOW_SIZE, ), "\n" if $options{debug};
+            if( $a_crRNA->off_target_hits->all_off_targets ){
+                foreach my $off_target_obj ( $a_crRNA->off_target_hits->all_off_targets ){
+                    my $results = $crispr_design->off_targets_interval_tree->fetch_overlapping_intervals(
+                        $off_target_obj->chr, off_target_obj->start - $WINDOW_SIZE, $off_target_obj->end + $WINDOW_SIZE );
+                    warn 'WINDOW: ' . off_target_obj->chr . ':' . join('-', off_target_obj->start - $WINDOW_SIZE, off_target_obj->end + $WINDOW_SIZE, ), "\n" if $options{debug};
                     foreach my $off_target_info ( @{$results} ){
                         # check if is the same off-target site
-                        next if( $q_chr eq $off_target_info->{chr} && $q_start == $off_target_info->{start} &&
-                                $q_end == $off_target_info->{end} && $q_strand eq $off_target_info->{strand} );
+                        next if( off_target_obj->chr eq off_target_info->chr && off_target_obj->start == off_target_info->start &&
+                                off_target_obj->end == off_target_info->end && off_target_obj->strand eq off_target_info->strand );
                         # check if it's an off-target that we care about
-                        next if( !exists $relevant_crRNAs_lookup{ $off_target_info->{crRNA_name} } );
+                        next if( !exists $relevant_crRNAs_lookup{ off_target_info->crRNA_name } );
                         # check whether the off-target matches are on opposite strands
-                        next unless( $q_strand * $off_target_info->{strand} eq -1 );
+                        next unless( off_target_obj->strand * off_target_info->strand eq -1 );
                         
                         warn Dumper( $off_target_info ) if $options{debug};
                         
                         # which one has the first cut-site on the chromosome
                         my $overhang;
-                        if( cut_site( $q_start, $q_end, $q_strand ) <=
-                            cut_site( $off_target_info->{start}, $off_target_info->{end}, $off_target_info->{strand} ) ){
-                            if( $q_strand eq '-1' && $off_target_info->{strand} eq '1' ){
+                        if( cut_site( off_target_obj->start, off_target_obj->end, off_target_obj->strand ) <=
+                            cut_site( off_target_info->start, off_target_info->end, off_target_info->strand ) ){
+                            if( off_target_obj->strand eq '-1' && off_target_info->strand eq '1' ){
                                 # 5' overhang
                                 $overhang = '5_prime';
                             }
-                            elsif( $q_strand eq '1' && $off_target_info->{strand} eq '-1' ){
+                            elsif( off_target_obj->strand eq '1' && off_target_info->strand eq '-1' ){
                                 # 3' overhang
                                 $overhang = '3_prime';
                             }
@@ -237,11 +236,11 @@ foreach my $target_id ( keys %{$targets_for} ){
                             }
                         }
                         else{
-                            if( $off_target_info->{strand} eq '-1' && $q_strand eq '1' ){
+                            if( off_target_info->strand eq '-1' && off_target_obj->strand eq '1' ){
                                 # 5' overhang
                                 $overhang = '5_prime';
                             }
-                            elsif( $off_target_info->{strand} eq '1' && $q_strand eq '-1' ){
+                            elsif( off_target_info->strand eq '1' && off_target_obj->strand eq '-1' ){
                                 # 3' overhang
                                 $overhang = '3_prime';
                             }
@@ -255,7 +254,7 @@ foreach my $target_id ( keys %{$targets_for} ){
                         my $increment = $overhang eq '5_prime'  ?   2
                             :                                       1;
                         # find the right crispr pair
-                        my @pairs = grep { $_->name eq $a_crRNA->name . q{_} . $off_target_info->{crRNA_name} } @{ $crispr_pairs_for->{ $target_id } };
+                        my @pairs = grep { $_->name eq $a_crRNA->name . q{_} . off_target_info->crRNA_name } @{ $crispr_pairs_for->{ $target_id } };
                         if( scalar @pairs == 1){
                             $pairs[0]->increment_paired_off_targets( $increment );
                         }
@@ -291,15 +290,15 @@ my @header_columns = ( qw{
     target_1_gene_id target_1_gene_name target_1_requestor target_1_ensembl_version target_1_designed
     crRNA_1_name crRNA_1_chr crRNA_1_start crRNA_1_end crRNA_1_strand
     crRNA_1_score crRNA_1_sequence crRNA_1_oligo1 crRNA_1_oligo2 crRNA_1_off_target_score
-    crRNA_1_align_score crRNA_1_bwa_hits crRNA_1_seed_score crRNA_1_seed_hits crRNA_1_coding_score
-    crRNA_1_coding_scores_by_transcript crRNA_1_five_prime_Gs crRNA_1_plasmid_backbone
+    crRNA_1_off_target_counts crRNA_1_off_target_hits crRNA_1_coding_score
+    crRNA_1_coding_scores_by_transcript crRNA_1_five_prime_Gs crRNA_1_plasmid_backbone crRNA_1_GC_content 
     target_2_id target_2_name target_2_assembly target_2_chr target_2_start
     target_2_end target_2_strand target_2_species target_2_requires_enzyme
     target_2_gene_id target_2_gene_name target_2_requestor target_2_ensembl_version target_2_designed     
     crRNA_2_name crRNA_2_chr crRNA_2_start crRNA_2_end crRNA_2_strand
     crRNA_2_score crRNA_2_sequence crRNA_2_oligo1 crRNA_2_oligo2 crRNA_2_off_target_score
-    crRNA_2_align_score crRNA_2_bwa_hits crRNA_2_seed_score crRNA_2_seed_hits crRNA_2_coding_score
-    crRNA_2_coding_scores_by_transcript crRNA_2_five_prime_Gs crRNA_2_plasmid_backbone
+    crRNA_2_off_target_counts crRNA_2_off_target_hits crRNA_2_coding_score
+    crRNA_2_coding_scores_by_transcript crRNA_2_five_prime_Gs crRNA_2_plasmid_backbone crRNA_2_GC_content
     combined_distance_from_targets five_prime_score difference_from_optimum_deletion_size } );
     
 print $out_fh_1 join("\t", @header_columns, ), "\n";
@@ -423,7 +422,7 @@ sub targets_from_gene {
             # check that there are crisprs for both the a and b targets
             # otherwise add to targets under target_id
             if( !@{$targets->[0]->crRNAs} || !@{$targets->[1]->crRNAs} ){
-                warn join(q{ }, '##', $columns->[0], ': NO crRNAs for one of', $targets->[0]->name, 'and', $targets->[1]->name, ), ".\n";
+                warn join(q{ }, '##', $columns->[0], ': NO crRNAs for one of', $targets->[0]->target_name, 'and', $targets->[1]->target_name, ), ".\n";
                 $crispr_design->remove_target( $targets->[0] );
                 $crispr_design->remove_target( $targets->[1] );
             }
@@ -474,7 +473,7 @@ sub targets_from_transcript {
         # check that there are crisprs for both the a and b targets
         # otherwise add to targets under target_id
         if( !@{$targets->[0]->crRNAs} || !@{$targets->[1]->crRNAs} ){
-            warn join(q{ }, '##', $columns->[0], ': NO crRNAs for one of', $targets->[0]->name, 'and', $targets->[1]->name, ), ".\n";
+            warn join(q{ }, '##', $columns->[0], ': NO crRNAs for one of', $targets->[0]->target_name, 'and', $targets->[1]->target_name, ), ".\n";
             $crispr_design->remove_target( $targets->[0] );
             $crispr_design->remove_target( $targets->[1] );
         }
@@ -519,7 +518,7 @@ sub targets_from_exon {
     # check that there are crisprs for both the a and b targets
     # otherwise add to targets under target_id
     if( !@{$targets->[0]->crRNAs} || !@{$targets->[1]->crRNAs} ){
-        warn join(q{ }, '##', $columns->[0], ': NO crRNAs for one of', $targets->[0]->name, 'and', $targets->[1]->name, ), ".\n";
+        warn join(q{ }, '##', $columns->[0], ': NO crRNAs for one of', $targets->[0]->target_name, 'and', $targets->[1]->target_name, ), ".\n";
         $crispr_design->remove_target( $targets->[0] );
         $crispr_design->remove_target( $targets->[1] );
     }
@@ -564,7 +563,7 @@ sub targets_from_posn {
     # check that there are crisprs for both the a and b targets
     # otherwise add to targets under target_id
     if( !@{$targets->[0]->crRNAs} || !@{$targets->[1]->crRNAs} ){
-        warn join(q{ }, '##', $columns->[0], ': NO crRNAs for one of', $targets->[0]->name, 'and', $targets->[1]->name, ), ".\n";
+        warn join(q{ }, '##', $columns->[0], ': NO crRNAs for one of', $targets->[0]->target_name, 'and', $targets->[1]->target_name, ), ".\n";
         $crispr_design->remove_target( $targets->[0] );
         $crispr_design->remove_target( $targets->[1] );
     }
@@ -601,7 +600,7 @@ sub make_targets_and_fetch_crRNAs {
     my $gene_name = $gene   ?   $gene->external_name    :  undef;
     
     my $a_target = Crispr::Target->new(
-        name => $target_id . '_del_a',
+        target_name => $target_id . '_del_a',
         assembly => $options{assembly},
         chr => $chr,
         start => $start,
@@ -616,7 +615,7 @@ sub make_targets_and_fetch_crRNAs {
     );
     
     my $b_target = Crispr::Target->new(
-        name => $target_id . '_del_b',
+        target_name => $target_id . '_del_b',
         assembly => $options{assembly},
         chr => $chr,
         start => $start,
@@ -642,7 +641,7 @@ sub make_targets_and_fetch_crRNAs {
                 map {warn $_->name, "\n";} @{$target->crRNAs};
             }
             else{
-                warn $target->name, ": NO crRNAs.\n";
+                warn $target->target_name, ": NO crRNAs.\n";
             }
         }
     }
@@ -660,7 +659,7 @@ sub make_targets_and_fetch_crRNAs {
                 map {warn $_->name, "\n";} @{$target->crRNAs};
             }
             else{
-                warn $target->name, ": NO crRNAs.\n";
+                warn $target->target_name, ": NO crRNAs.\n";
             }
         }
     }

@@ -39,7 +39,7 @@ sub check_for_test_genome {
     # check whether bwa index exists
     my $bwa_index_file = File::Spec->catfile( 't/data', $genome_file . '.bwt' );
     if( !-e $bwa_index_file ){
-        my $index_cmd = join(q{ }, 'bwa', 'index', $genome_file_path );
+        my $index_cmd = join(q{ }, 'bwa', 'index', $genome_file_path, '2> /dev/null');
         eval{ system( $index_cmd ) };
         if( $EVAL_ERROR ){
             confess "Attempt to index test genome file $genome_file_path failed!",
@@ -170,7 +170,7 @@ This documentation refers to TestMethods version 0.0.1
  
 =head1 SYNOPSIS
  
-    with TestMethods;
+  use TestMethods;
   
   
 =head1 DESCRIPTION
