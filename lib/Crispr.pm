@@ -848,7 +848,9 @@ sub target_seq_length {
   Parameters  : valid crRNA name    String
                 species: optional
   Throws      : If crRNA name is not valid
-  Comments    : 
+  Comments    : method attempts to fetch sequence for the crRNA if there is a
+                connection to the Ensembl db or from a reference fasta file.
+                If no sequence can be retrieved it is left undefined.
 
 =cut
 
