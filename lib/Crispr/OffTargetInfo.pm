@@ -31,7 +31,7 @@ sub add_off_target {
 
 sub all_off_targets {
     my ( $self, ) = @_;
-    return ( @{ $self->_off_targets->{exon} }, @{ $self->_off_targets->{intron} }, @{ $self->_off_targets->{nongenic} }, )
+    return ( @{ $self->_off_targets->{exon} }, @{ $self->_off_targets->{intron} }, @{ $self->_off_targets->{nongenic} }, );
 }
 
 sub score {

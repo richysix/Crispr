@@ -205,7 +205,7 @@ foreach my $target_id ( keys %{$targets_for} ){
             if( $a_crRNA->off_target_hits->all_off_targets ){
                 foreach my $off_target_obj ( $a_crRNA->off_target_hits->all_off_targets ){
                     my $results = $crispr_design->off_targets_interval_tree->fetch_overlapping_intervals(
-                        $off_target_obj->chr, off_target_obj->start - $WINDOW_SIZE, $off_target_obj->end + $WINDOW_SIZE );
+                        $off_target_obj->chr, $off_target_obj->start - $WINDOW_SIZE, $off_target_obj->end + $WINDOW_SIZE );
                     warn 'WINDOW: ' . off_target_obj->chr . ':' . join('-', off_target_obj->start - $WINDOW_SIZE, off_target_obj->end + $WINDOW_SIZE, ), "\n" if $options{debug};
                     foreach my $off_target_info ( @{$results} ){
                         # check if is the same off-target site
