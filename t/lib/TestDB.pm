@@ -103,7 +103,7 @@ sub alter_schema {
         
         # Convert MySQL syntax to SQLite?
         if ( $self->driver eq 'sqlite' ) {
-            $sql =~ s/[A-Z]*INT\s/integer /xmsg;
+            $sql =~ s/[A-Z]*[\sLYMG]INT\s/ integer /xmsg;
             $sql =~ s/UNSIGNED\s/ /xmsg;
             $sql =~ s/AUTO_INCREMENT\s/ /xmsg;
             $sql =~ s/\s+ENGINE\s*=\s*\w{6}//xms;
