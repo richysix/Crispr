@@ -1,4 +1,4 @@
-package Crispr::Adaptors::DBAttributes;
+package Crispr::DB::DBAttributes;
 use namespace::autoclean;
 use Moose::Role;
 use Moose::Util::TypeConstraints;
@@ -267,7 +267,7 @@ sub fetch_rows_for_generic_select_statement {
 }
 
 my %reports_for = (
-    'Crispr::Adaptors::crRNAAdaptor' => {
+    'Crispr::DB::crRNAAdaptor' => {
         'NO ROWS'   => "crRNA does not exist in the database.",
         'ERROR'     => "crRNAAdaptor ERROR",
     },

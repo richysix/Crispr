@@ -70,7 +70,7 @@ subtype 'Crispr::crRNA::DNA',
 				unique_restriction_sites => Crispr::EnzymeInfo,
 				plasmid_backbone => String,
 				primer_pairs => ArrayRef of Crispr::PrimerPair,
-				crRNA_adaptor => Crispr::Adaptors::crRNAAdaptor,
+				crRNA_adaptor => Crispr::DB::crRNAAdaptor,
   Throws      : If parameters are not the correct type
   Comments    : None
 
@@ -320,7 +320,7 @@ has 'primer_pairs' => (
 
   Usage       : $crRNA->crRNA_adaptor;
   Purpose     : Getter for crRNA_adaptor attribute
-  Returns     : Crispr::Adaptors::crRNAAdaptor object
+  Returns     : Crispr::DB::crRNAAdaptor object
   Parameters  : None
   Throws      : If input is given
   Comments    : 
@@ -329,7 +329,7 @@ has 'primer_pairs' => (
 
 has 'crRNA_adaptor' => (
     is => 'rw',
-    isa => 'Crispr::Adaptors::crRNAAdaptor',
+    isa => 'Crispr::DB::crRNAAdaptor',
 );
 
 around BUILDARGS => sub{

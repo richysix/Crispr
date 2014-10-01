@@ -58,7 +58,7 @@ subtype 'Crispr::Target::NOT_EMPTY',
                 ensembl_version => Int
                 designed => DateTime or String (yyyy-mm-dd)
                 crRNAs => ArrayRef of Crispr::crRNA objects
-				target_adaptor => Crispr::Adaptors::targetAdaptor,
+				target_adaptor => Crispr::DB::targetAdaptor,
   Throws      : If parameters are not the correct type
   Comments    : None
 
@@ -307,8 +307,8 @@ has 'crRNAs' => (
 
   Usage       : $target->target_adaptor;
   Purpose     : Getter/Setter for target_adaptor attribute
-  Returns     : Crispr::Adaptors::TargetAdaptor
-  Parameters  : Crispr::Adaptors::TargetAdaptor
+  Returns     : Crispr::DB::TargetAdaptor
+  Parameters  : Crispr::DB::TargetAdaptor
   Throws      : 
   Comments    : 
 
@@ -316,7 +316,7 @@ has 'crRNAs' => (
 
 has 'target_adaptor' => (
     is => 'rw',
-    isa => 'Crispr::Adaptors::TargetAdaptor',
+    isa => 'Crispr::DB::TargetAdaptor',
 );
 
 around BUILDARGS => sub{

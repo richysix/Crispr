@@ -1,5 +1,5 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
-package Crispr::Adaptors::TargetAdaptor;
+package Crispr::DB::TargetAdaptor;
 ## use critic
 
 # ABSTRACT: TargetAdaptor object - object for storing Target objects in and retrieving them from a SQL database
@@ -11,7 +11,7 @@ use DateTime;
 use Carp qw( cluck confess );
 use English qw( -no_match_vars );
 
-with 'Crispr::Adaptors::DBAttributes';
+with 'Crispr::DB::DBAttributes';
 
 =method new
 
@@ -711,8 +711,8 @@ __END__
  
 =head1 SYNOPSIS
  
-    use Crispr::Adaptors::DBAdaptor;
-    my $db_adaptor = Crispr::Adaptors::DBAdaptor->new(
+    use Crispr::DB::DBAdaptor;
+    my $db_adaptor = Crispr::DB::DBAdaptor->new(
         host => 'HOST',
         port => 'PORT',
         dbname => 'DATABASE',
