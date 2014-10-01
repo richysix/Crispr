@@ -161,18 +161,22 @@ foreach my $target_id ( keys %{$targets_for} ){
                     $a_crRNA->target_gene_id ){
                 my $transcripts;
                 my $gene_id = $a_crRNA->target_gene_id;
-                my $gene = $gene_adaptor->fetch_by_stable_id( $gene_id );
-                $transcripts = $gene->get_all_Transcripts;
-                $a_crRNA = $crispr_design->calculate_all_pc_coding_scores( $a_crRNA, $transcripts );
+                my $gene = fetch_gene( [ $gene_id ] );
+                if( $gene ){
+                    $transcripts = $gene->get_all_Transcripts;
+                    $a_crRNA = $crispr_design->calculate_all_pc_coding_scores( $a_crRNA, $transcripts );
+                }
             }
             foreach my $b_crRNA ( @{$b_target->crRNAs} ){
                 if( !defined $b_crRNA->coding_score && $b_crRNA->target &&
                         $b_crRNA->target_gene_id ){
                     my $transcripts;
                     my $gene_id = $b_crRNA->target_gene_id;
-                    my $gene = $gene_adaptor->fetch_by_stable_id( $gene_id );
-                    $transcripts = $gene->get_all_Transcripts;
-                    $b_crRNA = $crispr_design->calculate_all_pc_coding_scores( $b_crRNA, $transcripts );
+                    my $gene = fetch_gene( [ $gene_id ] );
+                    if( $gene ){
+                        $transcripts = $gene->get_all_Transcripts;
+                        $b_crRNA = $crispr_design->calculate_all_pc_coding_scores( $b_crRNA, $transcripts );
+                    }
                 }
                 # make sure the a_crRNA is first on the chromosome 
                 next unless( $a_crRNA->cut_site < $b_crRNA->cut_site );
@@ -379,10 +383,11 @@ sub no_match {
 sub targets_from_gene {
     my ( $targets_for, $columns, ) = @_;
     $check_five_prime_score = 1;
-    my $gene =  $columns->[0] =~ m/\AENS[A-Z]*G[0-9]{11}# gene id/xms       ?   $gene_adaptor->fetch_by_stable_id( $columns->[0] )
-        :       $columns->[0] =~ m/\ARNASEQG[0-9]{11}# rnaseq gene id/xms   ?   $rnaseq_gene_adaptor->fetch_by_stable_id( $columns->[0] )
-        :                                                                       undef
-        ;
+    my $gene = fetch_gene( $columns );
+    #my $gene =  $columns->[0] =~ m/\AENS[A-Z]*G[0-9]{11}# gene id/xms       ?   $gene_adaptor->fetch_by_stable_id( $columns->[0] )
+    #    :       $columns->[0] =~ m/\ARNASEQG[0-9]{11}# rnaseq gene id/xms   ?   $rnaseq_gene_adaptor->fetch_by_stable_id( $columns->[0] )
+    #    :                                                                       undef
+    #    ;
 
     if( !$gene ){
         warn 'Could not find gene for id, ', $columns->[0], "\n";
@@ -435,6 +440,15 @@ sub targets_from_gene {
         push @target_ids, $columns->[0];
     }
     return $targets_for;
+}
+
+sub fetch_gene {
+    my ( $columns, ) = @_;
+    my $gene =  $columns->[0] =~ m/\AENS[A-Z]*G[0-9]{11}# gene id/xms       ?   $gene_adaptor->fetch_by_stable_id( $columns->[0] )
+        :       $columns->[0] =~ m/\ARNASEQG[0-9]{11}# rnaseq gene id/xms   ?   $rnaseq_gene_adaptor->fetch_by_stable_id( $columns->[0] )
+        :                                                                       undef
+        ;
+    return $gene;
 }
 
 # targets_from_transcript
