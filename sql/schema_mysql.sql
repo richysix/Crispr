@@ -265,13 +265,13 @@ create table allele (
 create table sample_allele (
     sample_id INT UNSIGNED NOT NULL,
     allele_id INT UNSIGNED NOT NULL,
-    subplex_id INT UNSIGNED NOT NULL,
     amplicon_id INT UNSIGNED NOT NULL,
+    type ENUM("crispr", "crispr_pair" ),
+    crispr_id INT UNSIGNED NOT NULL,
     percentage_of_reads DECIMAL(4,1) NOT NULL,
     CONSTRAINT `sample_allele_sample_id_allele_id` PRIMARY KEY ( `sample_id`, `allele_id` ),
     FOREIGN KEY (sample_id) REFERENCES sample(sample_id),
     FOREIGN KEY (allele_id) REFERENCES allele(allele_id),
-    FOREIGN KEY (subplex_id) REFERENCES subplex(subplex_id),
     FOREIGN KEY (amplicon_id) REFERENCES amplicon(amplicon_id)
 ) ENGINE = InnoDB;
 
