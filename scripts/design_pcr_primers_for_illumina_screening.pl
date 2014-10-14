@@ -76,7 +76,7 @@ my @ids;
 
 # set up constants
 Readonly my $SLICE_EXTENDER => 500;
-Readonly my $DISTANCE_TO_TARGET => 125;
+Readonly my $DISTANCE_TO_TARGET => 100;
 
 my $adaptors_for;
 while(<>){
@@ -459,7 +459,7 @@ sub primer_design {
         }
     }
     
-    my @target_offsets = ( 25, 10 );
+    my @target_offsets = ( 60, 40 );
     
     foreach my $side ( 'left', 'right' ){
         foreach my $target_offset ( @target_offsets ){
