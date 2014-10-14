@@ -9,7 +9,7 @@ use Data::Dumper;
 use List::MoreUtils qw{ any };
 use Readonly;
 
-use Crispr::Adaptors::TargetAdaptor;
+use Crispr::DB::TargetAdaptor;
 
 my $test_data = 't/data/test_data_targets.txt';
 my $count_output = qx/wc -l $test_data/;
@@ -92,9 +92,9 @@ foreach my $db_adaptor ( @db_adaptors ){
     $db_connection_params{ $driver }{ 'connection' } = $db_adaptor->connection;
 
     # make a new real Target Adaptor
-    my $target_ad = Crispr::Adaptors::TargetAdaptor->new( $db_connection_params{ $driver }, );
+    my $target_ad = Crispr::DB::TargetAdaptor->new( $db_connection_params{ $driver }, );
     # 1 test
-    isa_ok( $target_ad, 'Crispr::Adaptors::TargetAdaptor', "$driver: check object class is ok" );
+    isa_ok( $target_ad, 'Crispr::DB::TargetAdaptor', "$driver: check object class is ok" );
     
     use Crispr::Target;
     
@@ -164,7 +164,7 @@ foreach my $db_adaptor ( @db_adaptors ){
     is( $target_3->requestor , 'crispr_test', "$driver: Get requestor" );
     is( $target_3->ensembl_version , 71, "$driver: Get version" );
     is( $target_3->designed, undef, "$driver: Get date" );
-    isa_ok( $target_3->target_adaptor, 'Crispr::Adaptors::TargetAdaptor', "$driver: check target adaptor");
+    isa_ok( $target_3->target_adaptor, 'Crispr::DB::TargetAdaptor', "$driver: check target adaptor");
     
     # new target without a assembly, chr, strand, species, gene_id, gene_name, ensembl_version, and designed.
     my $target_4 = Crispr::Target->new(

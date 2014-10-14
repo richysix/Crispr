@@ -11,7 +11,7 @@ use DateTime;
 use Carp qw( cluck confess );
 use English qw( -no_match_vars );
 
-with 'Crispr::DB::DBAttributes';
+extends 'Crispr::DB::DBAdaptor';
 
 =method new
 
@@ -404,9 +404,23 @@ sub fetch_by_single_attribute {
     return $target;
 }
 
+#_make_new_object_from_db
+#
+#Usage       : $target = $self->_make_new_object_from_db( \@fields );
+#Purpose     : Create a new object from a db entry
+#Returns     : Crispr::Target object
+#Parameters  : ArrayRef of Str
+#Throws      : 
+#Comments    : This method is required when consuming the DBAttributes Role.
+
+sub _make_new_object_from_db {
+    my ( $self, $fields ) = @_;
+    return $self->_make_new_target_from_db( $fields );
+}
+
 #_make_new_target_from_db
 #
-#Usage       : $target = $target_adaptor->_make_new_target_from_db( \@fields );
+#Usage       : $target = $self->_make_new_target_from_db( \@fields );
 #Purpose     : Create a new Crispr::Target object from a db entry
 #Returns     : Crispr::Target object
 #Parameters  : ArrayRef of Str

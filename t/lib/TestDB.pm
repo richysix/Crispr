@@ -1,10 +1,50 @@
 package TestDB;
 use Moose;
+use Moose::Util::TypeConstraints;
 use File::Slurp;
 use File::Spec;
 use DBIx::Connector;
 
-with 'Crispr::Adaptors::DBAttributes';
+has 'driver' => (
+    is => 'ro',
+    isa => enum( [ 'mysql', 'sqlite' ] ),
+);
+
+has 'host' => (
+    is => 'ro',
+    isa => 'Maybe[Str]',
+);
+
+has 'port' => (
+    is => 'ro',
+    isa => 'Maybe[Str]',
+);
+
+has 'dbname' => (
+    is => 'ro',
+    isa => 'Str',
+);
+
+has 'user' => (
+    is => 'ro',
+    isa => 'Maybe[Str]',
+);
+
+has 'pass' => (
+    is => 'ro',
+    isa => 'Maybe[Str]',
+);
+
+has 'dbfile' => (
+    is => 'ro',
+    isa => 'Maybe[Str]',
+);
+
+has 'connection' => (
+    is => 'ro',
+    isa => 'DBIx::Connector',
+	writer => '_set_connection',    
+);
 
 has 'data_source' => (
     is => 'rw',
@@ -62,6 +102,21 @@ sub _build_data_source {
                     join(";", join("=", 'dbname', $self->dbfile(), ), )
                 );
     }
+}
+
+sub db_params {
+    my ( $self, ) = @_;
+	my %db_params = (
+        'driver' => $self->driver,
+		'host' => $self->host,
+		'port' => $self->port,
+		'dbname' => $self->dbname,
+		'user' => $self->user,
+		'pass' => $self->pass,
+        'dbfile' => $self->dbfile,
+		'connection' => $self->connection,
+	);
+    return \%db_params;
 }
 
 sub create {
