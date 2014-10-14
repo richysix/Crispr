@@ -1053,6 +1053,10 @@ sub filter_and_score_off_targets {
             #get slice
             #my $off_target_slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $pos, $end, $strand, );
             my $off_target_slice = $self->_fetch_sequence( $chr, $pos, $end, $strand, );
+            if( !$off_target_slice ){
+                carp "Couldn't retrieve sequence for off-target hit!\n",
+                        join("\t", $chr, $pos, $end, $strand ), "\n";
+            }
             next if( $off_target_slice->seq !~ m/GG\z/xms || $off_target_slice->seq =~ m/N/xms );
             warn $crRNAs->{$crispr_id}->name, "\t", $off_target_slice->seq, "\t", $off_target_slice->strand, "\n" if( $self->debug == 2 );
             $crRNAs = $self->score_off_targets_from_sam_output( $crRNAs, $crispr_id, $chr, $pos, $end, $strand, $mismatch, );
@@ -1138,8 +1142,15 @@ sub _fetch_sequence {
     
     # try Ensembl db first
     my $off_target_slice;
-    if( defined $self->slice_adaptor ){
-        $off_target_slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $pos, $end, $strand, );
+    eval{
+        if( defined $self->slice_adaptor ){
+            $off_target_slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $pos, $end, $strand, );
+        }
+    };
+    if( $EVAL_ERROR ){
+        warn join("\n", "An error occured while trying to connect to the Ensembl database!",
+                $EVAL_ERROR,
+                "Using genome fasta file if it exists...", ), "\n";
     }
 
     # if slice is undef, try fasta file
