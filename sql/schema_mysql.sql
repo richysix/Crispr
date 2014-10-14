@@ -185,10 +185,11 @@ create table restriction_enzymes (
 
 create table cas9 (
     cas9_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    cas9_type ENUM( 'Cas9_dnls', 'Cas9_cherry', 'Cas9_nanos' ) NOT NULL,
-    substance ENUM('dna', 'rna', 'protein') NOT NULL,
-    made_by VARCHAR(5) NOT NULL,
-    date DATE NOT NULL
+    cas9_type ENUM( 'cas9_dnls_native', 'cas9_cherry_native', 'cas9_nanos_native' ) NOT NULL,
+    prep_type ENUM('dna', 'rna', 'protein') NOT NULL,
+    made_by VARCHAR(10) NOT NULL,
+    date DATE NOT NULL,
+    CONSTRAINT `cas9_cas9_type_prep_type_made_by_date` UNIQUE ( `cas9_type`, `prep_type`, `made_by`, `date` )
 ) ENGINE = InnoDB;
 
 create table injection (
@@ -197,6 +198,7 @@ create table injection (
     cas9_id INT UNSIGNED NOT NULL,
     cas9_concentration INT UNSIGNED NOT NULL,
     guideRNA_concentration INT UNSIGNED NOT NULL,
+    guideRNA_type ENUM('sgRNA', 'tracrRNA'),
     date DATE NOT NULL,
     line_injected VARCHAR(10) NOT NULL,
     line_raised VARCHAR(10),
@@ -223,8 +225,10 @@ create table plex (
 create table subplex (
     subplex_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     plex_id INT UNSIGNED NOT NULL,
+    plate_num ENUM('1', '2', '3', '4' ) NOT NULL,
     injection_id INT UNSIGNED NOT NULL,
-    FOREIGN KEY (plex_id) REFERENCES plex(plex_id)
+    FOREIGN KEY (plex_id) REFERENCES plex(plex_id),
+    FOREIGN KEY (injection_id) REFERENCES injection(injection_id)
 ) ENGINE = InnoDB;
 
 create table sample (
@@ -243,15 +247,15 @@ CREATE UNIQUE INDEX `sample_name` ON sample (`sample_name`);
 
 create table sequencing_results (
     sample_id INT UNSIGNED NOT NULL,
-    amplicon_id INT UNSIGNED NOT NULL,
+    crRNA_id INT UNSIGNED NOT NULL,
     fail BOOLEAN NOT NULL,
     num_indels INT UNSIGNED,
     total_percentage_of_reads DECIMAL(4,1),
     percentage_major_variant DECIMAL(4,1),
     total_reads INT UNSIGNED NOT NULL,
-    CONSTRAINT `sequencing_results_sample_id_amplicon_id` PRIMARY KEY ( `sample_id`, `amplicon_id` ),
+    CONSTRAINT `sequencing_results_sample_id_crRNA_id` PRIMARY KEY ( `sample_id`, `crRNA_id` ),
     FOREIGN KEY (sample_id) REFERENCES sample(sample_id),
-    FOREIGN KEY (amplicon_id) REFERENCES amplicon(amplicon_id)
+    FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id)
 ) ENGINE = InnoDB;
 
 create table allele (
@@ -276,12 +280,12 @@ create table sample_allele (
 ) ENGINE = InnoDB;
 
 create table kaspar (
-    kaspar_id VARCHAR(10),
+    kaspar_id VARCHAR(10) PRIMARY KEY,
     allele_id INT UNSIGNED NOT NULL,
     allele_number VARCHAR(10) NOT NULL,
     plate_id INT UNSIGNED,
     well_id CHAR(3),
-    CONSTRAINT `kaspar_kaspar_id_allele_id` PRIMARY KEY ( `kaspar_id`, `allele_id` ),
+    CONSTRAINT `kaspar_kaspar_id_allele_id` UNIQUE ( `kaspar_id`, `allele_id` ),
     FOREIGN KEY (allele_id) REFERENCES allele(allele_id),
     FOREIGN KEY (plate_id) REFERENCES plate(plate_id)
 ) ENGINE = InnoDB;
