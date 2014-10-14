@@ -12,6 +12,8 @@ use Carp;
 use Scalar::Util qw( weaken );
 use DateTime;
 
+with 'Crispr::SharedMethods';
+
 my $debug = 0;
 
 enum 'Crispr::Target::Strand', [qw( 1 -1 )];
@@ -606,32 +608,32 @@ around 'designed' => sub {
     }
 };
 
-#_parse_date
+##_parse_date
+##
+##Usage       : $crRNA->_parse_date( '2014-03-21' );
+##Purpose     : Converts dates in form yyyy-mm-dd into DateTime object
+##Returns     : DateTime object
+##Parameters  : String
+##Throws      : If date is not in correct format
+##Comments    :
 #
-#Usage       : $crRNA->_parse_date( '2014-03-21' );
-#Purpose     : Converts dates in form yyyy-mm-dd into DateTime object
-#Returns     : DateTime object
-#Parameters  : String
-#Throws      : If date is not in correct format
-#Comments    :
-
-sub _parse_date {
-    my ( $self, $input ) = @_;
-    my $date_obj;
-    
-    if( $input =~ m/\A([0-9]{4})-([0-9]{2})-([0-9]{2})\z/xms ){
-        $date_obj = DateTime->new(
-            year       => $1,
-            month      => $2,
-            day        => $3,
-        );
-    }
-    else{
-        confess "The date supplied is not a valid format\n";
-    }
-    return $date_obj;
-}
-
+#sub _parse_date {
+#    my ( $self, $input ) = @_;
+#    my $date_obj;
+#    
+#    if( $input =~ m/\A([0-9]{4})-([0-9]{2})-([0-9]{2})\z/xms ){
+#        $date_obj = DateTime->new(
+#            year       => $1,
+#            month      => $2,
+#            day        => $3,
+#        );
+#    }
+#    else{
+#        confess "The date supplied is not a valid format\n";
+#    }
+#    return $date_obj;
+#}
+#
 
 __PACKAGE__->meta->make_immutable;
 1;
