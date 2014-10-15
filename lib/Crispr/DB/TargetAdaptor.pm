@@ -11,29 +11,17 @@ use DateTime;
 use Carp qw( cluck confess );
 use English qw( -no_match_vars );
 
-extends 'Crispr::DB::DBAdaptor';
+extends 'Crispr::DB::BaseAdaptor';
 
 =method new
 
   Usage       : my $target_adaptor = Crispr::TargetAdaptor->new(
-					driver => 'mysql',
-                    host => 'dbhost',
-                    port => dbport,
 					dbname => 'db_name',
-					user => 'dbuser',
-					pass => 'dbpassword',
-					dbfile => 'test.db',
 					connection => $connection,
                 );
   Purpose     : Constructor for creating target adaptor objects
   Returns     : Crispr::TargetAdaptor object
-  Parameters  :     driver => Str,
-                    host => Str,
-                    port => Int,
-					dbname => Str,
-					user => Str,
-					pass => Str,
-					dbfile => Str,
+  Parameters  :     dbname => Str,
 					connection => DBIx::Connector object,
   Throws      : If parameters are not the correct type
   Comments    : None

@@ -14,7 +14,7 @@ use Readonly;
 
 use Crispr::DB::DBConnection;
 
-# Number of tests in the loop
+# Number of tests
 Readonly my $TESTS_IN_COMMON => 1 + 11 + 1 + 5 + 2 + 6 + 6 + 6 + 60 + 1;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON + 5,
