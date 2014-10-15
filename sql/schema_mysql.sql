@@ -263,7 +263,9 @@ create table allele (
     chr VARCHAR(30) NOT NULL,
     pos INT UNSIGNED NOT NULL,
     ref_allele VARCHAR(200) NOT NULL,
-    alt_allele VARCHAR(200) NOT NULL
+    alt_allele VARCHAR(200) NOT NULL,
+    ref_seq VARCHAR(200),
+    alt_seq VARCHAR(200)
 ) ENGINE = InnoDB;
 
 create table sample_allele (
