@@ -14,7 +14,7 @@ use Readonly;
 
 use Crispr::DB::DBAdaptor;
 
-Readonly my $TESTS_FOREACH_DBC => 1 + 16 + 5 + 2 + 38;    # Number of tests in the loop
+Readonly my $TESTS_FOREACH_DBC => 1 + 17 + 5 + 2 + 38;    # Number of tests in the loop
 plan tests => 2 * $TESTS_FOREACH_DBC;
 
 ##  database tests  ##
@@ -70,11 +70,11 @@ foreach my $db_adaptor ( @db_adaptors ){
     isa_ok( $DB_ad, 'Crispr::DB::DBAdaptor', "$driver: test inital Adaptor object class" );
     $tests++;
     
-    # check method calls 16 tests
+    # check method calls 17 tests
     my @methods = qw( driver host port dbname user
         pass dbfile connection db_params check_entry_exists_in_db
         fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement _db_error_handling _data_source get_adaptor
-        _target 
+        _target _cas9_prep 
     );
     
     foreach my $method ( @methods ) {
@@ -111,8 +111,12 @@ foreach my $db_adaptor ( @db_adaptors ){
     isa_ok( $DB_ad->get_adaptor( 'targetadaptor' ), 'Crispr::DB::TargetAdaptor', "$driver: get targetadaptor adaptor" );
     isa_ok( $DB_ad->get_adaptor( 'target_adaptor' ), 'Crispr::DB::TargetAdaptor', "$driver: get target_adaptor adaptor" );
     
+    isa_ok( $DB_ad->get_adaptor( 'cas9_prep' ), 'Crispr::DB::Cas9PrepAdaptor', "$driver: get cas9_prep adaptor" );
+    isa_ok( $DB_ad->get_adaptor( 'cas9_prepadaptor' ), 'Crispr::DB::Cas9PrepAdaptor', "$driver: get cas9_prepadaptor adaptor" );
+    isa_ok( $DB_ad->get_adaptor( 'cas9_prep_adaptor' ), 'Crispr::DB::Cas9PrepAdaptor', "$driver: get cas9_prep_adaptor adaptor" );
+
     SKIP: {
-        skip "methods not implemented yet!", 34;
+        skip "methods not implemented yet!", 31;
         
         isa_ok( $DB_ad->get_adaptor( 'crRNA' ), 'Crispr::DB::crRNAAdaptor', "$driver: get crRNA adaptor" );
         isa_ok( $DB_ad->get_adaptor( 'crRNAadaptor' ), 'Crispr::DB::crRNAAdaptor', "$driver: get crRNAadaptor adaptor" );
@@ -127,27 +131,24 @@ foreach my $db_adaptor ( @db_adaptors ){
         isa_ok( $DB_ad->get_adaptor( 'plate' ), 'Crispr::DB::PlateAdaptor', "$driver: get plate adaptor" );
         isa_ok( $DB_ad->get_adaptor( 'plateadaptor' ), 'Crispr::DB::PlateAdaptor', "$driver: get plateadaptor adaptor" );
         isa_ok( $DB_ad->get_adaptor( 'plate_adaptor' ), 'Crispr::DB::PlateAdaptor', "$driver: get plate_adaptor adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'cas9_prep' ), 'Crispr::DB::PlateAdaptor', "$driver: get cas9_prep adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'cas9_prepadaptor' ), 'Crispr::DB::PlateAdaptor', "$driver: get cas9_prepadaptor adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'cas9_prep_adaptor' ), 'Crispr::DB::PlateAdaptor', "$driver: get cas9_prep_adaptor adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'guiderna_prep' ), 'Crispr::DB::PlateAdaptor', "$driver: get guiderna_prep adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'guiderna_prepadaptor' ), 'Crispr::DB::PlateAdaptor', "$driver: get guiderna_prepadaptor adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'guiderna_prep_adaptor' ), 'Crispr::DB::PlateAdaptor', "$driver: get guiderna_prep_adaptor adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'injection_pool' ), 'Crispr::DB::PlateAdaptor', "$driver: get injection_pool adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'injection_pooladaptor' ), 'Crispr::DB::PlateAdaptor', "$driver: get injection_pooladaptor adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'injection_pool_adaptor' ), 'Crispr::DB::PlateAdaptor', "$driver: get injection_pool_adaptor adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'kasp' ), 'Crispr::DB::PlateAdaptor', "$driver: get kasp adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'kaspadaptor' ), 'Crispr::DB::PlateAdaptor', "$driver: get kaspadaptor adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'kasp_adaptor' ), 'Crispr::DB::PlateAdaptor', "$driver: get kasp_adaptor adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'plex' ), 'Crispr::DB::PlateAdaptor', "$driver: get plex adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'plexadaptor' ), 'Crispr::DB::PlateAdaptor', "$driver: get plexadaptor adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'plex_adaptor' ), 'Crispr::DB::PlateAdaptor', "$driver: get plex_adaptor adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'sample' ), 'Crispr::DB::PlateAdaptor', "$driver: get sample adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'sampleadaptor' ), 'Crispr::DB::PlateAdaptor', "$driver: get sampleadaptor adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'sample_adaptor' ), 'Crispr::DB::PlateAdaptor', "$driver: get sample_adaptor adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'subplex' ), 'Crispr::DB::PlateAdaptor', "$driver: get subplex adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'subplexadaptor' ), 'Crispr::DB::PlateAdaptor', "$driver: get subplexadaptor adaptor" );
-        isa_ok( $DB_ad->get_adaptor( 'subplex_adaptor' ), 'Crispr::DB::PlateAdaptor', "$driver: get subplex_adaptor adaptor" );
+        isa_ok( $DB_ad->get_adaptor( 'guiderna_prep' ), 'Crispr::DB::GuideRNAPrepAdaptor', "$driver: get guiderna_prep adaptor" );
+        isa_ok( $DB_ad->get_adaptor( 'guiderna_prepadaptor' ), 'Crispr::DB::GuideRNAPrepAdaptor', "$driver: get guiderna_prepadaptor adaptor" );
+        isa_ok( $DB_ad->get_adaptor( 'guiderna_prep_adaptor' ), 'Crispr::DB::GuideRNAPrepAdaptor', "$driver: get guiderna_prep_adaptor adaptor" );
+        isa_ok( $DB_ad->get_adaptor( 'injection_pool' ), 'Crispr::DB::InjectionPoolAdaptor', "$driver: get injection_pool adaptor" );
+        isa_ok( $DB_ad->get_adaptor( 'injection_pooladaptor' ), 'Crispr::DB::InjectionPoolAdaptor', "$driver: get injection_pooladaptor adaptor" );
+        isa_ok( $DB_ad->get_adaptor( 'injection_pool_adaptor' ), 'Crispr::DB::InjectionPoolAdaptor', "$driver: get injection_pool_adaptor adaptor" );
+        isa_ok( $DB_ad->get_adaptor( 'kasp' ), 'Crispr::DB::KaspAdaptor', "$driver: get kasp adaptor" );
+        isa_ok( $DB_ad->get_adaptor( 'kaspadaptor' ), 'Crispr::DB::KaspAdaptor', "$driver: get kaspadaptor adaptor" );
+        isa_ok( $DB_ad->get_adaptor( 'kasp_adaptor' ), 'Crispr::DB::KaspAdaptor', "$driver: get kasp_adaptor adaptor" );
+        isa_ok( $DB_ad->get_adaptor( 'plex' ), 'Crispr::DB::PlexAdaptor', "$driver: get plex adaptor" );
+        isa_ok( $DB_ad->get_adaptor( 'plexadaptor' ), 'Crispr::DB::PlexAdaptor', "$driver: get plexadaptor adaptor" );
+        isa_ok( $DB_ad->get_adaptor( 'plex_adaptor' ), 'Crispr::DB::PlexAdaptor', "$driver: get plex_adaptor adaptor" );
+        isa_ok( $DB_ad->get_adaptor( 'sample' ), 'Crispr::DB::SampleAdaptor', "$driver: get sample adaptor" );
+        isa_ok( $DB_ad->get_adaptor( 'sampleadaptor' ), 'Crispr::DB::SampleAdaptor', "$driver: get sampleadaptor adaptor" );
+        isa_ok( $DB_ad->get_adaptor( 'sample_adaptor' ), 'Crispr::DB::SampleAdaptor', "$driver: get sample_adaptor adaptor" );
+        isa_ok( $DB_ad->get_adaptor( 'subplex' ), 'Crispr::DB::SubplexAdaptor', "$driver: get subplex adaptor" );
+        isa_ok( $DB_ad->get_adaptor( 'subplexadaptor' ), 'Crispr::DB::SubplexAdaptor', "$driver: get subplexadaptor adaptor" );
+        isa_ok( $DB_ad->get_adaptor( 'subplex_adaptor' ), 'Crispr::DB::SubplexAdaptor', "$driver: get subplex_adaptor adaptor" );
     }
     
     throws_ok { $DB_ad->get_adaptor( 'cheese' ) } qr/is\snot\sa\srecognised\sadaptor\stype/, "$driver: Throws on unrecognised adaptor type";

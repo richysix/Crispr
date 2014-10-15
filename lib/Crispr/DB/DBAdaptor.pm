@@ -14,6 +14,7 @@ use English qw( -no_match_vars );
 use DBIx::Connector;
 use Data::Dumper;
 use Crispr::DB::TargetAdaptor;
+use Crispr::DB::Cas9PrepAdaptor;
 use Crispr::Config;
 
 =method new
@@ -354,30 +355,19 @@ sub get_adaptor {
     my %adaptor_codrefs = (
         target => \&_target,
         targetadaptor => \&_target,
-        target_adaptor => \&_target,
+        cas9prep => \&_cas9_prep,
+        cas9prepadaptor => \&_cas9_prep,
     );
     
-    if( exists $adaptor_codrefs{ lc $adaptor_type } ){
-        $adaptor_codrefs{ lc $adaptor_type }->( $self, );
+    my $internal_adaptor_type = lc( $adaptor_type );
+    $internal_adaptor_type =~ s/_//xmsg;
+    if( exists $adaptor_codrefs{ lc $internal_adaptor_type } ){
+        $adaptor_codrefs{ lc $internal_adaptor_type }->( $self, );
     }
     else{
         die "$adaptor_type is not a recognised adaptor type.\n";
     }    
 }
-
-=method _target
-
-  Usage       : $self->_target;
-  Purpose     : internal method to retrieve a Target Adaptor.
-  Returns     : Crispr::DB::TargetAdaptor object
-  Parameters  : None
-  Throws      : 
-  Comments    : 
-
-=cut
-
-sub _target { my $self = shift; return Crispr::DB::TargetAdaptor->new( $self->db_params, ); }
-
 
 =method db_params
 
@@ -441,7 +431,7 @@ sub check_entry_exists_in_db {
             $exists = 1;
         }
         elsif( $rows[0]->[0] > 1 ){
-            die "TOO MANY ITEMS";
+            confess "TOO MANY ITEMS";
         }
     }
     
@@ -511,6 +501,34 @@ sub fetch_rows_for_generic_select_statement {
     }
     return $results;
 }
+
+=method _target
+
+  Usage       : $self->_target;
+  Purpose     : internal method to retrieve a Target Adaptor.
+  Returns     : Crispr::DB::TargetAdaptor object
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
+sub _target { my $self = shift; return Crispr::DB::TargetAdaptor->new( $self->db_params, ); }
+
+=method _cas9_prep
+
+  Usage       : $self->_cas9_prep;
+  Purpose     : internal method to retrieve a Target Adaptor.
+  Returns     : Crispr::DB::TargetAdaptor object
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
+sub _cas9_prep { my $self = shift; return Crispr::DB::Cas9PrepAdaptor->new( $self->db_params, ); }
+
+
 
 my %reports_for = (
     'Crispr::DB::crRNAAdaptor' => {
