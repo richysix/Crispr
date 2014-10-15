@@ -1,8 +1,8 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
-package Crispr::DB::DBAdaptor;
+package Crispr::DB::DBConnection;
 ## use critic
 
-# ABSTRACT: DBAdaptor object - A object for connecting to a MySQL/SQLite database
+# ABSTRACT: DBConnection object - A object for connecting to a MySQL/SQLite database
 
 use warnings;
 use strict;
@@ -13,13 +13,14 @@ use Carp;
 use English qw( -no_match_vars );
 use DBIx::Connector;
 use Data::Dumper;
-use Crispr::DB::TargetAdaptor;
-use Crispr::DB::Cas9PrepAdaptor;
 use Crispr::Config;
+use Crispr::DB::TargetAdaptor;
+use Crispr::DB::crRNAAdaptor;
+use Crispr::DB::Cas9PrepAdaptor;
 
 =method new
 
-  Usage       : my $db_adaptor = Crispr::DBAdaptor->new(
+  Usage       : my $db_connection = Crispr::DBConnection->new(
                     driver => 'MYSQL'
                     host => 'HOST',
                     port => 'PORT',
@@ -28,8 +29,8 @@ use Crispr::Config;
                     pass => 'PASS',
                     dbfile => 'db_file.db',
                 );
-  Purpose     : Constructor for creating DBAdaptor objects
-  Returns     : Crispr::DBAdaptor object
+  Purpose     : Constructor for creating DBConnection objects
+  Returns     : Crispr::DBConnection object
   Parameters  :     driver => Str
                     host => Str
                     port => Str
@@ -175,7 +176,7 @@ has 'connection' => (
 
   Usage       : 
   Purpose     : used to set object attributes from config file/environment variables/script options
-  Returns     : new DBAdaptor object
+  Returns     : new DBConnection object
   Parameters  : parameters supplied when new method is called
   Throws      : If the parameter is a string but it is not a filename that exists
                 If a reference other than a HashRef is supplied
@@ -341,7 +342,7 @@ sub _data_source {
 
   Usage       : $self->get_adaptor( 'object_type' );
   Purpose     : method to retrieve a specific adaptor type.
-  Returns     : Crispr::DB::DBAdaptor object
+  Returns     : Crispr::DB::DBConnection object
   Parameters  : Str (Adaptor type)
   Throws      : If input string is not recognised.
   Comments    : Creates a new adaptor of the correct type and returns it.
@@ -349,20 +350,22 @@ sub _data_source {
 =cut
 
 sub get_adaptor {
-    my $self = shift;
-    my $adaptor_type = shift;
+    my ( $self, $adaptor_type, ) = @_;
     
     my %adaptor_codrefs = (
-        target => \&_target,
-        targetadaptor => \&_target,
-        cas9prep => \&_cas9_prep,
-        cas9prepadaptor => \&_cas9_prep,
+        target => 'Crispr::DB::TargetAdaptor',
+        targetadaptor => 'Crispr::DB::TargetAdaptor',
+        crrna => 'Crispr::DB::crRNAAdaptor',
+        crrnaadaptor => 'Crispr::DB::crRNAAdaptor',
+        cas9prep => 'Crispr::DB::Cas9PrepAdaptor',
+        cas9prepadaptor => 'Crispr::DB::Cas9PrepAdaptor',
     );
     
     my $internal_adaptor_type = lc( $adaptor_type );
     $internal_adaptor_type =~ s/_//xmsg;
-    if( exists $adaptor_codrefs{ lc $internal_adaptor_type } ){
-        $adaptor_codrefs{ lc $internal_adaptor_type }->( $self, );
+    if( exists $adaptor_codrefs{ $internal_adaptor_type } ){
+        return $adaptor_codrefs{ $internal_adaptor_type }->new( connection => $self->connection, );
+        #return $adaptor_codrefs{ $internal_adaptor_type }->( $self, );
     }
     else{
         die "$adaptor_type is not a recognised adaptor type.\n";
@@ -396,186 +399,6 @@ sub db_params {
     return \%db_params;
 }
 
-=method check_entry_exists_in_db
-
-  Usage       : $self->check_entry_exists_in_db( $check_statement, $params );
-  Purpose     : method used to check whether a particular entry exists in the database.
-                Takes a MySQL statement of the form select count(*) from table where condition = ?;'
-                and parameters
-  Returns     : 1 if entry exists, undef if not
-  Parameters  : check statement (Str)
-                statement parameters (ArrayRef[Str])
-  Throws      : 
-  Comments    : 
-
-=cut
-
-sub check_entry_exists_in_db {
-    # expects check statement of the form 'select count(*) from table where condition = ?;'
-    my ( $self, $check_statement, $params ) = @_;
-    my $dbh = $self->connection->dbh();
-    my $exists;
-    
-    my $sth = $dbh->prepare( $check_statement );
-    $sth->execute( @{$params} );
-    my $num_rows = 0;
-    my @rows;
-    while( my @fields = $sth->fetchrow_array ){
-        push @rows, \@fields;
-    }
-    if( scalar @rows > 1 ){
-        confess "TOO MANY ROWS";
-    }
-    elsif( scalar @rows == 1 ){
-        if( $rows[0]->[0] == 1 ){
-            $exists = 1;
-        }
-        elsif( $rows[0]->[0] > 1 ){
-            confess "TOO MANY ITEMS";
-        }
-    }
-    
-    return $exists;
-}
-
-=method fetch_rows_expecting_single_row
-
-  Usage       : $self->fetch_rows_expecting_single_row( $sql_statement, $parameters );
-  Purpose     : method to fetch a row from the database where the result should be unique.
-  Returns     : ArrayRef
-  Parameters  : MySQL statement (Str)
-                Parameters (ArrayRef)
-  Throws      : If no rows are returned from the database.
-                If more than one row is returned.
-  Comments    : 
-
-=cut
-
-sub fetch_rows_expecting_single_row {
-	my ( $self, $statement, $params, ) = @_;
-    
-    my $result;
-    eval{
-        $result = $self->fetch_rows_for_generic_select_statement( $statement, $params, );
-    };
-    
-    if( $EVAL_ERROR ){
-        if( $EVAL_ERROR =~ m/NO\sROWS/xms ){
-            die 'NO ROWS';
-        }
-        else{
-            die "An unexpected problem occured. $EVAL_ERROR\n";
-        }
-    }
-    if( scalar @$result > 1 ){
-		die 'TOO MANY ROWS';
-    }
-    
-    return $result->[0];
-}
-
-=method fetch_rows_for_generic_select_statement
-
-  Usage       : $self->fetch_rows_for_generic_select_statement( $sql_statement, $parameters );
-  Purpose     : method to execute a generic select statement and return the rows from the db.
-  Returns     : ArrayRef[Str]
-  Parameters  : MySQL statement (Str)
-                Parameters (ArrayRef)
-  Throws      : If no rows are returned from the database.
-  Comments    : 
-
-=cut
-
-sub fetch_rows_for_generic_select_statement {
-	my ( $self, $statement, $params, ) = @_;
-    my $dbh = $self->connection->dbh();
-    my $sth = $dbh->prepare($statement);
-    $sth->execute( @{$params} );
-    
-    my $results = [];
-	while( my @fields = $sth->fetchrow_array ){
-		push @$results, \@fields;
-	}
-    if( scalar @$results == 0 ){
-		die 'NO ROWS';
-    }
-    return $results;
-}
-
-=method _target
-
-  Usage       : $self->_target;
-  Purpose     : internal method to retrieve a Target Adaptor.
-  Returns     : Crispr::DB::TargetAdaptor object
-  Parameters  : None
-  Throws      : 
-  Comments    : 
-
-=cut
-
-sub _target { my $self = shift; return Crispr::DB::TargetAdaptor->new( $self->db_params, ); }
-
-=method _cas9_prep
-
-  Usage       : $self->_cas9_prep;
-  Purpose     : internal method to retrieve a Target Adaptor.
-  Returns     : Crispr::DB::TargetAdaptor object
-  Parameters  : None
-  Throws      : 
-  Comments    : 
-
-=cut
-
-sub _cas9_prep { my $self = shift; return Crispr::DB::Cas9PrepAdaptor->new( $self->db_params, ); }
-
-
-
-my %reports_for = (
-    'Crispr::DB::crRNAAdaptor' => {
-        'NO ROWS'   => "crRNA does not exist in the database.",
-        'ERROR'     => "crRNAAdaptor ERROR",
-    },
-    
-);
-
-=method _db_error_handling
-
-  Usage       : $self->_db_error_handling( $error_message, $SQL_statement, $parameters );
-  Purpose     : internal method to deal with error messages from the database.
-  Returns     : Throws an exception that depends on the Adaptor type and
-                the error message.
-  Parameters  : Error Message (Str)
-                MySQL statement (Str)
-                Parameters (ArrayRef)
-  Throws      : 
-  Comments    : 
-
-=cut
-
-sub _db_error_handling{
-    my ( $self, $error_msg, $statement, $params,  ) = @_;
-    
-    if( exists $reports_for{ ref $self } ){
-        my ( $error, $message );
-        if( $error_msg =~ m/\A([A-Z[:space:]]+)\sat/xms ){
-            $error = $1;
-            $message = $reports_for{ ref $self }->{$error};
-        }
-        else{
-            $message = $error_msg;
-        }
-        die join("\n", $message,
-            $statement,
-            'Params: ', join(",", @{$params} ),
-            ), "\n";
-    }
-    else{
-        die join("\n", ref $self,
-                        $statement,
-                        'Params: ', join(",", @{$params} ),
-            ), "\n";
-    }
-}
 
 __PACKAGE__->meta->make_immutable;
 1;
@@ -586,10 +409,10 @@ __END__
 
 =head1 SYNOPSIS
  
-    use Crispr::DB::DBAdaptor;
+    use Crispr::DB::DBConnection;
     
-    # adaptor for a mysql database
-    my $db_adaptor = Crispr::DB::DBAdaptor->new(
+    # connection to a mysql database
+    my $db_connection = Crispr::DB::DBConnection->new(
         driver => 'mysql',
         host => 'HOST',
         port => 'PORT',
@@ -598,16 +421,19 @@ __END__
         pass => 'PASS',
     );
   
-    # adaptor for a sqlite database
-    my $db_adaptor = Crispr::DB::DBAdaptor->new(
+    # connection to an sqlite database
+    my $db_connection = Crispr::DB::DBConnection->new(
         driver => 'sqlite',
         dbfile => 'crispr.db',
+        dbname => 'crispr',
     );
-  
+    
+    # get a target adaptor
+    my $target_adaptor = $db_connection->get_adaptor( 'target' );
+
 =head1 DESCRIPTION
 
 This module is for connecting to a database to hold a single open connection to the db.
-The adaptor connects to the database upon creation and can be used to create new specific object adaptors.
+The connection to the database is established by this object upon creation and can be used to create new specific database object adaptors.
 The database connection is passed from one adaptor object to another to ensure that only one connection is opened to the database.
-It also provides a set of common database methods that can be used by all adaptor objects.
 

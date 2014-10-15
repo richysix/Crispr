@@ -79,11 +79,11 @@ sub BUILD {
                                 { RaiseError => 1, AutoCommit => 1 },
                                 )
                                 or die $DBI::errstr;
+        $self->_set_connection( $conn );
     }
     else{
         confess "Invalid driver (", $self->driver, ") specified";
     }
-    $self->_set_connection( $conn );
     $self->create();
 }
 
@@ -123,6 +123,12 @@ sub create {
     my ( $self, ) = @_;
     $self->alter_schema( 1 );
     return $self->connection;
+}
+
+sub disconnect {
+    my ( $self, ) = @_;
+    my $dbh = $self->connection->dbh;
+    $dbh->disconnect;
 }
 
 sub destroy {
