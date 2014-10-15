@@ -18,27 +18,33 @@ use Crispr::Config;
 =method new
 
   Usage       : my $db_adaptor = Crispr::BaseAdaptor->new(
-                    driver => 'MYSQL'
-                    host => 'HOST',
-                    port => 'PORT',
-                    dbname => 'DATABASE',
-                    user => 'USER',
-                    pass => 'PASS',
-                    dbfile => 'db_file.db',
+                    dbname => 'database_name',
+                    connection => $db_connection,
                 );
   Purpose     : Constructor for creating BaseAdaptor objects
   Returns     : Crispr::BaseAdaptor object
-  Parameters  :     driver => Str
-                    host => Str
-                    port => Str
-                    dbname => Str
-                    user => Str
-                    pass => Str
-                    dbfile => Str
+  Parameters  :     dbname => Str,
+                    connection => $DBIx::Connector object,
   Throws      : If parameters are not the correct type
-  Comments    : Automatically connects to the db when new is called.
+  Comments    : 
 
 =cut
+
+=method dbname
+
+  Usage       : $self->dbname();
+  Purpose     : Getter for the database (schema) name.
+  Returns     : Str
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
+has 'dbname' => (
+    is => 'ro',
+    isa => 'Str',
+);
 
 =method connection
 

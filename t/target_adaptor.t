@@ -16,8 +16,14 @@ my $count_output = qx/wc -l $test_data/;
 chomp $count_output;
 $count_output =~ s/\s$test_data//mxs;
 
-Readonly my $TESTS_FOREACH_DBC => ($count_output - 1)* 2 + 17;    # Number of tests in the loop
-plan tests => 2 * $TESTS_FOREACH_DBC;
+# Number of tests
+Readonly my $TESTS_IN_COMMON => ($count_output - 1)* 2 + 17;
+Readonly my %TESTS_FOREACH_DBC => (
+    mysql => $TESTS_IN_COMMON,
+    sqlite => $TESTS_IN_COMMON,
+);
+plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
+
 
 use DateTime;
 #get current date
@@ -37,6 +43,11 @@ my $slice_ad = Bio::EnsEMBL::Registry->get_adaptor( $species, 'core', 'slice' );
 # and returning a database connection
 use TestDB;
 
+if( !$ENV{MYSQL_DBNAME} || !$ENV{MYSQL_DBUSER} || !$ENV{MYSQL_DBPASS} ){
+    die "The following environment variables need to be set for connecting to the database!\n",
+        "MYSQL_DBNAME, MYSQL_DBUSER, MYSQL_DBPASS"; 
+}
+
 my %db_connection_params = (
     mysql => {
         driver => 'mysql',
@@ -54,22 +65,19 @@ my %db_connection_params = (
 );
 
 # TestDB creates test database, connects to it and gets db handle
-my @db_adaptors;
+my %test_db_connections;
 foreach my $driver ( keys %db_connection_params ){
-    # check environment variables have been set
-    if( $driver eq 'mysql' && ( !defined $ENV{MYSQL_DBNAME} || !defined $ENV{MYSQL_DBUSER} || !defined $ENV{MYSQL_DBPASS} ) ){
-            warn "The following environment variables need to be set for connecting to the MySQL database!\n",
-                "MYSQL_DBNAME, MYSQL_DBUSER, MYSQL_DBPASS\n";
-    }
-    else{
-        push @db_adaptors, TestDB->new( $db_connection_params{$driver} );
-    }
+    $test_db_connections{$driver} = TestDB->new( $db_connection_params{$driver} );
+    push @db_connections, $test_db_connections{$driver};
 }
 
 SKIP: {
-    skip 'No database connections available', $TESTS_FOREACH_DBC * 2 if !@db_adaptors;
-    skip 'Only one database connection available', $TESTS_FOREACH_DBC
-      if @db_adaptors == 1;
+    skip 'No database connections available', $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite} if !@db_connections;
+    
+    if( @db_connections == 1 ){
+        skip 'Only one database connection available', $TESTS_FOREACH_DBC{sqlite} if $db_connections[0]->driver eq 'mysql';
+        skip 'Only one database connection available', $TESTS_FOREACH_DBC{mysql} if $db_connections[0]->driver eq 'sqlite';
+    }
 }
 
 my $comment_regex = qr/#/;
@@ -82,19 +90,16 @@ my @required_attributes = qw{ target_name start end strand requires_enzyme
 
 my @columns;
 
-foreach my $db_adaptor ( @db_adaptors ){
-    my $driver = $db_adaptor->driver;
-    my $dbh = $db_adaptor->connection->dbh;
+foreach my $driver ( keys %test_db_connections ){
+    my $db_connection = $test_db_connections{$driver};
+    my $dbh = $db_connection->connection->dbh;
     # $dbh is a DBI database handle
     local $Test::DatabaseRow::dbh = $dbh;
     
-    # get database connection using database adaptor
-    $db_connection_params{ $driver }{ 'connection' } = $db_adaptor->connection;
-
     # make a new real Target Adaptor
-    my $target_ad = Crispr::DB::TargetAdaptor->new( $db_connection_params{ $driver }, );
+    my $target_adaptor = Crispr::DB::TargetAdaptor->new( connection => $db_connection->connection, );
     # 1 test
-    isa_ok( $target_ad, 'Crispr::DB::TargetAdaptor', "$driver: check object class is ok" );
+    isa_ok( $target_adaptor, 'Crispr::DB::TargetAdaptor', "$driver: check object class is ok" );
     
     use Crispr::Target;
     
@@ -115,7 +120,7 @@ foreach my $db_adaptor ( @db_adaptors ){
     
     # store target
     my $count = 0;
-    my $target = $target_ad->store($target);
+    my $target = $target_adaptor->store($target);
     $count++;
     # 1 tests
     is( $target->target_id, $count, "$driver: Check primary key" );
@@ -148,7 +153,7 @@ foreach my $db_adaptor ( @db_adaptors ){
     );
     
     # fetch target by name from database
-    my $target_3 = $target_ad->fetch_by_name_and_requestor( 'SLC39A14', 'crispr_test' );
+    my $target_3 = $target_adaptor->fetch_by_name_and_requestor( 'SLC39A14', 'crispr_test' );
     #print Dumper( $target_3 );
     #exit;
     # 13 tests
@@ -175,7 +180,7 @@ foreach my $db_adaptor ( @db_adaptors ){
     );
     
     # store - 2 tests
-    $target_ad->store($target_4);
+    $target_adaptor->store($target_4);
     $count++;
     is( $target_4->target_id, 2, "$driver: Store target with undef attributes" );
     
@@ -219,7 +224,7 @@ foreach my $db_adaptor ( @db_adaptors ){
         
         my $target = Crispr::Target->new( \%args );
         
-        $target_ad->store($target);
+        $target_adaptor->store($target);
         $count++;
         is( $target->target_id, $count, "$driver: Target id - $args{target_name}");
         row_ok(

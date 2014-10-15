@@ -361,11 +361,15 @@ sub get_adaptor {
         cas9prepadaptor => 'Crispr::DB::Cas9PrepAdaptor',
     );
     
+    my %args = (
+        dbname => $self->dbname,
+        connection => $self->connection,
+    );
+    
     my $internal_adaptor_type = lc( $adaptor_type );
     $internal_adaptor_type =~ s/_//xmsg;
     if( exists $adaptor_codrefs{ $internal_adaptor_type } ){
-        return $adaptor_codrefs{ $internal_adaptor_type }->new( connection => $self->connection, );
-        #return $adaptor_codrefs{ $internal_adaptor_type }->( $self, );
+        return $adaptor_codrefs{ $internal_adaptor_type }->new( \%args );
     }
     else{
         die "$adaptor_type is not a recognised adaptor type.\n";

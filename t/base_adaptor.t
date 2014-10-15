@@ -12,11 +12,10 @@ use List::MoreUtils qw( any );
 use DateTime;
 use Readonly;
 
-use Crispr::DB::DBConnection;
 use Crispr::DB::BaseAdaptor;
 
 # Number of tests in the loop
-Readonly my $TESTS_IN_COMMON => 1 + 5 + 4 + 2 + 3;
+Readonly my $TESTS_IN_COMMON => 1 + 6 + 4 + 2 + 3;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
@@ -54,12 +53,7 @@ my %db_connection_params = (
 my %test_db_connections;
 foreach my $driver ( keys %db_connection_params ){
     $test_db_connections{$driver} = TestDB->new( $db_connection_params{$driver} );
-}
-
-# reconnect to db using DBConnection
-my @db_connections;
-foreach my $driver ( keys %db_connection_params ){
-    push @db_connections, Crispr::DB::DBConnection->new( $db_connection_params{$driver} );
+    push @db_connections, $test_db_connections{$driver};
 }
 
 SKIP: {
@@ -71,8 +65,8 @@ SKIP: {
     }
 }
 
-foreach my $db_connection ( @db_connections ){
-    my $driver = $db_connection->driver;
+foreach my $driver ( keys %test_db_connections ){
+    my $db_connection = $test_db_connections{$driver};
     my $dbh = $db_connection->connection->dbh;
     # $dbh is a DBI database handle
     local $Test::DatabaseRow::dbh = $dbh;
@@ -82,9 +76,10 @@ foreach my $db_connection ( @db_connections ){
     # 1 test
     isa_ok( $base_adaptor, 'Crispr::DB::BaseAdaptor', "$driver: test inital Adaptor object class" );
     
-    # check method calls 5 tests
+    # check method calls 6 tests
     my @methods = qw(
-        connection check_entry_exists_in_db fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement _db_error_handling
+        dbname connection check_entry_exists_in_db fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement
+        _db_error_handling
     );
     
     foreach my $method ( @methods ) {
