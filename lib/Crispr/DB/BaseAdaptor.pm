@@ -18,49 +18,34 @@ use Crispr::Config;
 =method new
 
   Usage       : my $db_adaptor = Crispr::BaseAdaptor->new(
-                    dbname => 'database_name',
-                    connection => $db_connection,
+                    db_connection => $db_connection,
                 );
   Purpose     : Constructor for creating BaseAdaptor objects
   Returns     : Crispr::BaseAdaptor object
-  Parameters  :     dbname => Str,
-                    connection => $DBIx::Connector object,
+  Parameters  :     db_connection => Crispr::DB::DBConnection object,
   Throws      : If parameters are not the correct type
   Comments    : 
 
 =cut
 
-=method dbname
+=method db_connection
 
-  Usage       : $self->dbname();
-  Purpose     : Getter for the database (schema) name.
-  Returns     : Str
-  Parameters  : None
-  Throws      : 
-  Comments    : 
-
-=cut
-
-has 'dbname' => (
-    is => 'ro',
-    isa => 'Str',
-);
-
-=method connection
-
-  Usage       : $self->connection();
+  Usage       : $self->db_connection();
   Purpose     : Getter for the db Connection object.
-  Returns     : DBIx::Connector
+  Returns     : Crispr::DB::DBConnection
   Parameters  : None
   Throws      : 
   Comments    : 
 
 =cut
 
-has 'connection' => (
+has 'db_connection' => (
     is => 'ro',
-    isa => 'DBIx::Connector',
-	writer => '_set_connection',    
+    isa => 'Crispr::DB::DBConnection',
+    handles => {
+        dbname => 'dbname',
+        connection => 'connection',
+    },
 );
 
 =method check_entry_exists_in_db

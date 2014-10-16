@@ -16,6 +16,7 @@ use Data::Dumper;
 use Crispr::Config;
 use Crispr::DB::TargetAdaptor;
 use Crispr::DB::crRNAAdaptor;
+use Crispr::DB::PlateAdaptor;
 use Crispr::DB::Cas9PrepAdaptor;
 
 =method new
@@ -359,11 +360,14 @@ sub get_adaptor {
         crrnaadaptor => 'Crispr::DB::crRNAAdaptor',
         cas9prep => 'Crispr::DB::Cas9PrepAdaptor',
         cas9prepadaptor => 'Crispr::DB::Cas9PrepAdaptor',
+        plate => 'Crispr::DB::PlateAdaptor',
+        plateadaptor => 'Crispr::DB::PlateAdaptor',
     );
     
     my %args = (
-        dbname => $self->dbname,
-        connection => $self->connection,
+        #dbname => $self->dbname,
+        #connection => $self->connection,
+        db_connection => $self,
     );
     
     my $internal_adaptor_type = lc( $adaptor_type );

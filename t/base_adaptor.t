@@ -71,8 +71,14 @@ foreach my $driver ( keys %test_db_connections ){
     # $dbh is a DBI database handle
     local $Test::DatabaseRow::dbh = $dbh;
     
+    # make a mock DBConnection object
+    my $mock_db_connection = Test::MockObject->new();
+    $mock_db_connection->set_isa( 'Crispr::DB::DBConnection' );
+    $mock_db_connection->mock( 'dbname', sub { return $db_connection->dbname } );
+    $mock_db_connection->mock( 'connection', sub { return $db_connection->connection } );
+    
     # make a new BaseAdaptor
-    my $base_adaptor = Crispr::DB::BaseAdaptor->new( connection => $db_connection->connection );
+    my $base_adaptor = Crispr::DB::BaseAdaptor->new( db_connection => $mock_db_connection );
     # 1 test
     isa_ok( $base_adaptor, 'Crispr::DB::BaseAdaptor', "$driver: test inital Adaptor object class" );
     
