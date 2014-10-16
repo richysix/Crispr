@@ -13,7 +13,7 @@ use English qw( -no_match_vars );
 use Crispr::Cas9;
 use Crispr::DB::Cas9Prep;
 
-extends 'Crispr::DB::DBAdaptor';
+extends 'Crispr::DB::BaseAdaptor';
 
 =method new
 
@@ -52,7 +52,7 @@ extends 'Crispr::DB::DBAdaptor';
   Throws      : If argument is not a Cas9Prep object
                 If there is an error during the execution of the SQL statements
                     In this case the transaction will be rolled back
-  Comments    : This method is required when consuming the DBAdaptor Role.
+  Comments    : 
 
 =cut
 
@@ -326,7 +326,7 @@ sub fetch_all_by_prep_type {
 #Returns     : Crispr::DB::Cas9Prep object
 #Parameters  : ArrayRef of Str
 #Throws      : 
-#Comments    : This method is required when consuming the DBAdaptor Role.
+#Comments    : 
 
 sub _make_new_object_from_db {
     my ( $self, $fields ) = @_;
