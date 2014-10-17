@@ -9,6 +9,7 @@ use strict;
 use Moose;
 use Moose::Util::TypeConstraints;
 use namespace::autoclean;
+use Readonly;
 
 subtype 'Crispr::Cas9::DNA',
     as 'Str',
@@ -46,10 +47,10 @@ subtype 'Crispr::Cas9::DNA',
   Comments    : 
 
 =cut
-
+Readonly my @TYPES = ( qw{ cas9_dnls_native cas9_dnls_nickase cas9_cherry_native cas9_nanos_native } );
 has 'type' => (
     is => 'ro',
-    isa => 'Maybe[Str]',
+    isa => enum( \@TYPES ),
     default => 'cas9_dnls_native',
 );
 

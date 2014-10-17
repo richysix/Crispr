@@ -185,7 +185,7 @@ create table restriction_enzymes (
 
 create table cas9 (
     cas9_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    cas9_type ENUM( 'cas9_dnls_native', 'cas9_cherry_native', 'cas9_nanos_native' ) NOT NULL,
+    cas9_type ENUM( 'cas9_dnls_native', 'cas9_dnls_nickase', 'cas9_cherry_native', 'cas9_nanos_native' ) NOT NULL,
     prep_type ENUM('dna', 'rna', 'protein') NOT NULL,
     made_by VARCHAR(10) NOT NULL,
     date DATE NOT NULL,

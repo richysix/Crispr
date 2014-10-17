@@ -58,9 +58,10 @@ like( join("\t", $cas9->info ), qr/$reg_str/, 'info' );
 $tests++;
 
 # check attribute validation
-throws_ok { $cas9->new( target_seq => 'GACTAE' ); } qr/Not\sa\svalid\sDNA\ssequence/, 'check throws on non-DNA target_seq';
-throws_ok { $cas9->new( PAM => 'GACTAE' ); } qr/Not\sa\svalid\sDNA\ssequence/, 'check throws on non-DNA PAM';
-$tests += 2;
+throws_ok { Crispr::Cas9->new( target_seq => 'GACTAE' ); } qr/Not\sa\svalid\sDNA\ssequence/, 'check throws on non-DNA target_seq';
+throws_ok { Crispr::Cas9->new( PAM => 'GACTAE' ); } qr/Not\sa\svalid\sDNA\ssequence/, 'check throws on non-DNA PAM';
+throws_ok { Crispr::Cas9->new( type => 'cas9_gfp' ); } qr/Validation\sfailed/, 'check throws on cas9 type not in ENUM';
+$tests += 3;
 
 # check _parse_species
 my $cas9_tmp = Crispr::Cas9->new( species => 'streptococcus_pyogenes' );
