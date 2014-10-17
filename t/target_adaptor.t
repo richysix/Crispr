@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 # target_adaptor.t
+use warnings;
+use strict;
+
 use Test::More;
 use Test::Exception;
 use Test::Warn;
@@ -23,7 +26,6 @@ Readonly my %TESTS_FOREACH_DBC => (
     sqlite => $TESTS_IN_COMMON,
 );
 plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
-
 
 use DateTime;
 #get current date
@@ -65,10 +67,9 @@ my %db_connection_params = (
 );
 
 # TestDB creates test database, connects to it and gets db handle
-my %test_db_connections;
+my @db_connections;
 foreach my $driver ( keys %db_connection_params ){
-    $test_db_connections{$driver} = TestDB->new( $db_connection_params{$driver} );
-    push @db_connections, $test_db_connections{$driver};
+    push @db_connections, TestDB->new( $db_connection_params{$driver} );
 }
 
 SKIP: {
@@ -90,8 +91,8 @@ my @required_attributes = qw{ target_name start end strand requires_enzyme
 
 my @columns;
 
-foreach my $driver ( keys %test_db_connections ){
-    my $db_connection = $test_db_connections{$driver};
+foreach my $db_connection ( @db_connections ){
+    my $driver = $db_connection->driver;
     my $dbh = $db_connection->connection->dbh;
     # $dbh is a DBI database handle
     local $Test::DatabaseRow::dbh = $dbh;
@@ -126,7 +127,7 @@ foreach my $driver ( keys %test_db_connections ){
     
     # store target
     my $count = 0;
-    my $target = $target_adaptor->store($target);
+    $target = $target_adaptor->store($target);
     $count++;
     # 1 tests
     is( $target->target_id, $count, "$driver: Check primary key" );
@@ -226,7 +227,7 @@ foreach my $driver ( keys %test_db_connections ){
         }
         
         next if( exists $target_seen{ $args{'target_name'} } );
-        $target_seen{$name} = 1;
+        $target_seen{ $args{'target_name'} } = 1;
         
         my $target = Crispr::Target->new( \%args );
         
@@ -260,10 +261,8 @@ foreach my $driver ( keys %test_db_connections ){
     
     }
     close($fh);
-}
-
-# drop databases
-foreach ( @db_adaptors ){
-    $_->destroy();
+    
+    # drop database
+    $db_connection->destroy();
 }
 
