@@ -179,11 +179,13 @@ foreach my $db_connection ( @db_connections ){
     );
         
 
-    throws_ok { $cas9_prep_adaptor->store_cas9_prep('Cas9PrepObject') } qr/Argument\smust\sbe\sCrispr::DB::Cas9Prep\sobject/, "$driver: store_cas9_prep throws on string input";
+    throws_ok { $cas9_prep_adaptor->store_cas9_prep('Cas9PrepObject') }
+        qr/Argument\smust\sbe\sCrispr::DB::Cas9Prep\sobject/, "$driver: store_cas9_prep throws on string input";
     $regex = $driver eq 'mysql' ?   qr/Duplicate\sentry/xms
         :                           qr/not\sunique/xms;
     
-    throws_ok { $cas9_prep_adaptor->store_cas9_prep( $mock_cas9_prep_object_1) } $regex, "$driver: store_cas9_prep throws because of duplicate entry";
+    throws_ok { $cas9_prep_adaptor->store_cas9_prep( $mock_cas9_prep_object_1) }
+        $regex, "$driver: store_cas9_prep throws because of duplicate entry";
     ok( $cas9_prep_adaptor->store_cas9_prep( $mock_cas9_prep_object_2 ), "$driver: store_cas9_prep" );
     my $cas9_id = $driver eq 'mysql'    ?   3
         :                                   2;

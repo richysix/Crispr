@@ -353,6 +353,7 @@ END_SQL
                 made_by => $made_by,
                 date => $cas9_date,
             );
+            $cas9_cache{ $cas9_id } = $cas9_prep;
         }
         else{
             $cas9_prep = $cas9_cache{ $cas9_id };
