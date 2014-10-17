@@ -17,7 +17,7 @@ print {$tmp_fh} "#key\tvalue\n";
 for my $i ( 1..3 ){
     print {$tmp_fh} join("\t", 'key' . $i, 'value' . $i ), "\n";
 }
-print {$tmp_fh} join(q{ }, 'key4', 'value4' ), "\n";
+print {$tmp_fh} "\n", join(q{ }, 'key4', 'value4' ), "\n";
 close( $tmp_fh );
 
 my $config_obj;
