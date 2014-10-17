@@ -18,28 +18,14 @@ extends 'Crispr::DB::BaseAdaptor';
 =method new
 
   Usage       : my $cas9_prep_adaptor = Crispr::DB::Cas9PrepAdaptor->new(
-					driver => 'mysql',
-                    host => 'dbhost',
-                    port => dbport,
-					dbname => 'db_name',
-					user => 'dbuser',
-					pass => 'dbpassword',
-					dbfile => 'test.db',
-					connection => $connection,
+					db_connection => $db_connection,
                 );
   Purpose     : Constructor for creating cas9_prep adaptor objects
   Returns     : Crispr::DB::Cas9PrepAdaptor object
-  Parameters  :     driver => Str,
-                    host => Str,
-                    port => Int,
-					dbname => Str,
-					user => Str,
-					pass => Str,
-					dbfile => Str,
-					connection => DBIx::Connector object,
+  Parameters  :     db_connection => Crispr::DB::DBConnection object,
   Throws      : If parameters are not the correct type
   Comments    : The preferred method for constructing a Cas9PrepAdaptor is to use the
-                get_adaptor method with a previously constructed DBAdaptor object
+                get_adaptor method with a previously constructed DBConnection object
 
 =cut
 
@@ -175,9 +161,9 @@ sub fetch_by_ids {
 =method fetch_without_db_id
 
   Usage       : $cas9_preps = $cas9_prep_adaptor->fetch_without_db_id( $cas9_prep );
-  Purpose     : Fetch a cas9_prep given its database id
+  Purpose     : Fetch a cas9_prep without it's database id
   Returns     : Crispr::DB::Cas9Prep object
-  Parameters  : crispr-db cas9_id - Int
+  Parameters  : Crispr::DB::Cas9Prep
   Throws      : If no rows are returned from the database
   Comments    : None
 
@@ -204,11 +190,11 @@ sub fetch_without_db_id {
 
 =method fetch_all_by_type_and_date
 
-  Usage       : $cas9_preps = $cas9_prep_adaptor->fetch_all_by_type_and_date( $cas9_prep_name, $requestor );
-  Purpose     : Fetch a cas9_prep given a cas9_prep name
+  Usage       : $cas9_preps = $cas9_prep_adaptor->fetch_all_by_type_and_date( $cas9_type, $date );
+  Purpose     : Fetch a cas9_prep given a cas9 type and date
   Returns     : Crispr::DB::Cas9Prep object
-  Parameters  : crispr-db cas9_prep name - Str
-                requestor - Str
+  Parameters  : crispr-db cas9_type - Str
+                date - Str ('yyyy-mm-dd')
   Throws      : If no rows are returned from the database or if too many rows are returned
   Comments    : None
 
@@ -225,9 +211,9 @@ sub fetch_all_by_type_and_date {
 =method fetch_all_by_type
 
   Usage       : $cas9_preps = $cas9_prep_adaptor->fetch_all_by_type( $type );
-  Purpose     : Fetch a cas9_prep given a crRNA object
-  Returns     : Crispr::DB::Cas9Prep object
-  Parameters  : Crispr::crRNA object
+  Purpose     : Fetch a list of cas9_preps given a type
+  Returns     : ArrayRef of Crispr::DB::Cas9Prep objects
+  Parameters  : cas9_type => Str (e.g. 'cas9_dnls_native' )
   Throws      : If no rows are returned from the database
   Comments    : None
 
@@ -243,10 +229,10 @@ sub fetch_all_by_type {
 
 =method fetch_all_by_date
 
-  Usage       : $cas9_preps = $cas9_prep_adaptor->fetch_all_by_date( $crRNA );
-  Purpose     : Fetch a cas9_prep given a crRNA object
-  Returns     : Crispr::DB::Cas9Prep object
-  Parameters  : Crispr::crRNA object
+  Usage       : $cas9_preps = $cas9_prep_adaptor->fetch_all_by_date( $date );
+  Purpose     : Fetch a list of cas9_preps given a date
+  Returns     : ArrayRef of Crispr::DB::Cas9Prep objects
+  Parameters  : date  - Str ('yyyy-mm-dd')
   Throws      : If no rows are returned from the database
   Comments    : None
 
@@ -261,9 +247,9 @@ sub fetch_all_by_date  {
 
 =method fetch_all_by_made_by
 
-  Usage       : $cas9_preps = $cas9_prep_adaptor->fetch_all_by_made_by( $crRNA );
-  Purpose     : Fetch a cas9_prep given a crRNA object
-  Returns     : Crispr::DB::Cas9Prep object
+  Usage       : $cas9_preps = $cas9_prep_adaptor->fetch_all_by_made_by( $made_by );
+  Purpose     : Fetch a list of cas9_preps given a user
+  Returns     : ArrayRef of Crispr::DB::Cas9Prep objects
   Parameters  : Crispr::crRNA object
   Throws      : If no rows are returned from the database
   Comments    : None
@@ -279,10 +265,10 @@ sub fetch_all_by_made_by {
 
 =method fetch_all_by_prep_type
 
-  Usage       : $cas9_preps = $cas9_prep_adaptor->fetch_all_by_prep_type( $crRNA );
-  Purpose     : Fetch a cas9_prep given a crRNA object
-  Returns     : Crispr::DB::Cas9Prep object
-  Parameters  : Crispr::crRNA object
+  Usage       : $cas9_preps = $cas9_prep_adaptor->fetch_all_by_prep_type( 'rna' );
+  Purpose     : Fetch a list of cas9_preps of a given prep type
+  Returns     : List of Crispr::DB::Cas9Prep objects
+  Parameters  : prep_type => Str
   Throws      : If no rows are returned from the database
   Comments    : None
 
@@ -298,9 +284,10 @@ sub fetch_all_by_prep_type {
 #_fetch
 #
 #Usage       : $cas9_prep = $self->_fetch( $where_clause, $where_parameters );
-#Purpose     : Create a new object from a db entry
-#Returns     : Crispr::DB::Cas9Prep object
-#Parameters  : ArrayRef of Str
+#Purpose     : Fetch a Cas9Prep object from the database with arbitrary parameteres
+#Returns     : ArrayRef of Crispr::DB::Cas9Prep objects
+#Parameters  : where_clause => ArrayRef of Str (SQL where conditions)
+#               where_parameters => ArrayRef of parameters to bind to sql statement
 #Throws      : 
 #Comments    :
 
@@ -365,6 +352,15 @@ END_SQL
     return \@cas9_preps;    
 }
 
+#_make_new_object_from_db
+#
+#Usage       : $cas9_prep = $self->_make_new_object_from_db( \@fields );
+#Purpose     : Create a new Crispr::DB::Cas9Prep object from a db entry
+#Returns     : Crispr::DB::Cas9Prep object
+#Parameters  : ArrayRef of Str
+#Throws      : 
+#Comments    : Expects fields to be in table order ie db_id, cas9_type, prep_type, made_by, date
+
 sub _make_new_object_from_db {
     my ( $self, $fields ) = @_;
     return $self->_make_new_cas9_prep_from_db( $fields );
@@ -383,16 +379,22 @@ sub _make_new_cas9_prep_from_db {
     my ( $self, $fields ) = @_;
     my $cas9_prep;
 	
-    my $cas9 = Crispr::Cas9->new( type => $fields->[1] );
-	my %args = (
-		db_id => $fields->[0],
-        cas9 => $cas9,
-		prep_type => $fields->[2],
-		made_by => $fields->[3],
-		date => $fields->[4],
-	);
-	
-	$cas9_prep = Crispr::DB::Cas9Prep->new( %args );
+    if( !exists $cas9_cache{ $fields->[0] } ){
+        my $cas9 = Crispr::Cas9->new( type => $fields->[1] );
+        my %args = (
+            db_id => $fields->[0],
+            cas9 => $cas9,
+            prep_type => $fields->[2],
+            made_by => $fields->[3],
+            date => $fields->[4],
+        );
+        
+        $cas9_prep = Crispr::DB::Cas9Prep->new( %args );
+        $cas9_cache{ $fields->[0] } = $cas9_prep;
+    }
+    else{
+        $cas9_prep = $cas9_cache{ $fields->[0] };
+    }
 	
     return $cas9_prep;
 }
@@ -573,8 +575,8 @@ __END__
  
 =head1 SYNOPSIS
  
-    use Crispr::DB::DBAdaptor;
-    my $db_adaptor = Crispr::DB::DBAdaptor->new(
+    use Crispr::DB::DBConnection;
+    my $db_connection = Crispr::DB::DBConnection->new(
         host => 'HOST',
         port => 'PORT',
         dbname => 'DATABASE',
@@ -582,12 +584,12 @@ __END__
         pass => 'PASS',
     );
   
-    my $cas9_prep_adaptor = $db_adaptor->get_adaptor( 'cas9_prep' );
+    my $cas9_prep_adaptor = $db_connection->get_adaptor( 'cas9_prep' );
     
     # store a cas9_prep object in the db
     $cas9_prep_adaptor->store( $cas9_prep );
     
-    # retrieve a cas9_prep by id or name/requestor
+    # retrieve a cas9_prep by id
     my $cas9_prep = $cas9_prep_adaptor->fetch_by_id( '214' );
   
     # retrieve a cas9_prep by combination of type and date

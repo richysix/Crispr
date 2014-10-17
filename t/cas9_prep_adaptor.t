@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 # cas9_prep_adaptor.t
+use warnings;
+use strict;
+
 use Test::More;
 use Test::Exception;
 use Test::Warn;
@@ -181,7 +184,7 @@ foreach my $db_connection ( @db_connections ){
 
     throws_ok { $cas9_prep_adaptor->store_cas9_prep('Cas9PrepObject') }
         qr/Argument\smust\sbe\sCrispr::DB::Cas9Prep\sobject/, "$driver: store_cas9_prep throws on string input";
-    $regex = $driver eq 'mysql' ?   qr/Duplicate\sentry/xms
+    my $regex = $driver eq 'mysql' ?   qr/Duplicate\sentry/xms
         :                           qr/not\sunique/xms;
     
     throws_ok { $cas9_prep_adaptor->store_cas9_prep( $mock_cas9_prep_object_1) }
@@ -242,15 +245,15 @@ foreach my $db_connection ( @db_connections ){
     
     # fetch methods - 12 tests
     my $cas9_from_db_1;
-    ok( $cas9_from_db_1 = $cas9_prep_adaptor->_make_new_cas9_prep_from_db( [ '1', 'cas9_dnls_native', 'rna', 'cr_test', '2014-10-02' ] ), '_make_new_cas9_prep_from_db');
-    is( $cas9_from_db_1->db_id, 1, "$driver: object from db - check db_id");
+    ok( $cas9_from_db_1 = $cas9_prep_adaptor->_make_new_cas9_prep_from_db( [ '5', 'cas9_dnls_native', 'rna', 'cr_test', '2014-10-02' ] ), '_make_new_cas9_prep_from_db');
+    is( $cas9_from_db_1->db_id, 5, "$driver: object from db - check db_id");
     is( $cas9_from_db_1->type, 'cas9_dnls_native', "$driver: object from db - check type");
     is( $cas9_from_db_1->prep_type, 'rna', "$driver: object from db - check prep_type");
     is( $cas9_from_db_1->made_by, 'cr_test', "$driver: object from db - check made_by");
     is( $cas9_from_db_1->date, '2014-10-02', "$driver: object from db - check date");
     
-    ok( $cas9_from_db_1 = $cas9_prep_adaptor->_make_new_object_from_db( [ '2', 'cas9_dnls_nickase', 'dna', 'cr_test2', '2014-10-03' ] ), '_make_new_object_from_db');
-    is( $cas9_from_db_1->db_id, 2, "$driver: object from db - check db_id");
+    ok( $cas9_from_db_1 = $cas9_prep_adaptor->_make_new_object_from_db( [ '6', 'cas9_dnls_nickase', 'dna', 'cr_test2', '2014-10-03' ] ), '_make_new_object_from_db');
+    is( $cas9_from_db_1->db_id, 6, "$driver: object from db - check db_id");
     is( $cas9_from_db_1->type, 'cas9_dnls_nickase', "$driver: object from db - check type");
     is( $cas9_from_db_1->prep_type, 'dna', "$driver: object from db - check prep_type");
     is( $cas9_from_db_1->made_by, 'cr_test2', "$driver: object from db - check made_by");
@@ -275,7 +278,7 @@ foreach my $db_connection ( @db_connections ){
         my @cas9_preps = ( $mock_cas9_prep_object_2, $mock_cas9_prep_object_3 );
         foreach my $i ( 0..1 ){
             my $cas9_from_db = $cas9_objects_from_db->[$i];
-            $prep = $cas9_preps[$i];
+            my $prep = $cas9_preps[$i];
             is( $cas9_from_db->type, $prep->type, "$driver: object from db - check type");
             is( $cas9_from_db->prep_type, $prep->prep_type, "$driver: object from db - check prep_type");
             is( $cas9_from_db->made_by, $prep->made_by, "$driver: object from db - check made_by");
@@ -302,10 +305,6 @@ TODO: {
     
     ok( $cas9_prep_adaptor->delete_cas9_prep_from_db ( 'rna' ), 'delete_cas9_prep_from_db');
 }
+    $db_connection->destroy;
     
-}
-
-# drop databases
-foreach ( @db_adaptors ){
-    $_->destroy();
 }
