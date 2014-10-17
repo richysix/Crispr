@@ -203,6 +203,7 @@ create table injection (
     line_injected VARCHAR(10) NOT NULL,
     line_raised VARCHAR(10),
     sorted_by VARCHAR(40),
+    CONSTRAINT `injection_injection_name` UNIQUE ( `injection_name` ),
     FOREIGN KEY (cas9_id) REFERENCES cas9(cas9_id)
 ) ENGINE = InnoDB;
 
