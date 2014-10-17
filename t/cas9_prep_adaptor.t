@@ -11,16 +11,20 @@ use Readonly;
 
 use Crispr::DB::Cas9PrepAdaptor;
 
-Readonly my $TESTS_FOREACH_DBC => 1 + 26 + 12 + 1 + 12 + 4 + 8 + 6;    # Number of tests in the loop
-plan tests => 2 * $TESTS_FOREACH_DBC;
+Readonly my $TESTS_IN_COMMON => 1 + 21 + 12 + 1 + 12 + 5 + 8 + 10 + 1;
+Readonly my %TESTS_FOREACH_DBC => (
+    mysql => $TESTS_IN_COMMON,
+    sqlite => $TESTS_IN_COMMON,
+);
+plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
 
-# check attributes and methods - 8 + 18 tests
-my @attributes = ( qw{ driver host port dbname user pass dbfile connection } );
+# check attributes and methods - 3 + 18 tests
+my @attributes = ( qw{ dbname db_connection connection } );
 
 my @methods = (
     qw{ store store_cas9_prep store_cas9_preps fetch_by_id fetch_by_ids
-        fetch_all_by_type_and_date fetch_all_by_type fetch_all_by_date fetch_all_by_made_by fetch_all_by_prep_type
-        _make_new_object_from_db _make_new_cas9_prep_from_db delete_cas9_prep_from_db db_params check_entry_exists_in_db
+        fetch_without_db_id fetch_all_by_type_and_date fetch_all_by_type fetch_all_by_date fetch_all_by_made_by
+        fetch_all_by_prep_type _make_new_object_from_db _make_new_cas9_prep_from_db delete_cas9_prep_from_db check_entry_exists_in_db
         fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement _db_error_handling }
 );
 
@@ -45,34 +49,38 @@ my %db_connection_params = (
     }
 );
 
+if( !$ENV{MYSQL_DBNAME} || !$ENV{MYSQL_DBUSER} || !$ENV{MYSQL_DBPASS} ){
+    die "The following environment variables need to be set for connecting to the database!\n",
+        "MYSQL_DBNAME, MYSQL_DBUSER, MYSQL_DBPASS"; 
+}
+
 # TestDB creates test database, connects to it and gets db handle
-my @db_adaptors;
+my @db_connections;
 foreach my $driver ( keys %db_connection_params ){
-    # check environment variables have been set
-    if( $driver eq 'mysql' && ( !defined $ENV{MYSQL_DBNAME} || !defined $ENV{MYSQL_DBUSER} || !defined $ENV{MYSQL_DBPASS} ) ){
-            warn "The following environment variables need to be set for connecting to the MySQL database!\n",
-                "MYSQL_DBNAME, MYSQL_DBUSER, MYSQL_DBPASS\n";
-    }
-    else{
-        push @db_adaptors, TestDB->new( $db_connection_params{$driver} );
-    }
+    push @db_connections, TestDB->new( $db_connection_params{$driver} );
 }
 
 SKIP: {
-    skip 'No database connections available', $TESTS_FOREACH_DBC * 2 if !@db_adaptors;
-    skip 'Only one database connection available', $TESTS_FOREACH_DBC
-      if @db_adaptors == 1;
+    skip 'No database connections available', $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite} if !@db_connections;
+    
+    if( @db_connections == 1 ){
+        skip 'Only one database connection available', $TESTS_FOREACH_DBC{sqlite} if $db_connections[0]->driver eq 'mysql';
+        skip 'Only one database connection available', $TESTS_FOREACH_DBC{mysql} if $db_connections[0]->driver eq 'sqlite';
+    }
 }
 
-foreach my $db_adaptor ( @db_adaptors ){
-    my $driver = $db_adaptor->driver;
-    my $dbh = $db_adaptor->connection->dbh;
+foreach my $db_connection ( @db_connections ){
+    my $driver = $db_connection->driver;
+    my $dbh = $db_connection->connection->dbh;
     # $dbh is a DBI database handle
     local $Test::DatabaseRow::dbh = $dbh;
     
-    # get database connection using database adaptor
-    $db_connection_params{ $driver }{ 'connection' } = $db_adaptor->connection;
-
+    # make a mock DBConnection object
+    my $mock_db_connection = Test::MockObject->new();
+    $mock_db_connection->set_isa( 'Crispr::DB::DBConnection' );
+    $mock_db_connection->mock( 'dbname', sub { return $db_connection->dbname } );
+    $mock_db_connection->mock( 'connection', sub { return $db_connection->connection } );
+    
     # make mock Cas9 and Cas9Prep objects
     my $type = 'cas9_dnls_native';
     my $species = 's_pyogenes';
@@ -87,6 +95,16 @@ foreach my $db_adaptor ( @db_adaptors ){
     $mock_cas9_object->mock( 'PAM', sub{ return $pam } );
     $mock_cas9_object->mock( 'crispr_target_seq', sub{ return $crispr_target_seq } );
     $mock_cas9_object->mock( 'info', sub{ return ( $type, $species, $crispr_target_seq ) } );
+
+    my $type_2 = 'cas9_dnls_nickase';
+    my $mock_cas9_object_2 = Test::MockObject->new();
+    $mock_cas9_object_2->set_isa( 'Crispr::Cas9' );
+    $mock_cas9_object_2->mock( 'type', sub{ return $type_2 } );
+    $mock_cas9_object_2->mock( 'species', sub{ return $species } );
+    $mock_cas9_object_2->mock( 'target_seq', sub{ return $target_seq } );
+    $mock_cas9_object_2->mock( 'PAM', sub{ return $pam } );
+    $mock_cas9_object_2->mock( 'crispr_target_seq', sub{ return $crispr_target_seq } );
+    $mock_cas9_object_2->mock( 'info', sub{ return ( $type_2, $species, $crispr_target_seq ) } );
     
     my $prep_type = 'rna';
     my $made_by = 'cr_test';
@@ -114,28 +132,28 @@ foreach my $db_adaptor ( @db_adaptors ){
     my $prep_type_3 = 'rna';
     $mock_cas9_prep_object_3->set_isa( 'Crispr::DB::Cas9Prep' );
     $mock_cas9_prep_object_3->mock( 'db_id', sub{ return undef } );
-    $mock_cas9_prep_object_3->mock( 'cas9', sub{ return $mock_cas9_object } );
+    $mock_cas9_prep_object_3->mock( 'cas9', sub{ return $mock_cas9_object_2 } );
     $mock_cas9_prep_object_3->mock( 'prep_type', sub{ return $prep_type_3 } );
     $mock_cas9_prep_object_3->mock( 'made_by', sub{ return 'cr_test2' } );
     $mock_cas9_prep_object_3->mock( 'date', sub{ return $todays_date_obj->ymd } );
-    $mock_cas9_prep_object_3->mock( 'type', sub{ return $mock_cas9_object->type } );
+    $mock_cas9_prep_object_3->mock( 'type', sub{ return $mock_cas9_object_2->type } );
 
     my $mock_cas9_prep_object_4 = Test::MockObject->new();
     my $prep_type_4 = 'protein';
     $mock_cas9_prep_object_4->set_isa( 'Crispr::DB::Cas9Prep' );
     $mock_cas9_prep_object_4->mock( 'db_id', sub{ return undef } );
-    $mock_cas9_prep_object_4->mock( 'cas9', sub{ return $mock_cas9_object } );
+    $mock_cas9_prep_object_4->mock( 'cas9', sub{ return $mock_cas9_object_2 } );
     $mock_cas9_prep_object_4->mock( 'prep_type', sub{ return $prep_type_4 } );
     $mock_cas9_prep_object_4->mock( 'made_by', sub{ return 'cr_test2' } );
     $mock_cas9_prep_object_4->mock( 'date', sub{ return $todays_date_obj->ymd } );
-    $mock_cas9_prep_object_4->mock( 'type', sub{ return $mock_cas9_object->type } );
+    $mock_cas9_prep_object_4->mock( 'type', sub{ return $mock_cas9_object_2->type } );
 
     # make a new real Cas9Prep Adaptor
-    my $cas9_prep_adaptor = Crispr::DB::Cas9PrepAdaptor->new( $db_connection_params{ $driver }, );
+    my $cas9_prep_adaptor = Crispr::DB::Cas9PrepAdaptor->new( db_connection => $mock_db_connection, );
     # 1 test
     isa_ok( $cas9_prep_adaptor, 'Crispr::DB::Cas9PrepAdaptor', "$driver: check object class is ok" );
     
-    # check attributes and methods exist 8 + 18 tests
+    # check attributes and methods exist 3 + 17 tests
     foreach my $attribute ( @attributes ) {
         can_ok( $cas9_prep_adaptor, $attribute );
     }
@@ -239,8 +257,9 @@ foreach my $db_adaptor ( @db_adaptors ){
     SKIP: {
         my $cas9_from_db = $cas9_prep_adaptor->fetch_by_id( 1 );
         
-        skip "No cas9 returned from db!", 4 if !$cas9_from_db;
+        skip "No cas9 returned from db!", 5 if !$cas9_from_db;
         # test attributes
+        is( $cas9_from_db->db_id, 1, "$driver: object from db - check db id");
         is( $cas9_from_db->type, $mock_cas9_prep_object_1->type, "$driver: object from db - check type");
         is( $cas9_from_db->prep_type, $mock_cas9_prep_object_1->prep_type, "$driver: object from db - check prep_type");
         is( $cas9_from_db->made_by, $mock_cas9_prep_object_1->made_by, "$driver: object from db - check made_by");
@@ -264,15 +283,23 @@ foreach my $db_adaptor ( @db_adaptors ){
         }
     }
     
-    #TODO 6 tests
+    # check other fetch methods - 10 test
+    my $cas9_preps;
+    ok( $cas9_preps = $cas9_prep_adaptor->fetch_all_by_type_and_date( 'cas9_dnls_nickase', $todays_date_obj->ymd ), 'fetch_all_by_type_and_date');
+    is( scalar @{$cas9_preps}, 2, "check number returned by type and date");
+    ok( $cas9_preps = $cas9_prep_adaptor->fetch_all_by_type( 'cas9_dnls_native' ), 'fetch_all_by_type');
+    is( scalar @{$cas9_preps}, 2, "check number returned by fetch_all_by_type");
+    ok( $cas9_preps = $cas9_prep_adaptor->fetch_all_by_date( $todays_date_obj->ymd ), 'fetch_all_by_date');
+    is( scalar @{$cas9_preps}, 4, "check number returned by date");
+    ok( $cas9_preps = $cas9_prep_adaptor->fetch_all_by_made_by( 'cr_test' ), 'fetch_all_by_made_by');
+    is( scalar @{$cas9_preps}, 2, "check number returned by fetch_all_by_made_by");
+    ok( $cas9_preps = $cas9_prep_adaptor->fetch_all_by_prep_type( 'rna' ), 'fetch_all_by_prep_type');
+    is( scalar @{$cas9_preps}, 2, "check number returned by fetch_all_by_prep_type");
+    
+    #TODO 1 tests
 TODO: {
     local $TODO = 'methods not implemented yet.';
     
-    ok( $cas9_prep_adaptor->fetch_all_by_type_and_date( 'rna', $todays_date_obj->ymd ), 'fetch_all_by_type_and_date');
-    ok( $cas9_prep_adaptor->fetch_all_by_type( 'cas9_dnls_native' ), 'fetch_all_by_type');
-    ok( $cas9_prep_adaptor->fetch_all_by_date ( $todays_date_obj->ymd ), 'fetch_all_by_date');
-    ok( $cas9_prep_adaptor->fetch_all_by_made_by ( 'cr_test' ), 'fetch_all_by_made_by');
-    ok( $cas9_prep_adaptor->fetch_all_by_prep_type ( 'rna' ), 'fetch_all_by_prep_type');
     ok( $cas9_prep_adaptor->delete_cas9_prep_from_db ( 'rna' ), 'delete_cas9_prep_from_db');
 }
     

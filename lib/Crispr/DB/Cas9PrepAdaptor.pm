@@ -135,7 +135,7 @@ sub store_cas9_preps {
   Purpose     : Fetch a cas9_prep given its database id
   Returns     : Crispr::DB::Cas9Prep object
   Parameters  : crispr-db cas9_id - Int
-  Throws      : If no rows are returned from the database or if too many rows are returned
+  Throws      : If no rows are returned from the database
   Comments    : None
 
 =cut
@@ -143,26 +143,11 @@ sub store_cas9_preps {
 sub fetch_by_id {
     my ( $self, $id ) = @_;
 
-    my $statement = "select * from cas9 where cas9_id = ?;";
-    my $result;
-    eval{ $result = $self->fetch_rows_expecting_single_row( $statement, [ $id ] ); };
+    my $cas9_prep = $self->_fetch( 'cas9_id = ?', [ $id ] )->[0];
     
-    my $cas9_prep;
-    if( $EVAL_ERROR ){
-        if( $EVAL_ERROR =~ m/NO\sROWS/xms ){
-    		confess "Couldn't retrieve cas9_prep, $id, from database.\n";
-        }
-        elsif( $EVAL_ERROR =~ m/TOO\sMANY\sROWS/xms ){
-            confess "Cas9Prep id, $id, should be unique, but I got more than one row returned!\n";
-        }
-        else{
-            confess $EVAL_ERROR, "\n";
-        }
+    if( !$cas9_prep ){
+        confess "Couldn't retrieve cas9_prep, $id, from database.\n";
     }
-    else{
-        $cas9_prep = $self->_make_new_cas9_prep_from_db( $result, );
-    }
-    
     return $cas9_prep;
 }
 
@@ -173,7 +158,6 @@ sub fetch_by_id {
   Returns     : Arrayref of Crispr::DB::Cas9Prep objects
   Parameters  : Arrayref of crispr-db cas9_prep ids
   Throws      : If no rows are returned from the database for one of ids
-                If too many rows are returned from the database for one of ids
   Comments    : None
 
 =cut
@@ -186,6 +170,36 @@ sub fetch_by_ids {
     }
 	
     return \@cas9_preps;
+}
+
+=method fetch_without_db_id
+
+  Usage       : $cas9_preps = $cas9_prep_adaptor->fetch_without_db_id( $cas9_prep );
+  Purpose     : Fetch a cas9_prep given its database id
+  Returns     : Crispr::DB::Cas9Prep object
+  Parameters  : crispr-db cas9_id - Int
+  Throws      : If no rows are returned from the database
+  Comments    : None
+
+=cut
+
+sub fetch_without_db_id {
+    my ( $self, $cas9_prep ) = @_;
+
+    my $statement = join(" AND ", "cas9_type = ?",
+                            "prep_type = ?",
+                            "made_by = ?",
+                            "date = ?",
+                    ) . ";";
+    
+    $cas9_prep = $self->_fetch( 'cas9_id = ?',
+        [ $cas9_prep->type, $cas9_prep->prep_type,
+        $cas9_prep->made_by, $cas9_prep->date ] )->[0];
+    
+    if( !$cas9_prep ){
+        confess "Couldn't retrieve cas9_prep from database.\n";
+    }
+    return $cas9_prep;
 }
 
 =method fetch_all_by_type_and_date
@@ -201,32 +215,16 @@ sub fetch_by_ids {
 =cut
 
 sub fetch_all_by_type_and_date {
-    #my ( $self, $cas9_prep_type, $date ) = @_;
-    #
-    #my $statement = "select * from cas9_prep where cas9_prep_name = ? and requestor = ?;";
-    #my $cas9_prep;
-    #eval{
-    #    my $results = $self->fetch_rows_expecting_single_row( $statement, [ $cas9_prep_name, $requestor, ], );
-    #    $cas9_prep = $self->_make_new_cas9_prep_from_db( $results );
-    #};
-    #if( $EVAL_ERROR ){
-    #    if( $EVAL_ERROR eq 'NO ROWS' ){
-    #        confess "Couldn't retrieve cas9_prep, $cas9_prep_name, from database.\n";
-    #    }
-    #    elsif( $EVAL_ERROR eq 'TOO MANY ROWS' ){
-    #        confess "Cas9Prep name, $cas9_prep_name, should be unique, but I got more than one row returned!\n";
-    #    }
-    #    else{
-    #        confess "$cas9_prep_name: $EVAL_ERROR\n";
-    #    }
-    #}
-    #
-    #return $cas9_prep;
+    my ( $self, $cas9_type, $date ) = @_;
+    
+    my $statement = "cas9_type = ? and date = ?;";
+    my $cas9_preps = $self->_fetch( $statement, [ $cas9_type, $date, ], );
+    return $cas9_preps;
 }
 
 =method fetch_all_by_type
 
-  Usage       : $cas9_preps = $cas9_prep_adaptor->fetch_all_by_type( $crRNA );
+  Usage       : $cas9_preps = $cas9_prep_adaptor->fetch_all_by_type( $type );
   Purpose     : Fetch a cas9_prep given a crRNA object
   Returns     : Crispr::DB::Cas9Prep object
   Parameters  : Crispr::crRNA object
@@ -236,21 +234,11 @@ sub fetch_all_by_type_and_date {
 =cut
 
 sub fetch_all_by_type {
-	#my ( $self, $type, ) = @_;
-#    my $dbh = $self->connection->dbh();
-#	
-#	# try to retrieve cas9_prep by id first then name
-#    my $cas9_prep;
-#    if( defined $crRNA->cas9_prep_id ){
-#        $cas9_prep = $self->fetch_by_id( $crRNA->cas9_prep_id );
-#        
-#    }
-#    elsif( defined $crRNA->cas9_prep_name &&
-#            defined $crRNA->requestor ){
-#        $cas9_prep = $self->fetch_by_name_and_requestor( $crRNA->cas9_prep_name, $crRNA->requestor );
-#    }
-#    
-#    return $cas9_prep;
+	my ( $self, $type, ) = @_;
+	
+    my $statement = "cas9_type = ?;";
+    my $cas9_preps = $self->_fetch( $statement, [ $type, ], );
+    return $cas9_preps;
 }
 
 =method fetch_all_by_date
@@ -265,28 +253,10 @@ sub fetch_all_by_type {
 =cut
 
 sub fetch_all_by_date  {
-    #my ( $self, $date ) = @_;
-#	my $statement = "select * from cas9_prep where date_created = ?";
-#	
-#    my $dbh = $self->connection->dbh();
-#    my @cas9_preps;
-#    $self->connection->txn(  fixup => sub {
-#	my $sth = $dbh->prepare($statement);
-#	my $num_rows;
-#    $num_rows = $sth->execute( $date );
-#	
-#	if( $num_rows == 0 ){
-#	    die "There are no cas9_preps created on ", $date, ".\n";
-#	}
-#	else{
-#	    while( my @fields = $sth->fetchrow_array ){
-#			my $cas9_prep = $self->_make_new_cas9_prep_from_db( \@fields, );
-#		push @cas9_preps, $cas9_prep;
-#	    }
-#	}
-#    } );
-#    
-#    return \@cas9_preps;
+    my ( $self, $date ) = @_;
+    my $statement = "date = ?;";
+    my $cas9_preps = $self->_fetch( $statement, [ $date, ], );
+    return $cas9_preps;
 }
 
 =method fetch_all_by_made_by
@@ -301,7 +271,10 @@ sub fetch_all_by_date  {
 =cut
 
 sub fetch_all_by_made_by {
-    #my ( $self, $made_by, ) = @_;
+    my ( $self, $made_by, ) = @_;
+    my $statement = "made_by = ?;";
+    my $cas9_preps = $self->_fetch( $statement, [ $made_by, ], );
+    return $cas9_preps;
 }
 
 =method fetch_all_by_prep_type
@@ -316,7 +289,10 @@ sub fetch_all_by_made_by {
 =cut
 
 sub fetch_all_by_prep_type {
-    #my ( $self, $prep_type, ) = @_;
+    my ( $self, $prep_type, ) = @_;
+    my $statement = "prep_type = ?;";
+    my $cas9_preps = $self->_fetch( $statement, [ $prep_type, ], );
+    return $cas9_preps;
 }
 
 #_make_new_object_from_db
@@ -326,7 +302,67 @@ sub fetch_all_by_prep_type {
 #Returns     : Crispr::DB::Cas9Prep object
 #Parameters  : ArrayRef of Str
 #Throws      : 
-#Comments    : 
+#Comments    :
+
+my %cas9_cache;
+sub _fetch {
+    my ( $self, $where_clause, $where_parameters ) = @_;
+    my $dbh = $self->connection->dbh();
+    
+    my $sql = <<'END_SQL';
+        SELECT
+			cas9_id,
+			cas9_type,
+			prep_type,
+			made_by,
+			date
+        FROM cas9
+END_SQL
+
+    if ($where_clause) {
+        $sql .= 'WHERE ' . $where_clause;
+    }
+
+    my $sth = $dbh->prepare($sql);
+
+    # Bind any parameters
+    if ( ref $where_parameters eq 'ARRAY' ) {
+        my $param_num = 0;
+        while ( @{$where_parameters} ) {
+            $param_num++;
+            my $value = shift @{$where_parameters};
+            $sth->bind_param( $param_num, $value );
+        }
+    }
+
+    $sth->execute();
+
+    my ( $cas9_id, $cas9_type, $prep_type, $made_by, $cas9_date,  );
+    
+    $sth->bind_columns( \( $cas9_id, $cas9_type, $prep_type, $made_by, $cas9_date,  ) );
+
+    my @cas9_preps = ();
+    while ( $sth->fetch ) {
+        my $cas9_prep;
+        if( !exists $cas9_cache{ $cas9_id } ){
+            my $cas9 = Crispr::Cas9->new( type => $cas9_type );
+            $cas9_prep = Crispr::DB::Cas9Prep->new(
+                db_id => $cas9_id,
+                cas9 => $cas9,
+                prep_type => $prep_type,
+                made_by => $made_by,
+                date => $cas9_date,
+            );
+        }
+        else{
+            $cas9_prep = $cas9_cache{ $cas9_id };
+        }
+        
+        push @cas9_preps, $cas9_prep;
+    }
+
+    return \@cas9_preps;    
+}
 
 sub _make_new_object_from_db {
     my ( $self, $fields ) = @_;
@@ -356,7 +392,6 @@ sub _make_new_cas9_prep_from_db {
 	);
 	
 	$cas9_prep = Crispr::DB::Cas9Prep->new( %args );
-    #$cas9_prep->cas9_prep_adaptor( $self );
 	
     return $cas9_prep;
 }
