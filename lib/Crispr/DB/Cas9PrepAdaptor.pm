@@ -295,9 +295,9 @@ sub fetch_all_by_prep_type {
     return $cas9_preps;
 }
 
-#_make_new_object_from_db
+#_fetch
 #
-#Usage       : $cas9_prep = $self->_make_new_object_from_db( \@fields );
+#Usage       : $cas9_prep = $self->_fetch( $where_clause, $where_parameters );
 #Purpose     : Create a new object from a db entry
 #Returns     : Crispr::DB::Cas9Prep object
 #Parameters  : ArrayRef of Str

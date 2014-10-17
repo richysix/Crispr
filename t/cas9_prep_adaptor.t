@@ -269,9 +269,7 @@ foreach my $db_connection ( @db_connections ){
     }
     
     SKIP:{
-        my @ids = $driver eq 'mysql' ?      ( 3, 4 )
-            :                               ( 2, 3 );
-        my $cas9_objects_from_db = $cas9_prep_adaptor->fetch_by_ids( \@ids );
+        my $cas9_objects_from_db = $cas9_prep_adaptor->fetch_by_ids( [ 3, 4 ] );
         
         skip "No cas9 objects returned from db!", 8 if !defined $cas9_objects_from_db->[0] || !defined $cas9_objects_from_db->[1];
         my @cas9_preps = ( $mock_cas9_prep_object_2, $mock_cas9_prep_object_3 );
