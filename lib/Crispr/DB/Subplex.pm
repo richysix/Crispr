@@ -62,6 +62,9 @@ has 'db_id' => (
 has 'plex' => (
     is => 'ro',
     isa => 'Crispr::DB::Plex',
+    handles => {
+        plex_name => plex_name,
+    },
 );
 
 =method injection_pool
