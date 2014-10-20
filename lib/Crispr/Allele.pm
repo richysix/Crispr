@@ -2,7 +2,7 @@
 package Crispr::Allele;
 ## use critic
 
-# ABSTRACT: Sample object - representing a sample to be sequenced
+# ABSTRACT: Allele object - representing a sequence variant
 
 use warnings;
 use strict;
