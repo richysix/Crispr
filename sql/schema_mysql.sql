@@ -185,17 +185,25 @@ create table restriction_enzymes (
 
 create table cas9 (
     cas9_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    cas9_type ENUM( 'cas9_dnls_native', 'cas9_dnls_nickase', 'cas9_cherry_native', 'cas9_nanos_native' ) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    plasmid_name VARCHAR(100),
+    notes VARCHAR(200),
+    CONSTRAINT `cas9_name` UNIQUE ( `name` )
+) ENGINE = InnoDB;
+
+create table cas9_prep (
+    cas9_prep_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    cas9_id INT UNSIGNED,
     prep_type ENUM('dna', 'rna', 'protein') NOT NULL,
     made_by VARCHAR(10) NOT NULL,
     date DATE NOT NULL,
-    CONSTRAINT `cas9_cas9_type_prep_type_made_by_date` UNIQUE ( `cas9_type`, `prep_type`, `made_by`, `date` )
+    CONSTRAINT `cas9_cas9_id_prep_type_made_by_date` UNIQUE ( `cas9_id`, `prep_type`, `made_by`, `date` )
 ) ENGINE = InnoDB;
 
 create table injection (
     injection_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     injection_name INT UNSIGNED NOT NULL,
-    cas9_id INT UNSIGNED NOT NULL,
+    cas9_prep_id INT UNSIGNED NOT NULL,
     cas9_concentration INT UNSIGNED NOT NULL,
     guideRNA_concentration INT UNSIGNED NOT NULL,
     guideRNA_type ENUM('sgRNA', 'tracrRNA'),
@@ -204,7 +212,7 @@ create table injection (
     line_raised VARCHAR(10),
     sorted_by VARCHAR(40),
     CONSTRAINT `injection_injection_name` UNIQUE ( `injection_name` ),
-    FOREIGN KEY (cas9_id) REFERENCES cas9(cas9_id)
+    FOREIGN KEY (cas9_prep_id) REFERENCES cas9_prep(cas9_prep_id)
 ) ENGINE = InnoDB;
 
 create table injection_pool (
