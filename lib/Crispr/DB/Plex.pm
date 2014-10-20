@@ -210,7 +210,7 @@ __END__
     
 =head1 DESCRIPTION
  
-Objects of this class represent a sample for screening by sequencing.
+Objects of this class represent a multiplexed sequencing run.
 
 =head1 DIAGNOSTICS
 
