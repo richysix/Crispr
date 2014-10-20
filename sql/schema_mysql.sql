@@ -217,10 +217,11 @@ create table injection_pool (
 
 create table plex (
     plex_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    plex_name INT UNSIGNED NOT NULL,
+    plex_name VARCHAR(10) NOT NULL,
     run_id INT UNSIGNED NOT NULL,
     analysis_started DATE,
-    analysis_finished DATE
+    analysis_finished DATE,
+    CONSTRAINT `plex_plex_name` UNIQUE ( `plex_name` )
 ) ENGINE = InnoDB;
 
 create table subplex (
