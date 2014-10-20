@@ -63,7 +63,7 @@ has 'plex' => (
     is => 'ro',
     isa => 'Crispr::DB::Plex',
     handles => {
-        plex_name => plex_name,
+        plex_name => 'plex_name',
     },
 );
 
