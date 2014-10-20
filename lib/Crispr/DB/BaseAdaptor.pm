@@ -154,6 +154,33 @@ sub fetch_rows_for_generic_select_statement {
     return $results;
 }
 
+sub _prepare_sql {
+    my ( $self, $sql, $where_clause, $where_parameters ) = @_;
+    my $dbh = $self->connection->dbh();
+    
+    my $sth = $dbh->prepare($sql);
+
+    # Bind any parameters
+    if ($where_clause) {
+        if( !defined $where_parameters ){
+            confess "Parameters must be supplied with a where clause!\n";
+        }
+        elsif ( ref $where_parameters eq 'ARRAY' ) {
+            my $param_num = 0;
+            while ( @{$where_parameters} ) {
+                $param_num++;
+                my $value = shift @{$where_parameters};
+                $sth->bind_param( $param_num, $value );
+            }
+        }
+        else{
+            confess "Parameters to the where clause must be supplied as an ArrayRef!\n";
+        }
+    }
+    
+    return $sth;
+}
+
 my %reports_for = (
     'Crispr::DB::crRNAAdaptor' => {
         'NO ROWS'   => "crRNA does not exist in the database.",

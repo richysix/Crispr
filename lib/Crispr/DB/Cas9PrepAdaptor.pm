@@ -310,18 +310,7 @@ END_SQL
         $sql .= 'WHERE ' . $where_clause;
     }
 
-    my $sth = $dbh->prepare($sql);
-
-    # Bind any parameters
-    if ( ref $where_parameters eq 'ARRAY' ) {
-        my $param_num = 0;
-        while ( @{$where_parameters} ) {
-            $param_num++;
-            my $value = shift @{$where_parameters};
-            $sth->bind_param( $param_num, $value );
-        }
-    }
-
+    my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
     $sth->execute();
 
     my ( $cas9_id, $cas9_type, $prep_type, $made_by, $cas9_date,  );

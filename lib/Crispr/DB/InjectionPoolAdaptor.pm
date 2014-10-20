@@ -134,7 +134,7 @@ sub store_injection_pools {
             confess "One of the InjectionPools does not contain a Cas9 object.\n";
         }
         elsif( !defined $inj_pool->cas9_prep->db_id ){
-            confess "One of the njectionPools has a Cas9 object with no db_id!\n";
+            confess "One of the InjectionPools has a Cas9 object with no db_id!\n";
             #if( !defined $inj_pool->cas9_prep->type || !defined $inj_pool->cas9_prep->prep_type ||
             #    !defined $inj_pool->cas9_prep->made_by || !defined $inj_pool->cas9_prep->date ){
             #    confess "One of the InjectionPools contains a Cas9 object without a db_id or enough information to find it.\n";
@@ -349,18 +349,7 @@ END_SQL
         $sql .= 'AND ' . $where_clause;
     }
 
-    my $sth = $dbh->prepare($sql);
-
-    # Bind any parameters
-    if ( ref $where_parameters eq 'ARRAY' ) {
-        my $param_num = 0;
-        while ( @{$where_parameters} ) {
-            $param_num++;
-            my $value = shift @{$where_parameters};
-            $sth->bind_param( $param_num, $value );
-        }
-    }
-
+    my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
     $sth->execute();
 
     my ( $injection_id, $injection_name, $cas9_concentration,
