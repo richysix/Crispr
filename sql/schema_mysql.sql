@@ -283,13 +283,13 @@ create table sample_allele (
     FOREIGN KEY (amplicon_id) REFERENCES amplicon(amplicon_id)
 ) ENGINE = InnoDB;
 
-create table kaspar (
-    kaspar_id VARCHAR(10) PRIMARY KEY,
+create table kasp (
+    kasp_id VARCHAR(10) PRIMARY KEY,
     allele_id INT UNSIGNED NOT NULL,
     allele_number VARCHAR(10) NOT NULL,
     plate_id INT UNSIGNED,
     well_id CHAR(3),
-    CONSTRAINT `kaspar_kaspar_id_allele_id` UNIQUE ( `kaspar_id`, `allele_id` ),
+    CONSTRAINT `kasp_kasp_id_allele_id` UNIQUE ( `kasp_id`, `allele_id` ),
     FOREIGN KEY (allele_id) REFERENCES allele(allele_id),
     FOREIGN KEY (plate_id) REFERENCES plate(plate_id)
 ) ENGINE = InnoDB;
