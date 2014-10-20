@@ -8,6 +8,20 @@ use Carp qw( cluck confess );
 
 extends 'Crispr::DB::BaseAdaptor';
 
+=method new
+
+  Usage       : my $injection_pool_adaptor = Crispr::DB::InjectionPoolAdaptor->new(
+					db_connection => $db_connection,
+                );
+  Purpose     : Constructor for creating injection_pool adaptor objects
+  Returns     : Crispr::DB::InjectionPoolAdaptor object
+  Parameters  :     db_connection => Crispr::DB::DBConnection object,
+  Throws      : If parameters are not the correct type
+  Comments    : The preferred method for constructing a InjectionPoolAdaptor is to use the
+                get_adaptor method with a previously constructed DBConnection object
+
+=cut
+
 =method crRNA_adaptor
 
   Usage       : $plate_adaptor->crRNA_adaptor;
