@@ -362,7 +362,7 @@ TODO: {
     ok( $injection_pool_adaptor->delete_injection_pool_from_db ( 'rna' ), 'delete_injection_pool_from_db');
 
 }
-    #$test_db_connections{$driver}->destroy();
+    $test_db_connections{$driver}->destroy();
 }
 
 sub check_attributes {
