@@ -103,13 +103,15 @@ create table expression_construct (
 ) ENGINE = InnoDB;
 
 create table guideRNA_prep (
+    guideRNA_prep_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     crRNA_id INT UNSIGNED NOT NULL,
+    guideRNA_type ENUM('sgRNA', 'tracrRNA'),
     concentration DECIMAL(5,1) NOT NULL,
     made_by VARCHAR(5) NOT NULL,
     date DATE NOT NULL,
     plate_id INT UNSIGNED,
     well_id CHAR(3),
-    CONSTRAINT `guideRNA_prep_crRNA_id_plate_id_well_id` PRIMARY KEY ( `crRNA_id`, `plate_id`, `well_id` ),
+    CONSTRAINT `guideRNA_prep_crRNA_id_plate_id_well_id` UNIQUE ( `crRNA_id`, `plate_id`, `well_id` ),
     FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id),
     FOREIGN KEY (plate_id) REFERENCES plate(plate_id)
 ) ENGINE = InnoDB;
@@ -205,8 +207,6 @@ create table injection (
     injection_name INT UNSIGNED NOT NULL,
     cas9_prep_id INT UNSIGNED NOT NULL,
     cas9_concentration INT UNSIGNED NOT NULL,
-    guideRNA_concentration INT UNSIGNED NOT NULL,
-    guideRNA_type ENUM('sgRNA', 'tracrRNA'),
     date DATE NOT NULL,
     line_injected VARCHAR(10) NOT NULL,
     line_raised VARCHAR(10),
@@ -218,6 +218,8 @@ create table injection (
 create table injection_pool (
     injection_id INT UNSIGNED NOT NULL,
     crRNA_id INT UNSIGNED NOT NULL,
+    guideRNA_prep_id INT UNSIGNED NOT NULL,
+    guideRNA_concentration INT UNSIGNED NOT NULL,
     CONSTRAINT `injection_pool_injection_id_crRNA_id` PRIMARY KEY ( `injection_id`, `crRNA_id` ),
     FOREIGN KEY (injection_id) REFERENCES injection(injection_id),
     FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id)
