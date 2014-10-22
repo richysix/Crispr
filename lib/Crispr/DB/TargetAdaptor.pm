@@ -220,27 +220,10 @@ sub update_designed {
 
 sub fetch_by_id {
     my ( $self, $id ) = @_;
-
-    my $statement = "select * from target where target_id = ?;";
-    my $result;
-    eval{ $result = $self->fetch_rows_expecting_single_row( $statement, [ $id ] ); };
-    
-    my $target;
-    if( $EVAL_ERROR ){
-        if( $EVAL_ERROR =~ m/NO\sROWS/xms ){
-    		confess "Couldn't retrieve target, $id, from database.\n";
-        }
-        elsif( $EVAL_ERROR =~ m/TOO\sMANY\sROWS/xms ){
-            confess "Target id, $id, should be unique, but I got more than one row returned!\n";
-        }
-        else{
-            confess $EVAL_ERROR, "\n";
-        }
+    my $target = $self->_fetch( 'target_id = ?;', [ $id ] )->[0];
+    if( !$target ){
+        confess "Couldn't retrieve target, $id, from database.\n";
     }
-    else{
-        $target = $self->_make_new_target_from_db( $result, );
-    }
-    
     return $target;
 }
 
@@ -280,24 +263,10 @@ sub fetch_by_ids {
 sub fetch_by_name_and_requestor {
     my ( $self, $target_name, $requestor ) = @_;
 
-    my $statement = "select * from target where target_name = ? and requestor = ?;";
-    my $target;
-    eval{
-        my $results = $self->fetch_rows_expecting_single_row( $statement, [ $target_name, $requestor, ], );
-        $target = $self->_make_new_target_from_db( $results );
-    };
-    if( $EVAL_ERROR ){
-        if( $EVAL_ERROR eq 'NO ROWS' ){
-            confess "Couldn't retrieve target, $target_name, from database.\n";
-        }
-        elsif( $EVAL_ERROR eq 'TOO MANY ROWS' ){
-            confess "Target name, $target_name, should be unique, but I got more than one row returned!\n";
-        }
-        else{
-            confess "$target_name: $EVAL_ERROR\n";
-        }
+    my $target = $self->_fetch( 'target_name = ? and requestor = ?;', [ $target_name, $requestor, ] )->[0];
+    if( !$target ){
+        confess "Couldn't retrieve target, $target_name, from database.\n";
     }
-    
     return $target;
 }
 
@@ -353,43 +322,77 @@ sub fetch_by_crRNA {
     return $target;
 }
 
-=method fetch_by_single_attribute
+#_fetch
+#
+#Usage       : $targets = $self->_fetch( \@fields );
+#Purpose     : Fetch Target objects from the database with arbitrary parameteres
+#Returns     : ArrayRef of Crispr::Target objects
+#Parameters  : where_clause => Str (SQL where clause)
+#               where_parameters => ArrayRef of parameters to bind to sql statement
+#Throws      : 
+#Comments    : 
 
-  Usage       : $targets = $target_adaptor->fetch_by_single_attribute( $statement, $attribute );
-  Purpose     : Fetch a target given an SQL statement and a parameter
-  Returns     : Crispr::Target object
-  Parameters  : SQL statement - Str
-                statement parameter - Str
-  Throws      : If no rows are returned from the database
-                If too many rows are returned from the database
-  Comments    : The where clause in the SQL statement must take only one bind variable
-
-=cut
-
-sub fetch_by_single_attribute {
-	my ( $self, $statement, $attribute, ) = @_;
+my %target_cache;
+sub _fetch {
+    my ( $self, $where_clause, $where_parameters ) = @_;
     my $dbh = $self->connection->dbh();
-    my $sth = $dbh->prepare($statement);
-    $sth->execute( $attribute );
     
-    my $target;
-	my $num_rows = 0;
-	while( my @fields = $sth->fetchrow_array ){
-		$num_rows++;
-		$target = $self->_make_new_target_from_db( \@fields, );
-	}
-    
-    if( $num_rows == 0 ){
-		die 'NO ROWS';
-    }
-    elsif( $num_rows > 1 ){
-		die 'TOO MANY ROWS';
-    }
-    if( !defined $target ){
-        die 'TARGET UNDEF';
+    my $sql = <<'END_SQL';
+        SELECT
+            target_id, target_name, assembly,
+            chr, start, end, strand, species,
+            requires_enzyme, gene_id, gene_name,
+            requestor, ensembl_version, designed
+        FROM target
+END_SQL
+
+    if ($where_clause) {
+        $sql .= 'WHERE ' . $where_clause;
     }
     
-    return $target;
+    my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
+    $sth->execute();
+
+    my ( $target_id, $target_name, $assembly, $chr, $start, $end, $strand,
+        $species, $requires_enzyme, $gene_id, $gene_name, $requestor,
+        $ensembl_version, $designed );
+    
+    $sth->bind_columns( \( $target_id, $target_name, $assembly, $chr, $start,
+                          $end, $strand, $species, $requires_enzyme, $gene_id,
+                          $gene_name, $requestor, $ensembl_version, $designed ) );
+
+    my @targets = ();
+    while ( $sth->fetch ) {
+        
+        my $target;
+        if( !exists $target_cache{ $target_id } ){
+            $target = Crispr::Target->new(
+                target_id => $target_id,
+                target_name => $target_name,
+                assembly => $assembly,
+                chr => $chr,
+                start => $start,
+                end => $end,
+                strand => $strand,
+                species => $species,
+                requires_enzyme => $requires_enzyme,
+                gene_id => $gene_id,
+                gene_name => $gene_name,
+                requestor => $requestor,
+                ensembl_version => $ensembl_version,
+                designed => $designed,
+            );
+            $target->target_adaptor( $self );
+            $target_cache{ $target_id } = $target;
+        }
+        else{
+            $target = $target_cache{ $target_id };
+        }
+        
+        push @targets, $target;
+    }
+
+    return \@targets;    
 }
 
 #_make_new_object_from_db
