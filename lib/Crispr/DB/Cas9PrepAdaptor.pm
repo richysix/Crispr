@@ -284,9 +284,9 @@ sub fetch_all_by_prep_type {
 #_fetch
 #
 #Usage       : $cas9_prep = $self->_fetch( $where_clause, $where_parameters );
-#Purpose     : Fetch a Cas9Prep object from the database with arbitrary parameteres
+#Purpose     : Fetch Cas9Prep objects from the database with arbitrary parameteres
 #Returns     : ArrayRef of Crispr::DB::Cas9Prep objects
-#Parameters  : where_clause => ArrayRef of Str (SQL where conditions)
+#Parameters  : where_clause => Str (SQL where conditions)
 #               where_parameters => ArrayRef of parameters to bind to sql statement
 #Throws      : 
 #Comments    :

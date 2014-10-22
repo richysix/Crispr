@@ -322,9 +322,9 @@ sub fetch_all_by_date  {
 #_fetch
 #
 #Usage       : $injection_pool = $self->_fetch( \@fields );
-#Purpose     : Fetch a Cas9Prep object from the database with arbitrary parameteres
+#Purpose     : Fetch InjectionPool objects from the database with arbitrary parameteres
 #Returns     : ArrayRef of Crispr::DB::InjectionPool objects
-#Parameters  : where_clause => ArrayRef of Str (SQL where conditions)
+#Parameters  : where_clause => Str (SQL where conditions)
 #               where_parameters => ArrayRef of parameters to bind to sql statement
 #Throws      : 
 #Comments    : 

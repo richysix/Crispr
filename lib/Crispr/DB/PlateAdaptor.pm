@@ -249,11 +249,12 @@ sub fetch_crispr_plate_by_plate_name {
 #_fetch
 #
 #Usage       : $plate = $self->_fetch( $where_clause, $where_parameters );
-#Purpose     : Create a new object from a db entry
-#Returns     : Crispr::DB::Cas9Prep object
-#Parameters  : ArrayRef of Str
+#Purpose     : Fetch Plate objects from the database with arbitrary parameteres
+#Returns     : ArrayRef of Crispr::DB::Plate objects
+#Parameters  : where_clause => Str (SQL where clause)
+#               where_parameters => ArrayRef of parameters to bind to sql statement
 #Throws      : 
-#Comments    :
+#Comments    : 
 
 my %plate_cache;
 sub _fetch {

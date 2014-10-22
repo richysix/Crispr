@@ -182,9 +182,9 @@ sub fetch_by_name {
 #_fetch
 #
 #Usage       : $plex = $self->_fetch( \@fields );
-#Purpose     : Fetch a Cas9Prep object from the database with arbitrary parameteres
+#Purpose     : Fetch a Plex object from the database with arbitrary parameteres
 #Returns     : ArrayRef of Crispr::DB::Plex objects
-#Parameters  : where_clause => ArrayRef of Str (SQL where conditions)
+#Parameters  : where_clause => Str (SQL where clause)
 #               where_parameters => ArrayRef of parameters to bind to sql statement
 #Throws      : 
 #Comments    : 
