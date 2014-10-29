@@ -17,7 +17,9 @@ use Crispr::Config;
 use Crispr::DB::TargetAdaptor;
 use Crispr::DB::crRNAAdaptor;
 use Crispr::DB::PlateAdaptor;
+use Crispr::DB::Cas9Adaptor;
 use Crispr::DB::Cas9PrepAdaptor;
+use Crispr::DB::GuideRNAPrepAdaptor;
 
 =method new
 
@@ -358,8 +360,12 @@ sub get_adaptor {
         targetadaptor => 'Crispr::DB::TargetAdaptor',
         crrna => 'Crispr::DB::crRNAAdaptor',
         crrnaadaptor => 'Crispr::DB::crRNAAdaptor',
+        cas9 => 'Crispr::DB::Cas9Adaptor',
+        cas9adaptor => 'Crispr::DB::Cas9Adaptor',
         cas9prep => 'Crispr::DB::Cas9PrepAdaptor',
         cas9prepadaptor => 'Crispr::DB::Cas9PrepAdaptor',
+        guidernaprep => 'Crispr::DB::GuideRNAPrepAdaptor',
+        guidernaprepadaptor => 'Crispr::DB::GuideRNAPrepAdaptor',
         plate => 'Crispr::DB::PlateAdaptor',
         plateadaptor => 'Crispr::DB::PlateAdaptor',
     );
@@ -376,7 +382,7 @@ sub get_adaptor {
         return $adaptor_codrefs{ $internal_adaptor_type }->new( \%args );
     }
     else{
-        die "$adaptor_type is not a recognised adaptor type.\n";
+        confess "$adaptor_type is not a recognised adaptor type.\n";
     }    
 }
 
