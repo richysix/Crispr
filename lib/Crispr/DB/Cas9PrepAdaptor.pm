@@ -6,7 +6,6 @@ package Crispr::DB::Cas9PrepAdaptor;
 
 use namespace::autoclean;
 use Moose;
-use Crispr::DB::Cas9Prep;
 use DateTime;
 use Carp qw( cluck confess );
 use English qw( -no_match_vars );
@@ -18,7 +17,7 @@ extends 'Crispr::DB::BaseAdaptor';
 =method new
 
   Usage       : my $cas9_prep_adaptor = Crispr::DB::Cas9PrepAdaptor->new(
-					db_connection => $db_connection,
+                    db_connection => $db_connection,
                 );
   Purpose     : Constructor for creating cas9_prep adaptor objects
   Returns     : Crispr::DB::Cas9PrepAdaptor object
@@ -28,6 +27,24 @@ extends 'Crispr::DB::BaseAdaptor';
                 get_adaptor method with a previously constructed DBConnection object
 
 =cut
+
+=method cas9_adaptor
+
+  Usage       : $self->cas9_adaptor();
+  Purpose     : Getter for a cas9_adaptor.
+  Returns     : Crispr::DB::Cas9Adaptor
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
+has 'cas9_adaptor' => (
+    is => 'ro',
+    isa => 'Crispr::DB::Cas9Adaptor',
+    lazy => 1,
+    builder => '_build_cas9_adaptor',
+);
 
 =method store
 
@@ -44,11 +61,11 @@ extends 'Crispr::DB::BaseAdaptor';
 
 sub store {
     my ( $self, $cas9_prep, ) = @_;
-	# make an arrayref with this one cas9_prep and call store_cas9_preps
-	my @cas9_preps = ( $cas9_prep );
-	my $cas9_preps = $self->store_cas9_preps( \@cas9_preps );
-	
-	return $cas9_preps->[0];
+    # make an arrayref with this one cas9_prep and call store_cas9_preps
+    my @cas9_preps = ( $cas9_prep );
+    my $cas9_preps = $self->store_cas9_preps( \@cas9_preps );
+    
+    return $cas9_preps->[0];
 }
 
 =method store_cas9_prep
@@ -66,7 +83,7 @@ sub store {
 
 sub store_cas9_prep {
     my ( $self, $cas9_prep, ) = @_;
-	return $self->store( $cas9_prep );
+    return $self->store( $cas9_prep );
 }
 
 =method store_cas9_preps
@@ -88,28 +105,64 @@ sub store_cas9_preps {
     my $cas9_preps = shift;
     my $dbh = $self->connection->dbh();
     
-	confess "Supplied argument must be an ArrayRef of Cas9Prep objects.\n" if( ref $cas9_preps ne 'ARRAY');
-	foreach ( @{$cas9_preps} ){
+    confess "Supplied argument must be an ArrayRef of Cas9Prep objects.\n" if( ref $cas9_preps ne 'ARRAY');
+    foreach ( @{$cas9_preps} ){
         if( !ref $_ || !$_->isa('Crispr::DB::Cas9Prep') ){
             confess "Argument must be Crispr::DB::Cas9Prep objects.\n";
         }
     }
-	
-    my $statement = "insert into cas9 values( ?, ?, ?, ?, ? );"; 
+    
+    # insert statement
+    my $statement = "insert into cas9_prep values( ?, ?, ?, ?, ? );"; 
     
     $self->connection->txn(  fixup => sub {
-		my $sth = $dbh->prepare($statement);
-		
-		foreach my $cas9_prep ( @$cas9_preps ){
-			$sth->execute($cas9_prep->db_id, $cas9_prep->type,
-				$cas9_prep->prep_type, $cas9_prep->made_by, $cas9_prep->date, );
-			
-			my $last_id;
-			$last_id = $dbh->last_insert_id( 'information_schema', $self->dbname(), 'cas9', 'cas9_id' );
-			$cas9_prep->db_id( $last_id );
-		}
-		
-		$sth->finish();
+        my $sth = $dbh->prepare($statement);
+        
+        foreach my $cas9_prep ( @$cas9_preps ){
+            # cas9 check
+            my $cas9_check_st = 'select count(*) from cas9 where ';
+            my $params;
+            if( defined $cas9_prep->cas9 ){
+                if( $cas9_prep->cas9->db_id ){
+                    $cas9_check_st .= 'cas9_id = ?;';
+                    $params = [ $cas9_prep->cas9->db_id ];
+                }
+                else{
+                    $cas9_check_st .= 'type = ?;';
+                    $params = [ $cas9_prep->type ];
+                }
+            }
+            else{
+                confess "Cas9 Prep must contain a Crispr::Cas9 object to be added to the database!\n";
+            }
+            
+            # check cas9 exists in db and if not add it first
+            eval{
+                if( !$self->check_entry_exists_in_db( $cas9_check_st, $params ) ){
+                    #try and store it
+                    $self->cas9_adaptor->store( $cas9_prep->cas9 );
+                }
+            };
+            if( $EVAL_ERROR ){
+                if( $EVAL_ERROR =~ m/TOO\sMANY\sITEMS/xms ){
+                    confess "Found more than one Cas9 with the same database id!\n",
+                        $EVAL_ERROR, "\n";
+                }
+                else{
+                    confess $EVAL_ERROR, "\n";
+                }
+            }
+            
+            $sth->execute($cas9_prep->db_id, $cas9_prep->cas9->db_id,
+                $cas9_prep->prep_type, $cas9_prep->made_by, $cas9_prep->date, );
+            
+            my $last_id;
+            $last_id = $dbh->last_insert_id( 'information_schema',
+                                    $self->dbname(), 'cas9_prep', 'cas9_id' );
+            $cas9_prep->db_id( $last_id );
+        }
+        
+        $sth->finish();
     } );
     
     return $cas9_preps;
@@ -117,7 +170,7 @@ sub store_cas9_preps {
 
 =method fetch_by_id
 
-  Usage       : $cas9_preps = $cas9_prep_adaptor->fetch_by_id( $cas9_prep_id );
+  Usage       : $cas9_prep = $cas9_prep_adaptor->fetch_by_id( $cas9_prep_id );
   Purpose     : Fetch a cas9_prep given its database id
   Returns     : Crispr::DB::Cas9Prep object
   Parameters  : crispr-db cas9_id - Int
@@ -129,7 +182,7 @@ sub store_cas9_preps {
 sub fetch_by_id {
     my ( $self, $id ) = @_;
 
-    my $cas9_prep = $self->_fetch( 'cas9_id = ?', [ $id ] )->[0];
+    my $cas9_prep = $self->_fetch( 'cas9_prep_id = ?', [ $id ] )->[0];
     
     if( !$cas9_prep ){
         confess "Couldn't retrieve cas9_prep, $id, from database.\n";
@@ -150,11 +203,11 @@ sub fetch_by_id {
 
 sub fetch_by_ids {
     my ( $self, $ids ) = @_;
-	my @cas9_preps;
+    my @cas9_preps;
     foreach my $id ( @{$ids} ){
         push @cas9_preps, $self->fetch_by_id( $id );
     }
-	
+    
     return \@cas9_preps;
 }
 
@@ -172,13 +225,13 @@ sub fetch_by_ids {
 sub fetch_without_db_id {
     my ( $self, $cas9_prep ) = @_;
 
-    my $statement = join(" AND ", "cas9_type = ?",
+    my $statement = join(" AND ", "c.cas9_type = ?",
                             "prep_type = ?",
                             "made_by = ?",
                             "date = ?",
                     ) . ";";
     
-    $cas9_prep = $self->_fetch( 'cas9_id = ?',
+    $cas9_prep = $self->_fetch( $statement,
         [ $cas9_prep->type, $cas9_prep->prep_type,
         $cas9_prep->made_by, $cas9_prep->date ] )->[0];
     
@@ -203,7 +256,7 @@ sub fetch_without_db_id {
 sub fetch_all_by_type_and_date {
     my ( $self, $cas9_type, $date ) = @_;
     
-    my $statement = "cas9_type = ? and date = ?;";
+    my $statement = "c.type = ? and date = ?;";
     my $cas9_preps = $self->_fetch( $statement, [ $cas9_type, $date, ], );
     return $cas9_preps;
 }
@@ -220,9 +273,9 @@ sub fetch_all_by_type_and_date {
 =cut
 
 sub fetch_all_by_type {
-	my ( $self, $type, ) = @_;
-	
-    my $statement = "cas9_type = ?;";
+    my ( $self, $type, ) = @_;
+    
+    my $statement = "c.type = ?;";
     my $cas9_preps = $self->_fetch( $statement, [ $type, ], );
     return $cas9_preps;
 }
@@ -291,48 +344,56 @@ sub fetch_all_by_prep_type {
 #Throws      : 
 #Comments    :
 
-my %cas9_cache;
+my %cas9_prep_cache;
 sub _fetch {
     my ( $self, $where_clause, $where_parameters ) = @_;
     my $dbh = $self->connection->dbh();
     
     my $sql = <<'END_SQL';
         SELECT
-			cas9_id,
-			cas9_type,
-			prep_type,
-			made_by,
-			date
-        FROM cas9
+            cas9_prep_id,
+            prep_type,
+            made_by,
+            date,
+            c.cas9_id,
+            type,
+            plasmid_name,
+            notes
+        FROM cas9_prep cp, cas9 c
+        WHERE cp.cas9_id = c.cas9_id
 END_SQL
 
     if ($where_clause) {
-        $sql .= 'WHERE ' . $where_clause;
+        $sql .= 'AND ' . $where_clause;
     }
 
     my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
     $sth->execute();
 
-    my ( $cas9_id, $cas9_type, $prep_type, $made_by, $cas9_date,  );
+    my ( $cas9_prep_id, $prep_type, $made_by, $cas9_date,
+        $cas9_id, $type, $plasmid_name, $notes, );
     
-    $sth->bind_columns( \( $cas9_id, $cas9_type, $prep_type, $made_by, $cas9_date,  ) );
+    $sth->bind_columns( \( $cas9_prep_id, $prep_type, $made_by, $cas9_date,
+        $cas9_id, $type, $plasmid_name, $notes, ) );
 
     my @cas9_preps = ();
     while ( $sth->fetch ) {
         my $cas9_prep;
-        if( !exists $cas9_cache{ $cas9_id } ){
-            my $cas9 = Crispr::Cas9->new( type => $cas9_type );
+        if( !exists $cas9_prep_cache{ $cas9_prep_id } ){
+            my $cas9 = $self->cas9_adaptor->_make_new_cas9_from_db(
+                [ $cas9_id, $type, $plasmid_name, $notes, ],
+            );
             $cas9_prep = Crispr::DB::Cas9Prep->new(
-                db_id => $cas9_id,
+                db_id => $cas9_prep_id,
                 cas9 => $cas9,
                 prep_type => $prep_type,
                 made_by => $made_by,
                 date => $cas9_date,
             );
-            $cas9_cache{ $cas9_id } = $cas9_prep;
+            $cas9_prep_cache{ $cas9_prep_id } = $cas9_prep;
         }
         else{
-            $cas9_prep = $cas9_cache{ $cas9_id };
+            $cas9_prep = $cas9_prep_cache{ $cas9_prep_id };
         }
         
         push @cas9_preps, $cas9_prep;
@@ -348,7 +409,9 @@ END_SQL
 #Returns     : Crispr::DB::Cas9Prep object
 #Parameters  : ArrayRef of Str
 #Throws      : 
-#Comments    : Expects fields to be in table order ie db_id, cas9_type, prep_type, made_by, date
+#Comments    : Expects fields to be in table order
+#               ie db_id, prep_type, made_by, date,
+#                   cas9_id, cas9_type, plasmid_name, notes
 
 sub _make_new_object_from_db {
     my ( $self, $fields ) = @_;
@@ -362,45 +425,62 @@ sub _make_new_object_from_db {
 #Returns     : Crispr::DB::Cas9Prep object
 #Parameters  : ArrayRef of Str
 #Throws      : 
-#Comments    : Expects fields to be in table order ie db_id, cas9_type, prep_type, made_by, date
+#Comments    : Expects fields to be in table order
+#               ie db_id, prep_type, made_by, date,
+#                   cas9_id, cas9_type, plasmid_name, notes
 
 sub _make_new_cas9_prep_from_db {
     my ( $self, $fields ) = @_;
     my $cas9_prep;
-	
-    if( !exists $cas9_cache{ $fields->[0] } ){
-        my $cas9 = Crispr::Cas9->new( type => $fields->[1] );
+    
+    if( !exists $cas9_prep_cache{ $fields->[0] } ){
+        my $cas9 = $self->cas9_adaptor->_make_new_cas9_from_db(
+            [ @{$fields}[4..7] ],
+        );
         my %args = (
             db_id => $fields->[0],
             cas9 => $cas9,
-            prep_type => $fields->[2],
-            made_by => $fields->[3],
-            date => $fields->[4],
+            prep_type => $fields->[1],
+            made_by => $fields->[2],
+            date => $fields->[3],
         );
         
         $cas9_prep = Crispr::DB::Cas9Prep->new( %args );
-        $cas9_cache{ $fields->[0] } = $cas9_prep;
+        $cas9_prep_cache{ $fields->[0] } = $cas9_prep;
     }
     else{
-        $cas9_prep = $cas9_cache{ $fields->[0] };
+        $cas9_prep = $cas9_prep_cache{ $fields->[0] };
     }
-	
+    
     return $cas9_prep;
 }
 
 sub delete_cas9_prep_from_db {
-	#my ( $self, $cas9_prep ) = @_;
-	
-	# first check cas9_prep exists in db
-	
-	# delete primers and primer pairs
-	
-	# delete transcripts
-	
-	# if cas9_prep has talen pairs, delete tale and talen pairs
+    #my ( $self, $cas9_prep ) = @_;
+    
+    # first check cas9_prep exists in db
+    
+    # delete primers and primer pairs
+    
+    # delete transcripts
+    
+    # if cas9_prep has talen pairs, delete tale and talen pairs
 
 }
 
+#_build_cas9_adaptor
+
+  #Usage       : $crRNAs = $crRNA_adaptor->_build_cas9_adaptor( $well, $type );
+  #Purpose     : Internal method to create a new Crispr::DB::Cas9Adaptor
+  #Returns     : Crispr::DB::Cas9PrepAdaptor
+  #Parameters  : None
+  #Throws      : 
+  #Comments    : 
+
+sub _build_cas9_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'cas9' );
+}
 
 =method driver
 
