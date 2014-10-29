@@ -37,6 +37,22 @@ subtype 'Crispr::Cas9::DNA',
 
 =cut
 
+=method db_id
+
+  Usage       : $cas9->db_id;
+  Purpose     : Getter for Cas9 db_id attribute
+  Returns     : Int (can be undef)
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
+has 'db_id' => (
+    is => 'rw',
+    isa => 'Maybe[Int]',
+);
+
 =method type
 
   Usage       : $cas9->type;
@@ -47,11 +63,11 @@ subtype 'Crispr::Cas9::DNA',
   Comments    : 
 
 =cut
-Readonly my @TYPES = ( qw{ cas9_dnls_native cas9_dnls_nickase cas9_cherry_native cas9_nanos_native } );
+Readonly my @TYPES = ( qw{ cas9_zf_dnls_native cas9_zf_dnls_nickase cas9_cherry_native cas9_nanos_native } );
 has 'type' => (
     is => 'ro',
     isa => enum( \@TYPES ),
-    default => 'cas9_dnls_native',
+    default => $TYPES[0],
 );
 
 =method species
@@ -107,6 +123,40 @@ has 'PAM' => (
     isa => 'Crispr::Cas9::DNA',
     lazy => 1,
     builder => '_build_PAM',
+);
+
+=method plasmid_name
+
+  Usage       : $cas9->plasmid_name;
+  Purpose     : Getter for plasmid_name attribute
+  Returns     : String  (Default = NGG)
+  Parameters  : None
+  Throws      : If input is given
+  Comments    : 
+
+=cut
+
+has 'plasmid_name' => (
+    is => 'ro',
+    isa => 'Str',
+    lazy => 1,
+    builder => '_build_plasmid_name',
+);
+
+=method notes
+
+  Usage       : $cas9->notes;
+  Purpose     : Getter for notes attribute
+  Returns     : String (Default: undef)
+  Parameters  : None
+  Throws      : If input is given
+  Comments    : 
+
+=cut
+
+has 'notes' => (
+    is => 'ro',
+    isa => 'Maybe[Str]',
 );
 
 around BUILDARGS => sub{
@@ -259,6 +309,29 @@ sub _build_PAM {
     else{
         return 'NGG';
     }
+}
+
+#_build_plasmid_name
+#
+#Usage       : $cas9->_build_plasmid_name;
+#Purpose     : builder for plasmid_name attribute
+#Returns     : String
+#Parameters  : None
+#Throws      : 
+#Comments    : Uses species attribute to determine target_seq
+#               Default: 
+
+sub _build_plasmid_name {
+    my ( $self, ) = @_;
+    
+    my %names_for = (
+        cas9_zf_dnls_native => 'pCS2_zf_dnls_Chen',
+        cas9_zf_dnls_nickase => 'pCS2_zf_dnls_nick_Chen',
+        cas9_cherry_native => 'pCS2_zf_dnls_cherry',
+        cas9_nanos_native => 'pCS2_zf_dnls_nanos',
+    );
+    
+    return $names_for{ $self->type };
 }
 
 __PACKAGE__->meta->make_immutable;

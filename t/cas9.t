@@ -17,9 +17,9 @@ isa_ok( $cas9, 'Crispr::Cas9');
 $tests++;
 
 # check attributes and methods - 9 tests
-my @attributes = ( qw{ type species target_seq PAM  } );
+my @attributes = ( qw{ type species target_seq PAM plasmid_name notes } );
 
-my @methods = ( qw{ _parse_species info crispr_target_seq _build_target_seq _build_PAM } );
+my @methods = ( qw{ _parse_species info crispr_target_seq _build_target_seq _build_PAM _build_plasmid_name } );
 
 foreach my $attribute ( @attributes ) {
     can_ok( $cas9, $attribute );
@@ -31,10 +31,12 @@ foreach my $method ( @methods ) {
 }
 
 # check default attributes
-my $type = 'cas9_dnls_native';
+my $type = 'cas9_zf_dnls_native';
 my $species = 's_pyogenes';
 my $target_seq = 'NNNNNNNNNNNNNNNNNN';
 my $pam = 'NGG';
+my $plasmid_name = 'pCS2_zf_dnls_Chen';
+my $notes;
 my $crispr_target_seq = $target_seq . $pam;
 is( $cas9->type, $type, 'check type default');
 $tests++;
@@ -45,6 +47,10 @@ $tests++;
 is( $cas9->PAM, $pam, 'check PAM default');
 $tests++;
 is( $cas9->crispr_target_seq, $crispr_target_seq, 'check crispr_target_seq default');
+$tests++;
+is( $cas9->plasmid_name, $plasmid_name, 'check plasmid_name default');
+$tests++;
+is( $cas9->notes, $notes, 'check notes default');
 $tests++;
 
 my $cas9_tmp = Crispr::Cas9->new( species => 'new species' );
