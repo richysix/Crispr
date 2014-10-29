@@ -32,6 +32,22 @@ with 'Crispr::SharedMethods';
 
 =cut
 
+=method db_id
+
+  Usage       : $gRNA_prep->db_id;
+  Purpose     : Getter/Setter for Sample db_id attribute
+  Returns     : Crispr::db_id object
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
+has 'db_id' => (
+    is => 'rw',
+    isa => 'Maybe[Int]',
+);
+
 =method crRNA
 
   Usage       : $gRNA_prep->crRNA;
@@ -47,6 +63,27 @@ has 'crRNA' => (
     is => 'rw',
     isa => 'Crispr::crRNA',
     required => 1,
+    handles => {
+        crRNA_id => 'crRNA_id',
+    },
+);
+
+=method type
+
+  Usage       : $gRNA_prep->type;
+  Purpose     : Getter for Sample type attribute
+  Returns     : Num
+  Parameters  : None
+  Throws      : If input is given
+  Comments    : 
+
+=cut
+
+has 'type' => (
+    is => 'ro',
+    isa => enum( [ qw{ sgRNA tracrRNA } ] ),
+    required => 1,
+    default => 'sgRNA',
 );
 
 =method concentration
@@ -98,6 +135,22 @@ has 'date' => (
     is => 'ro',
 	isa =>  'DateTime',
     required => 1,
+);
+
+=method well
+
+  Usage       : $gRNA_prep->well;
+  Purpose     : Getter/Setter for well attribute
+  Returns     : Labware::Well object
+  Parameters  : Labware::Well
+  Throws      : 
+  Comments    : 
+
+=cut
+
+has 'well' => (
+    is => 'rw',
+    isa => 'Maybe[Labware::Well]',
 );
 
 around BUILDARGS => sub{
