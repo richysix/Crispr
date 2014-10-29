@@ -75,8 +75,8 @@ my $targets;
 my @ids;
 
 # set up constants
-Readonly my $SLICE_EXTENDER => 500;
-Readonly my $DISTANCE_TO_TARGET => 125;
+Readonly my $SLICE_EXTENDER => 600;
+Readonly my $DISTANCE_TO_TARGET => 100;
 
 my $adaptors_for;
 while(<>){
@@ -236,12 +236,12 @@ if( $options{debug} == 2 ){
 # parameters: product size 250-300
 my @pcr_size_ranges = (
     {
-        ext => '300-600',
+        ext => '400-800',
         int => '250-300',
     },
     #{
-    #    ext => '500-1000',
-    #    int => '50-450',
+    #    ext => '600-1000',
+    #    int => '250-300',
     #},
 );
 my $round = 0;
@@ -315,6 +315,10 @@ foreach my $id ( @ids ){
         @primer_info = ( 'NO EXT PRIMERS', '' x 14, );
     }
     
+    my $ext_product_size = defined $target_info->{ext_primers}  ?
+            $target_info->{ext_primers}->product_size
+        :   '';
+    
     if( exists $target_info->{crispr_pair} ){
         my $crispr_pair = $target_info->{crispr_pair};
         
@@ -331,7 +335,7 @@ foreach my $id ( @ids ){
             }
             print join("\t", $crispr_pair->pair_name, $crRNA->name,
                         @primer_info, join(q{,}, @enzyme_information, ),
-                        $sizes || '', ), "\n";
+                        $ext_product_size, $sizes || '', ), "\n";
         }
     }
     elsif( exists $target_info->{crRNA} ){
@@ -346,10 +350,10 @@ foreach my $id ( @ids ){
             $product_size = $target_info->{int_primers}->product_size;
         }
         push @info, 'NULL', $crRNA->name;
-        print join("\t", @info, @primer_info, join(q{,}, @enzyme_information, ), $product_size || 'NULL', ), "\n";
+        print join("\t", @info, @primer_info, join(q{,}, @enzyme_information, ), $ext_product_size, $product_size || 'NULL', ), "\n";
     }
     else{
-        die "This shouldn't happen. There is a crispr_pair or a crRNA!\n";
+        die "This shouldn't happen. There is no crispr_pair or crRNA!\n";
     }
 }
 
@@ -410,7 +414,7 @@ sub primer_design {
             my $target_start = $targets->{ $id }->{target_start};
             my $target_end = $targets->{ $id }->{target_end};
             $targets->{$id}->{ext_amp}[5] = 
-            [ [$target_start - 100, $target_end + 100 - ( $target_start - 100 ) ] ];
+            [ [$target_start - 200, $target_end + 200 - ( $target_start - 200 ) ] ];
         }
     }
     $round++;
@@ -422,7 +426,7 @@ sub primer_design {
             my $target_start = $targets->{ $id }->{target_start};
             my $target_end = $targets->{ $id }->{target_end};
             $targets->{$id}->{ext_amp}[5] = 
-            [ [$target_start - 100, $target_end + 100 - ( $target_start - 100 ) ] ];
+            [ [$target_start - 200, $target_end + 200 - ( $target_start - 200 ) ] ];
         }
     }
     $round++;
@@ -461,7 +465,7 @@ sub primer_design {
     
     my @target_offsets = ( 25, 10 );
     
-    foreach my $side ( 'left', 'right' ){
+    foreach my $side ( 'left', 'right', 'none' ){
         foreach my $target_offset ( @target_offsets ){
             ##  PRIMERS - ROUND 1 ##
             $round++;
@@ -525,8 +529,8 @@ sub primer_design {
 #                 target_offset   Int
 #   Throws      : 
 #   Comments    : Also adds an excluded region to one side to make sure that at
-#                 least one of the reads is closer than 125 bp to the crispr cut-site.
-#                 This is biased towards the left side (read1).
+#                 least one of the reads is closer than $DISTANCE_TO_TARGET bp to the crispr cut-site.
+#                 This is called with the left side first each time so it is biased towards the left side (read1).
 
 
 sub reset_excluded_regions {
@@ -541,9 +545,14 @@ sub reset_excluded_regions {
                 [
                     [ 1, $ext_p->left_primer->length - 10 ],
                     [ $ext_p->product_size - 10, 10 ],
-                    [ $target_start - $target_offset, ($target_end + $target_offset) - ($target_start - $target_offset) + 1 ],
                 ];
-            
+            if( $side_to_constrain ne 'none' ){
+                my $target_excluded_start = $side_to_constrain eq 'left'
+                    ?                       $target_start - $target_offset
+                    :                       $target_start;
+                push @{$targets->{$id}->{int_amp}[5]},
+                    [ $target_excluded_start, $target_offset + 1 ],
+            }
             if( $target_start > $DISTANCE_TO_TARGET && $side_to_constrain eq 'left' ){
                 push @{$targets->{$id}->{int_amp}[5]},
                     [ 1, $target_start - $DISTANCE_TO_TARGET ];
