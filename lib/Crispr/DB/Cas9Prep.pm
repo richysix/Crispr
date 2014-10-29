@@ -15,7 +15,7 @@ with 'Crispr::SharedMethods';
 
 =method new
 
-  Usage       : my $cas9 = Crispr::Cas9Prep->new(
+  Usage       : my $cas9_prep = Crispr::Cas9Prep->new(
 					db_id => undef,
 					cas9 => $cas9,
 					prep_type => rna,
@@ -36,7 +36,7 @@ with 'Crispr::SharedMethods';
 
 =method db_id
 
-  Usage       : $cas9->db_id;
+  Usage       : $cas9_prep->db_id;
   Purpose     : Getter for Cas9Prep db_id attribute
   Returns     : Int (can be undef)
   Parameters  : None
@@ -52,7 +52,7 @@ has 'db_id' => (
 
 =method cas9
 
-  Usage       : $cas9->cas9;
+  Usage       : $cas9_prep->cas9;
   Purpose     : Getter for cas9 attribute
   Returns     : Crispr::Cas9 object
   Parameters  : None
@@ -65,6 +65,7 @@ has 'cas9' => (
     is => 'ro',
     isa => 'Crispr::Cas9',
     handles => {
+        cas9_db_id => 'db_id',
         type => 'type',
         species => 'species',
         target_seq => 'target_seq',
@@ -75,7 +76,7 @@ has 'cas9' => (
 
 =method prep_type
 
-  Usage       : $cas9->prep_type;
+  Usage       : $cas9_prep->prep_type;
   Purpose     : Getter for associated prep_type
   Returns     : String ('dna', 'rna' or 'protein')
   Parameters  : None
@@ -93,7 +94,7 @@ has 'prep_type' => (
 
 =method made_by
 
-  Usage       : $cas9->made_by;
+  Usage       : $cas9_prep->made_by;
   Purpose     : Getter for made_by attribute
   Returns     : String
   Parameters  : None
@@ -197,7 +198,7 @@ __END__
 =head1 SYNOPSIS
  
     use Crispr::Cas9Prep;
-    my $cas9 = Crispr::Cas9Prep->new(
+    my $cas9_prep = Crispr::Cas9Prep->new(
         db_id => undef,
         cas9 => $cas9,
         prep_type => rna,
