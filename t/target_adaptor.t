@@ -20,7 +20,7 @@ chomp $count_output;
 $count_output =~ s/\s$test_data//mxs;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => ($count_output - 1)* 2 + 17;
+Readonly my $TESTS_IN_COMMON => 17 + 17 + ($count_output - 1)* 2;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
@@ -107,30 +107,48 @@ foreach my $db_connection ( @db_connections ){
     my $target_adaptor = Crispr::DB::TargetAdaptor->new( db_connection => $mock_db_connection, );
     # 1 test
     isa_ok( $target_adaptor, 'Crispr::DB::TargetAdaptor', "$driver: check object class is ok" );
+
+    # check attributes and methods - 3 + 14 tests
+    my @object_attributes = ( qw{ dbname db_connection connection } );
     
-    use Crispr::Target;
+    my @methods = (
+        qw{ store store_targets update_designed fetch_by_id fetch_by_ids
+            fetch_by_name_and_requestor fetch_by_names_and_requestors fetch_by_crRNA _fetch delete_target_from_db
+            check_entry_exists_in_db fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement _db_error_handling }
+    );
     
-    # make a new target
-    my $target = Crispr::Target->new(
-        target_name => 'SLC39A14',
-        assembly => 'Zv9',
-        chr => '5',
-        start => 18067321,
-        end => 18083466,
-        strand => '-1',
-        species => 'danio_rerio',
-        gene_id => 'ENSDARG00000090174',
-        gene_name => 'SLC39A14',
-        requestor => 'crispr_test',
-        ensembl_version => 71,
-    ); 
+    foreach my $attribute ( @object_attributes ) {
+        can_ok( $target_adaptor, $attribute );
+    }
+    foreach my $method ( @methods ) {
+        can_ok( $target_adaptor, $method );
+    }
+    
+    # make a new mock target object
+    my $mock_target = Test::MockObject->new();
+    $mock_target->set_isa( 'Crispr::Target' );
+    my $t_id;
+	$mock_target->mock('target_id', sub{ my @args = @_; if( $_[1] ){ $t_id = $_[1] } return $t_id; } );
+	$mock_target->mock('target_name', sub { return 'SLC39A14' } );
+	$mock_target->mock('assembly', sub { return 'Zv9' } );
+	$mock_target->mock('chr', sub { return '5' } );
+	$mock_target->mock('start', sub { return 18067321 } );
+	$mock_target->mock('end', sub { return 18083466 } );
+	$mock_target->mock('strand', sub { return '-1' } );
+	$mock_target->mock('species', sub { return 'danio_rerio' } );
+	$mock_target->mock('requires_enzyme', sub { return 'n' } );
+	$mock_target->mock('gene_id', sub { return 'ENSDARG00000090174' } );
+	$mock_target->mock('gene_name', sub { return 'SLC39A14' } );
+	$mock_target->mock('requestor', sub { return 'crispr_test' } );
+	$mock_target->mock('ensembl_version', sub { return 71 } );
+	$mock_target->mock('designed', sub { return undef } );
     
     # store target
     my $count = 0;
-    $target = $target_adaptor->store($target);
+    $mock_target = $target_adaptor->store($mock_target);
     $count++;
     # 1 tests
-    is( $target->target_id, $count, "$driver: Check primary key" );
+    is( $mock_target->target_id, $count, "$driver: Check primary key" );
     
     # check database row
     # 1 test
@@ -179,17 +197,28 @@ foreach my $db_connection ( @db_connections ){
     isa_ok( $target_3->target_adaptor, 'Crispr::DB::TargetAdaptor', "$driver: check target adaptor");
     
     # new target without a assembly, chr, strand, species, gene_id, gene_name, ensembl_version, and designed.
-    my $target_4 = Crispr::Target->new(
-        target_name => 'gfp',
-        start => 1,
-        end => 720,
-        requestor => 'crispr_test',
-    );
-    
+    my $mock_target_2 = Test::MockObject->new();
+    $mock_target_2->set_isa( 'Crispr::Target' );
+    my $t2_id;
+	$mock_target_2->mock('target_id', sub{ my @args = @_; if( $_[1] ){ $t2_id = $_[1] } return $t2_id; } );
+	$mock_target_2->mock('target_name', sub { return 'gfp' } );
+	$mock_target_2->mock('assembly', sub { return undef } );
+	$mock_target_2->mock('chr', sub { return undef } );
+	$mock_target_2->mock('start', sub { return 1 } );
+	$mock_target_2->mock('end', sub { return 720 } );
+	$mock_target_2->mock('strand', sub { return '1' } );
+	$mock_target_2->mock('species', sub { return undef } );
+	$mock_target_2->mock('requires_enzyme', sub { return 'n' } );
+	$mock_target_2->mock('gene_id', sub { return undef } );
+	$mock_target_2->mock('gene_name', sub { return undef } );
+	$mock_target_2->mock('requestor', sub { return 'crispr_test' } );
+	$mock_target_2->mock('ensembl_version', sub { return undef } );
+	$mock_target_2->mock('designed', sub { return undef } );
+
     # store - 2 tests
-    $target_adaptor->store($target_4);
+    $target_adaptor->store($mock_target_2);
     $count++;
-    is( $target_4->target_id, 2, "$driver: Store target with undef attributes" );
+    is( $mock_target_2->target_id, 2, "$driver: Store target with undef attributes" );
     
     open my $fh, '<', $test_data or die "Couldn't open file: $test_data!\n";
     my %target_seen;
@@ -227,33 +256,49 @@ foreach my $db_connection ( @db_connections ){
         }
         
         next if( exists $target_seen{ $args{'target_name'} } );
-        $target_seen{ $args{'target_name'} } = 1;
+        $target_seen{ $args{'target_name'} } = 1; 
         
-        my $target = Crispr::Target->new( \%args );
+        my $mock_target = Test::MockObject->new();
+        $mock_target->set_isa( 'Crispr::Target' );
+        my $t_id;
+        $mock_target->mock( 'target_id', sub{ my @args = @_; if( $_[1] ){ $t_id = $_[1] } return $t_id; } );
+        $mock_target->mock( 'target_name', sub { return $args{ 'target_name' } } );
+        $mock_target->mock( 'assembly', sub { return $args{ 'assembly' } } );
+        $mock_target->mock( 'chr', sub { return $args{ 'chr' } } );
+        $mock_target->mock( 'start', sub { return $args{ 'start' } } );
+        $mock_target->mock( 'end', sub { return $args{ 'end' } } );
+        $mock_target->mock( 'strand', sub { return $args{ 'strand' } } );
+        $mock_target->mock( 'species', sub { return $args{ 'species' } } );
+        $mock_target->mock( 'requires_enzyme', sub { return $args{ 'requires_enzyme' } } );
+        $mock_target->mock( 'gene_id', sub { return $args{ 'gene_id' } } );
+        $mock_target->mock( 'gene_name', sub { return $args{ 'gene_name' } } );
+        $mock_target->mock( 'requestor', sub { return $args{ 'requestor' } } );
+        $mock_target->mock( 'ensembl_version', sub { return $args{ 'ensembl_version' } } );
+        $mock_target->mock( 'designed', sub { return $args{ 'designed' } } );
         
-        $target_adaptor->store($target);
+        $target_adaptor->store($mock_target);
         $count++;
-        is( $target->target_id, $count, "$driver: Target id - $args{target_name}");
+        is( $mock_target->target_id, $count, "$driver: Target id - $args{target_name}");
         row_ok(
            table => 'target',
            where => [ target_id => $count ],
            tests => {
                'eq' => {
-                    target_name => $target->target_name,
-                    assembly => $target->assembly,
-                    chr  => $target->chr,
-                    strand => $target->strand,
-                    species => $target->species,
-                    requires_enzyme => $target->requires_enzyme,
-                    gene_id => $target->gene_id,
-                    gene_name => $target->gene_name,
-                    requestor => $target->requestor,
+                    target_name => $mock_target->target_name,
+                    assembly => $mock_target->assembly,
+                    chr  => $mock_target->chr,
+                    strand => $mock_target->strand,
+                    species => $mock_target->species,
+                    requires_enzyme => $mock_target->requires_enzyme,
+                    gene_id => $mock_target->gene_id,
+                    gene_name => $mock_target->gene_name,
+                    requestor => $mock_target->requestor,
                     designed => undef,
                },
                '==' => {
-                    start  => $target->start,
-                    end    => $target->end,
-                    ensembl_version => $target->ensembl_version,
+                    start  => $mock_target->start,
+                    end    => $mock_target->end,
+                    ensembl_version => $mock_target->ensembl_version,
                },
            },
            label => "$driver: Target stored - $args{target_name}",
