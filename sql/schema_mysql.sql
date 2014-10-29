@@ -20,7 +20,7 @@ create table plate (
     plate_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     plate_name CHAR(10) UNIQUE,
     plate_type ENUM('96', '384') NOT NULL,
-    plate_category ENUM('crispr', 'construction_oligos', 't7_hairpin_oligos', 'expression_construct', 'pcr_primers', 'kaspar_assays' ) NOT NULL,
+    plate_category ENUM('crispr', 'construction_oligos', 't7_hairpin_oligos', 'expression_construct', 'guideRNA_prep', 'pcr_primers', 'kaspar_assays' ) NOT NULL,
     ordered DATE,
     received DATE
 ) ENGINE = InnoDB;
@@ -187,10 +187,11 @@ create table restriction_enzymes (
 
 create table cas9 (
     cas9_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
+    type VARCHAR(100) NOT NULL,
     plasmid_name VARCHAR(100),
     notes VARCHAR(200),
-    CONSTRAINT `cas9_name` UNIQUE ( `name` )
+    CONSTRAINT `cas9_type` UNIQUE ( `type` ),
+    CONSTRAINT `cas9_plasmid_name` UNIQUE ( `plasmid_name` )
 ) ENGINE = InnoDB;
 
 create table cas9_prep (
@@ -220,7 +221,7 @@ create table injection_pool (
     crRNA_id INT UNSIGNED NOT NULL,
     guideRNA_prep_id INT UNSIGNED NOT NULL,
     guideRNA_concentration INT UNSIGNED NOT NULL,
-    CONSTRAINT `injection_pool_injection_id_crRNA_id` PRIMARY KEY ( `injection_id`, `crRNA_id` ),
+    CONSTRAINT `injection_pool_injection_id_crRNA_id` PRIMARY KEY ( `injection_id`, `guideRNA_prep_id` ),
     FOREIGN KEY (injection_id) REFERENCES injection(injection_id),
     FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id)
 ) ENGINE = InnoDB;
