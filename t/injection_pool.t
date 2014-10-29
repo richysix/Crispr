@@ -16,9 +16,9 @@ my $injection_pool = Crispr::DB::InjectionPool->new();
 isa_ok( $injection_pool, 'Crispr::DB::InjectionPool');
 $tests++;
 
-# check attributes and methods - 12 tests
-my @attributes = ( qw{ db_id pool_name cas9_prep cas9_conc guideRNA_conc
-    guideRNA_type date line_injected line_raised sorted_by guideRNAs }
+# check attributes and methods - 9 tests
+my @attributes = ( qw{ db_id pool_name cas9_prep cas9_conc date
+    line_injected line_raised sorted_by guideRNAs }
 );
 
 my @methods = ( qw{ _parse_date _build_date } );
@@ -34,11 +34,8 @@ foreach my $method ( @methods ) {
 
 # check default attributes
 my $db_id = undef;
-my $guide_type = 'sgRNA';
 my $todays_date_obj = DateTime->now();
 is( $injection_pool->db_id, $db_id, 'check db_id default');
-$tests++;
-is( $injection_pool->guideRNA_type, $guide_type, 'check guideRNA_type default');
 $tests++;
 is( $injection_pool->date, $todays_date_obj->ymd, 'check date default');
 $tests++;
@@ -121,29 +118,32 @@ $mock_crRNA_2->mock( 'info', sub { return ( qw{ crRNA:5:50403-50425:-1 5 50403
     50425 1 0.853 GGAATAGAGAGATAGAGAGTCGG ATGGGGAATAGAGAGATAGAGAGT
     AAACACTCTCTATCTCTCTATTCC NULL NULL NULL NULL NULL NULL NULL 2 pDR274 } ); });
 
+my $mock_gRNA_1 = Test::MockObject->new();
+$mock_gRNA_1->set_isa('Crispr::DB::GuideRNAPrep' );
+$mock_gRNA_1->mock( 'crRNA', sub { return $mock_crRNA_1 } );
+
+my $mock_gRNA_2 = Test::MockObject->new();
+$mock_gRNA_2->set_isa('Crispr::DB::GuideRNAPrep' );
+$mock_gRNA_2->mock( 'crRNA', sub { return $mock_crRNA_2 } );
 
 $injection_pool = Crispr::DB::InjectionPool->new(
     pool_name => '170',
     cas9_prep => $mock_cas9_prep_object,
     cas9_conc => 200,
-    guideRNA_conc => 20,
-    guideRNA_type => 'tracrRNA',
     date => '2014-05-24',
     line_injected => 'line1',
     line_raised => 'line2',
     sorted_by => 'crispr_test',
-    guideRNAs => [ $mock_crRNA_1, $mock_crRNA_2 ],
+    guideRNAs => [ $mock_gRNA_1, $mock_gRNA_2 ],
 );
 
 is( $injection_pool->pool_name, '170', 'check pool_name');
 is( $injection_pool->cas9_conc, 200, 'check cas9_conc');
-is( $injection_pool->guideRNA_conc, 20, 'check guideRNA_conc');
-is( $injection_pool->guideRNA_type, 'tracrRNA', 'check guideRNA_type');
 is( $injection_pool->date, '2014-05-24', 'check date');
 is( $injection_pool->line_injected, 'line1', 'check line_injected');
 is( $injection_pool->line_raised, 'line2', 'check line_raised');
 is( $injection_pool->sorted_by, 'crispr_test', 'check sorted_by');
-$tests += 8;
+$tests += 6;
 
 # check it throws with non date input
 throws_ok { Crispr::DB::InjectionPool->new( date => '14-05-24' ) } qr/The\sdate\ssupplied\sis\snot\sa\svalid\sformat/, 'non valid date format';

@@ -16,7 +16,7 @@ use Crispr::DB::InjectionPoolAdaptor;
 use Crispr::DB::DBConnection;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 16 + 4 + 13 + 2 + 3 + 14 + 14 + 28 + 15 + 2;
+Readonly my $TESTS_IN_COMMON => 1 + 16 + 4 + 13 + 2 + 3 + 24 + 24 + 48 + 25 + 2;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
@@ -92,19 +92,28 @@ foreach my $db_connection ( @db_connections ){
     #$mock_db_connection->mock( 'connection', sub { return $db_connection->connection } );
     
     # make mock Cas9 and Cas9Prep objects
-    my $type = 'cas9_dnls_native';
+    my $type = 'cas9_zf_dnls_native';
+    my $plasmid_name = 'pCS2_zf_dnls_Chen';
     my $species = 's_pyogenes';
     my $target_seq = 'NNNNNNNNNNNNNNNNNN';
     my $pam = 'NGG';
     my $crispr_target_seq = $target_seq . $pam;
     my $mock_cas9_object = Test::MockObject->new();
     $mock_cas9_object->set_isa( 'Crispr::Cas9' );
+    $mock_cas9_object->mock( 'db_id', sub{ return 1 } );
     $mock_cas9_object->mock( 'type', sub{ return $type } );
     $mock_cas9_object->mock( 'species', sub{ return $species } );
     $mock_cas9_object->mock( 'target_seq', sub{ return $target_seq } );
     $mock_cas9_object->mock( 'PAM', sub{ return $pam } );
+    $mock_cas9_object->mock( 'plasmid_name', sub{ return $plasmid_name } );
+    $mock_cas9_object->mock( 'notes', sub{ return 'some notes' } );
     $mock_cas9_object->mock( 'crispr_target_seq', sub{ return $crispr_target_seq } );
     $mock_cas9_object->mock( 'info', sub{ return ( $type, $species, $crispr_target_seq ) } );
+    # insert directly into db
+    my $statement = "insert into cas9 values( ?, ?, ?, ? );";
+    my $sth = $dbh->prepare($statement);
+    $sth->execute( $mock_cas9_object->db_id, $mock_cas9_object->type,
+        $mock_cas9_object->plasmid_name, $mock_cas9_object->notes );
     
     my $prep_type = 'rna';
     my $made_by = 'cr_test';
@@ -118,13 +127,11 @@ foreach my $db_connection ( @db_connections ){
     $mock_cas9_prep_object_1->mock( 'date', sub{ return $todays_date_obj->ymd } );
     $mock_cas9_prep_object_1->mock( 'type', sub{ return $mock_cas9_object->type } );
     # insert directly into db
-    my $statement = "insert into cas9 values( ?, ?, ?, ?, ? );";
-    my $sth ;
+    $statement = "insert into cas9_prep values( ?, ?, ?, ?, ? );";
     $sth = $dbh->prepare($statement);
-    $sth->execute( $mock_cas9_prep_object_1->db_id, $mock_cas9_object->type,
+    $sth->execute( $mock_cas9_prep_object_1->db_id, $mock_cas9_object->db_id,
         $mock_cas9_prep_object_1->prep_type, $mock_cas9_prep_object_1->made_by,
         $mock_cas9_prep_object_1->date );
-
     
     my $mock_crRNA_object_1 = Test::MockObject->new();
     $mock_crRNA_object_1->set_isa( 'Crispr::crRNA' );
@@ -134,7 +141,40 @@ foreach my $db_connection ( @db_connections ){
     $mock_crRNA_object_2->set_isa( 'Crispr::crRNA' );
     $mock_crRNA_object_2->mock( 'crRNA_id', sub{ return 2 } );
     
-    # insert into db
+    my $mock_well = Test::MockObject->new();
+    $mock_well->set_isa( 'Labware::Well' );
+    #$mock_well->mock( 'plate', sub{ return $mock_plate } );
+    #$mock_well->mock( 'plate_type', sub{ return '96' } );
+    $mock_well->mock( 'position', sub{ return 'A01' } );
+    
+    my $mock_gRNA_1 = Test::MockObject->new();
+    $mock_gRNA_1->set_isa( 'Crispr::guideRNA_prep' );
+    $mock_gRNA_1->mock( 'db_id', sub{ return 1 } );
+    $mock_gRNA_1->mock( 'type', sub{ return 'sgRNA' } );
+    $mock_gRNA_1->mock( 'concentration', sub{ return 50 } );
+    $mock_gRNA_1->mock( 'made_by', sub{ return 'cr1' } );
+    $mock_gRNA_1->mock( 'date', sub{ return '2014-10-02' } );
+    $mock_gRNA_1->mock( 'crRNA', sub{ return $mock_crRNA_object_1 } );
+    $mock_gRNA_1->mock( 'crRNA_id', sub{ return $mock_crRNA_object_1->crRNA_id } );
+    $mock_gRNA_1->mock( 'well', sub{ return $mock_well } );
+    
+    my $mock_well_2 = Test::MockObject->new();
+    $mock_well_2->set_isa( 'Labware::Well' );
+    #$mock_well_2->mock( 'plate', sub{ return $mock_plate } );
+    #$mock_well_2->mock( 'plate_type', sub{ return '96' } );
+    $mock_well_2->mock( 'position', sub{ return 'B01' } );
+    
+    my $mock_gRNA_2 = Test::MockObject->new();
+    $mock_gRNA_2->set_isa( 'Crispr::guideRNA_prep' );
+    $mock_gRNA_2->mock( 'db_id', sub{ return 2 } );
+    $mock_gRNA_2->mock( 'type', sub{ return 'sgRNA' } );
+    $mock_gRNA_2->mock( 'concentration', sub{ return 60 } );
+    $mock_gRNA_2->mock( 'made_by', sub{ return 'cr1' } );
+    $mock_gRNA_2->mock( 'date', sub{ return '2014-10-02' } );
+    $mock_gRNA_2->mock( 'crRNA', sub{ return $mock_crRNA_object_2 } );
+    $mock_gRNA_2->mock( 'crRNA_id', sub{ return $mock_crRNA_object_2->crRNA_id } );
+    $mock_gRNA_2->mock( 'well', sub{ return $mock_well_2 } );
+    
     # target
     $statement = "insert into target values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );";
     $sth = $dbh->prepare($statement);
@@ -143,12 +183,19 @@ foreach my $db_connection ( @db_connections ){
     $statement = "insert into plate values( ?, ?, ?, ?, ?, ? );";
     $sth = $dbh->prepare($statement);
     $sth->execute( 1, 'CR_000001-', '96', 'crispr', undef, undef, );
+    $sth->execute( 2, 'CR_000001h', '96', 'guideRNA_prep', undef, undef, );
+
     # crRNA
     $statement = "insert into crRNA values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );";
     $sth = $dbh->prepare($statement);
     $sth->execute( 1, 'crRNA:4:1-23:-1', '4', 1, 23, '-1', 'CACAGATGACAGATAGACAGCGG', 0, 0.81, 0.9, 0.9, 1, 1, 'A01' );
     $sth->execute( 2, 'crRNA:4:21-43:1', '4', 21, 43, '1', 'TAGATCAGTAGATCGATAGTAGG', 0, 0.81, 0.9, 0.9, 1, 1, 'B01' );
-    
+    # guideRNA
+    $statement = "insert into guideRNA_prep values( ?, ?, ?, ?, ?, ?, ?, ? );";
+    $sth = $dbh->prepare($statement);
+    $sth->execute( 1, 1, 'sgRNA', 50, 'cr1', '2014-10-02', 2, 'A01' );
+    $sth->execute( 2, 1, 'sgRNA', 60, 'cr1', '2014-10-02', 2, 'B01' );
+
     my $mock_injection_pool = Test::MockObject->new();
     $mock_injection_pool->set_isa( 'Crispr::DB::InjectionPool' );
     my $i_id;
@@ -156,13 +203,11 @@ foreach my $db_connection ( @db_connections ){
     $mock_injection_pool->mock( 'pool_name', sub{ return '170' } );
     $mock_injection_pool->mock( 'cas9_prep', sub{ return $mock_cas9_prep_object_1 } );
     $mock_injection_pool->mock( 'cas9_conc', sub{ return 200 } );
-    $mock_injection_pool->mock( 'guideRNA_conc', sub{ return 10 } );
-    $mock_injection_pool->mock( 'guideRNA_type', sub{ return 'sgRNA' } );
     $mock_injection_pool->mock( 'date', sub{ return '2014-10-13' } );
     $mock_injection_pool->mock( 'line_injected', sub{ return 'H1530' } );
     $mock_injection_pool->mock( 'line_raised', sub{ return undef } );
     $mock_injection_pool->mock( 'sorted_by', sub{ return 'cr_1' } );
-    $mock_injection_pool->mock( 'guideRNAs', sub{ return [ $mock_crRNA_object_1, $mock_crRNA_object_2, ] } );
+    $mock_injection_pool->mock( 'guideRNAs', sub{ return [ $mock_gRNA_1, $mock_gRNA_2, ] } );
     
     # make a new real InjectionPool Adaptor
     my $injection_pool_adaptor = Crispr::DB::InjectionPoolAdaptor->new( db_connection => $db_connection, );
@@ -193,16 +238,14 @@ foreach my $db_connection ( @db_connections ){
        tests => {
            'eq' => {
                 injection_name => $mock_injection_pool->pool_name,
-                guideRNA_type => $mock_injection_pool->guideRNA_type,
                 line_injected  => $mock_injection_pool->line_injected,
                 line_raised  => $mock_injection_pool->line_raised,
                 sorted_by => $mock_injection_pool->sorted_by,
                 date => $mock_injection_pool->date,
            },
            '==' => {
-                cas9_id => $mock_cas9_prep_object_1->db_id,
+                cas9_prep_id => $mock_cas9_prep_object_1->db_id,
                 cas9_concentration => $mock_injection_pool->cas9_conc,
-                guideRNA_concentration => $mock_injection_pool->guideRNA_conc,
            },
        },
        label => "$driver: injection pool stored",
@@ -229,7 +272,9 @@ foreach my $db_connection ( @db_connections ){
     my $regex = $driver eq 'mysql' ?   qr/Duplicate\sentry/xms
         :                           qr/PRIMARY\sKEY\smust\sbe\sunique/xms;
     
-    throws_ok { $injection_pool_adaptor->store_injection_pool( $mock_injection_pool) } $regex, "$driver: store_injection_pool throws because of duplicate entry";
+    throws_ok { $injection_pool_adaptor->store_injection_pool( $mock_injection_pool) }
+        $regex,
+        "$driver: store_injection_pool throws because of duplicate entry";
     
     $i_id = 2;
     $mock_injection_pool->mock( 'pool_name', sub{ return '171' } );
@@ -240,16 +285,14 @@ foreach my $db_connection ( @db_connections ){
        tests => {
            'eq' => {
                 injection_name => $mock_injection_pool->pool_name,
-                guideRNA_type => $mock_injection_pool->guideRNA_type,
                 line_injected  => $mock_injection_pool->line_injected,
                 line_raised  => $mock_injection_pool->line_raised,
                 sorted_by => $mock_injection_pool->sorted_by,
                 date => $mock_injection_pool->date,
            },
            '==' => {
-                cas9_id => $mock_cas9_prep_object_1->db_id,
+                cas9_prep_id => $mock_cas9_prep_object_1->db_id,
                 cas9_concentration => $mock_injection_pool->cas9_conc,
-                guideRNA_concentration => $mock_injection_pool->guideRNA_conc,
            },
        },
        label => "$driver: injection pool stored",
@@ -267,8 +310,12 @@ foreach my $db_connection ( @db_connections ){
     }
     
     # throws ok - 2 tests
-    throws_ok { $injection_pool_adaptor->store_injection_pools('InjectionPoolObject') } qr/Supplied\sargument\smust\sbe\san\sArrayRef\sof\sInjectionPool\sobjects/, "$driver: store_injection_pools throws on non ARRAYREF";
-    throws_ok { $injection_pool_adaptor->store_injection_pools( [ 'InjectionPoolObject' ] ) } qr/Argument\smust\sbe\sCrispr::DB::InjectionPool\sobject/, "$driver: store_injection_pools throws on string input";
+    throws_ok { $injection_pool_adaptor->store_injection_pools('InjectionPoolObject') }
+        qr/Supplied\sargument\smust\sbe\san\sArrayRef\sof\sInjectionPool\sobjects/,
+        "$driver: store_injection_pools throws on non ARRAYREF";
+    throws_ok { $injection_pool_adaptor->store_injection_pools( [ 'InjectionPoolObject' ] ) }
+        qr/Argument\smust\sbe\sCrispr::DB::InjectionPool\sobject/,
+        "$driver: store_injection_pools throws on string input";
     
     # increment mock object 1's id
     $i_id = 3;
@@ -286,7 +333,7 @@ foreach my $db_connection ( @db_connections ){
     $mock_injection_pool_2->mock( 'line_injected', sub{ return 'H1530' } );
     $mock_injection_pool_2->mock( 'line_raised', sub{ return undef } );
     $mock_injection_pool_2->mock( 'sorted_by', sub{ return 'cr_1' } );
-    $mock_injection_pool_2->mock( 'guideRNAs', sub{ return [ $mock_crRNA_object_1, $mock_crRNA_object_2, ] } );
+    $mock_injection_pool_2->mock( 'guideRNAs', sub{ return [ $mock_gRNA_1, $mock_gRNA_2, ] } );
     
     # 3 tests
     ok( $injection_pool_adaptor->store_injection_pools( [ $mock_injection_pool, $mock_injection_pool_2 ] ), "$driver: store_injection_pools" );
@@ -296,16 +343,14 @@ foreach my $db_connection ( @db_connections ){
        tests => {
            'eq' => {
                 injection_name => $mock_injection_pool->pool_name,
-                guideRNA_type => $mock_injection_pool->guideRNA_type,
                 line_injected  => $mock_injection_pool->line_injected,
                 line_raised  => $mock_injection_pool->line_raised,
                 sorted_by => $mock_injection_pool->sorted_by,
                 date => $mock_injection_pool->date,
            },
            '==' => {
-                cas9_id => $mock_cas9_prep_object_1->db_id,
+                cas9_prep_id => $mock_cas9_prep_object_1->db_id,
                 cas9_concentration => $mock_injection_pool->cas9_conc,
-                guideRNA_concentration => $mock_injection_pool->guideRNA_conc,
            },
        },
        label => "$driver: injection pool stored",
@@ -316,16 +361,14 @@ foreach my $db_connection ( @db_connections ){
        tests => {
            'eq' => {
                 injection_name => $mock_injection_pool_2->pool_name,
-                guideRNA_type => $mock_injection_pool_2->guideRNA_type,
                 line_injected  => $mock_injection_pool_2->line_injected,
                 line_raised  => $mock_injection_pool_2->line_raised,
                 sorted_by => $mock_injection_pool_2->sorted_by,
                 date => $mock_injection_pool_2->date,
            },
            '==' => {
-                cas9_id => $mock_cas9_prep_object_1->db_id,
+                cas9_prep_id => $mock_cas9_prep_object_1->db_id,
                 cas9_concentration => $mock_injection_pool_2->cas9_conc,
-                guideRNA_concentration => $mock_injection_pool_2->guideRNA_conc,
            },
        },
        label => "$driver: injection pool stored",
@@ -333,13 +376,15 @@ foreach my $db_connection ( @db_connections ){
     
     #throws_ok{ $injection_pool_adaptor->fetch_by_id( 10 ) } qr/Couldn't retrieve injection_pool/, 'Injection Pool does not exist in db';
     
-    # _fetch - 14 tests
+    # _fetch - 24 tests
     my $inj_pool_from_db = @{ $injection_pool_adaptor->_fetch( 'injection_id = ?', [ 3, ] ) }[0];
-    check_attributes( $inj_pool_from_db, $mock_injection_pool, $driver, 'fetch_by_id', );
+    check_attributes( $inj_pool_from_db, $mock_injection_pool, $driver, '_fetch', );
     
+    # fetch_by_id - 24 tests
     $inj_pool_from_db = $injection_pool_adaptor->fetch_by_id( 4 );
     check_attributes( $inj_pool_from_db, $mock_injection_pool_2, $driver, 'fetch_by_id', );
     
+    # fetch_by_id - 48 tests
     my @ids = ( 3, 4 );
     my $inj_pools_from_db = $injection_pool_adaptor->fetch_by_ids( \@ids );
     
@@ -350,7 +395,7 @@ foreach my $db_connection ( @db_connections ){
         check_attributes( $inj_pool_from_db, $mock_inj_pool, $driver, 'fetch_by_ids', );
     }
 
-    # 15 tests
+    # fetch_by_name - 25 tests
     ok( $inj_pool_from_db = $injection_pool_adaptor->fetch_by_name( '172' ), 'fetch_by_name');
     check_attributes( $inj_pool_from_db, $mock_injection_pool, $driver, 'fetch_by_name', );
 
@@ -365,13 +410,12 @@ TODO: {
     $test_db_connections{$driver}->destroy();
 }
 
+# 12 + 6 * number of guideRNAs per call
 sub check_attributes {
     my ( $object1, $object2, $driver, $method ) = @_;
     is( $object1->db_id, $object2->db_id, "$driver: object from db $method - check db_id");
     is( $object1->pool_name, $object2->pool_name, "$driver: object from db $method - check pool_name");
     is( $object1->cas9_conc, $object2->cas9_conc, "$driver: object from db $method - check cas9_conc");
-    is( $object1->guideRNA_conc, $object2->guideRNA_conc, "$driver: object from db $method - check guideRNA_conc");
-    is( $object1->guideRNA_type, $object2->guideRNA_type, "$driver: object from db $method - check guideRNA_type");
     is( $object1->date, $object2->date, "$driver: object from db $method - check date");
     is( $object1->line_injected, $object2->line_injected, "$driver: object from db $method - check line_injected");
     is( $object1->line_raised, $object2->line_raised, "$driver: object from db $method - check line_raised");
@@ -382,5 +426,16 @@ sub check_attributes {
     is( $object1->cas9_prep->prep_type, $object2->cas9_prep->prep_type, "$driver: object from db $method - check cas9 prep_type");
     is( $object1->cas9_prep->made_by, $object2->cas9_prep->made_by, "$driver: object from db $method - check cas9 made_by");
     is( $object1->cas9_prep->date, $object2->cas9_prep->date, "$driver: object from db $method - check cas9 date");
+
+    foreach my $i ( 0..scalar @{$object1->guideRNAs} - 1 ){
+        my $g1 = $object1->guideRNAs->[$i];
+        my $g2 = $object2->guideRNAs->[$i];
+        is( $g1->db_id, $g2->db_id, "$driver: object from db $method - check guideRNA db_id");
+        is( $g1->type, $g2->type, "$driver: object from db $method - check guideRNA type");
+        is( abs( $g1->concentration - $g2->concentration) < 0.1, 1, "$driver: object from db $method - check guideRNA concentration");
+        is( $g1->made_by, $g2->made_by, "$driver: object from db $method - check guideRNA made_by");
+        is( $g1->date, $g2->date, "$driver: object from db $method - check guideRNA date");
+        is( $g1->well->position, $g2->well->position, "$driver: object from db $method - check guideRNA well");
+    }
 }
 

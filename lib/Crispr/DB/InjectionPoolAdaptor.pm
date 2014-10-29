@@ -66,6 +66,24 @@ has 'crRNA_adaptor' => (
     builder => '_build_crRNA_adaptor',
 );
 
+=method guideRNA_prep_adaptor
+
+  Usage       : $self->guideRNA_prep_adaptor();
+  Purpose     : Getter for a guideRNA_prep_adaptor.
+  Returns     : Crispr::DB::GuideRNAPrepAdaptor
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
+has 'guideRNA_prep_adaptor' => (
+    is => 'ro',
+    isa => 'Crispr::DB::GuideRNAPrepAdaptor',
+    lazy => 1,
+    builder => '_build_guideRNA_prep_adaptor',
+);
+
 =method store
 
   Usage       : $injection_pool = $injection_pool_adaptor->store( $injection_pool );
@@ -166,8 +184,8 @@ sub store_injection_pools {
     my $check_cas9_statement = "select count(*) from cas9 where cas9_id = ?;";
     my $check_guideRNA_statement = "select count(*) from crRNA where crRNA_id = ?;";
     
-    my $add_inj_statement = "insert into injection values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );"; 
-    my $add_gRNA_statement = "insert into injection_pool values( ?, ? );"; 
+    my $add_inj_statement = "insert into injection values( ?, ?, ?, ?, ?, ?, ?, ? );"; 
+    my $add_gRNA_statement = "insert into injection_pool values( ?, ?, ?, ? );"; 
     
     $self->connection->txn(  fixup => sub {
         my $sth;
@@ -177,8 +195,7 @@ sub store_injection_pools {
             eval{
                 if( !$self->check_entry_exists_in_db( $check_cas9_statement, [ $injection_pool->cas9_prep->db_id, ] ) ){
                     #try and store it
-                    my $cas9_prep_adaptor = $self->get_adaptor( 'cas9_prep' );
-                    $cas9_prep_adaptor->store( $injection_pool->cas9_prep );
+                    $self->cas9_prep_adaptor->store( $injection_pool->cas9_prep );
                 }
             };
             if( $EVAL_ERROR ){
@@ -212,9 +229,9 @@ sub store_injection_pools {
             # add injection
             $sth->execute($injection_pool->db_id, $injection_pool->pool_name,
                 $injection_pool->cas9_prep->db_id, $injection_pool->cas9_conc,
-                $injection_pool->guideRNA_conc, $injection_pool->guideRNA_type,
-                $injection_pool->date, $injection_pool->line_injected,
-                $injection_pool->line_raised, $injection_pool->sorted_by,
+                $injection_pool->date,
+                $injection_pool->line_injected, $injection_pool->line_raised,
+                $injection_pool->sorted_by,
             );
             
             my $last_id;
@@ -223,10 +240,12 @@ sub store_injection_pools {
             
             # add guideRNAs
             $sth = $dbh->prepare($add_gRNA_statement);
-            foreach my $crRNA ( @{$injection_pool->guideRNAs } ){
+            foreach my $guide_RNA ( @{$injection_pool->guideRNAs } ){
                 $sth->execute(
                     $injection_pool->db_id,
-                    $crRNA->crRNA_id,
+                    $guide_RNA->crRNA_id,
+                    $guide_RNA->db_id,
+                    $guide_RNA->concentration,
                 );
             }
         }
@@ -336,13 +355,13 @@ sub _fetch {
     
     my $sql = <<'END_SQL';
         SELECT
-            injection_id, injection_name, cas9_concentration,
-            guideRNA_concentration, guideRNA_type, i.date,
-            line_injected, line_raised, sorted_by,
-            c.cas9_id, cas9_type,
-            prep_type, made_by, c.date
-        FROM injection i, cas9 c
-        WHERE i.cas9_id = c.cas9_id
+            i.injection_id, injection_name, cas9_concentration,
+            i.date, line_injected, line_raised, sorted_by,
+            cp.cas9_prep_id, cp.prep_type, cp.made_by, cp.date,
+            c.cas9_id, c.type, c.plasmid_name, c.notes
+        FROM injection i, cas9_prep cp, cas9 c 
+        WHERE i.cas9_prep_id = cp.cas9_prep_id AND
+            cp.cas9_id = c.cas9_id 
 END_SQL
 
     if ($where_clause) {
@@ -353,21 +372,22 @@ END_SQL
     $sth->execute();
 
     my ( $injection_id, $injection_name, $cas9_concentration,
-        $guideRNA_concentration, $guideRNA_type, $inj_date,
-        $line_injected, $line_raised, $sorted_by, $cas9_id,
-        $cas9_type, $prep_type, $made_by, $cas9_date,  );
+        $inj_date, $line_injected, $line_raised, $sorted_by,
+        $cas9_prep_id, $prep_type, $made_by, $date,
+        $cas9_id, $type, $plasmid_name, $notes,
+    );
     
     $sth->bind_columns( \( $injection_id, $injection_name, $cas9_concentration,
-        $guideRNA_concentration, $guideRNA_type, $inj_date,
-        $line_injected, $line_raised, $sorted_by, $cas9_id,
-        $cas9_type, $prep_type, $made_by, $cas9_date,  ) );
+        $inj_date, $line_injected, $line_raised, $sorted_by,
+        $cas9_prep_id, $prep_type, $made_by, $date,
+        $cas9_id, $type, $plasmid_name, $notes, ) );
 
     my @injection_pools = ();
     while ( $sth->fetch ) {
         
-        my $cas9 = Crispr::Cas9->new( type => $cas9_type );
         my $cas9_prep = $self->cas9_prep_adaptor->_make_new_cas9_prep_from_db(
-            [ $cas9_id, $cas9_type, $prep_type, $made_by, $cas9_date, ],
+            [ $cas9_prep_id, $prep_type, $made_by, $date,
+                $cas9_id, $type, $plasmid_name, $notes, ],
         );
         
         my $inj_pool;
@@ -377,8 +397,6 @@ END_SQL
                 pool_name => $injection_name,
                 cas9_prep => $cas9_prep,
                 cas9_conc => $cas9_concentration,
-                guideRNA_conc => $guideRNA_concentration,
-                guideRNA_type => $guideRNA_type,
                 date => $inj_date,
                 line_injected => $line_injected,
                 line_raised => $line_raised,
@@ -389,6 +407,9 @@ END_SQL
         else{
             $inj_pool = $inj_pool_cache{ $injection_id };
         }
+        $inj_pool->guideRNAs(
+            $self->guideRNA_prep_adaptor->fetch_all_by_injection_pool( $inj_pool )
+        );
         
         push @injection_pools, $inj_pool;
     }
@@ -411,7 +432,7 @@ sub delete_injection_pool_from_db {
 
 #_build_cas9_prep_adaptor
 
-  #Usage       : $crRNAs = $crRNA_adaptor->_build_cas9_prep_adaptor( $well, $type );
+  #Usage       : $cas9_prep_adaptor = $self->_build_cas9_prep_adaptor();
   #Purpose     : Internal method to create a new Crispr::DB::Cas9PrepAdaptor
   #Returns     : Crispr::DB::Cas9PrepAdaptor
   #Parameters  : None
@@ -425,7 +446,7 @@ sub _build_cas9_prep_adaptor {
 
 #_build_crRNA_adaptor
 
-  #Usage       : $crRNAs = $crRNA_adaptor->_build_crRNA_adaptor( $well, $type );
+  #Usage       : $crRNA_adaptor = $self->_build_crRNA_adaptor();
   #Purpose     : Internal method to create a new Crispr::DB::crRNAAdaptor
   #Returns     : Crispr::DB::crRNAAdaptor
   #Parameters  : None
@@ -435,6 +456,20 @@ sub _build_cas9_prep_adaptor {
 sub _build_crRNA_adaptor {
     my ( $self, ) = @_;
     return $self->db_connection->get_adaptor( 'crRNA' );
+}
+
+#_build_guideRNA_prep_adaptor
+
+  #Usage       : $guideRNA_prep_adaptor = $self->_build_guideRNA_prep_adaptor();
+  #Purpose     : Internal method to create a new Crispr::DB::GuideRNAPrepAdaptor
+  #Returns     : Crispr::DB::GuideRNAPrepAdaptor
+  #Parameters  : None
+  #Throws      : 
+  #Comments    : 
+
+sub _build_guideRNA_prep_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'guideRNA_prep' );
 }
 
 =method driver
@@ -608,8 +643,8 @@ __END__
  
 =head1 SYNOPSIS
  
-    use Crispr::DB::DBAdaptor;
-    my $db_adaptor = Crispr::DB::DBAdaptor->new(
+    use Crispr::DB::DBConnection;
+    my $db_connection = Crispr::DB::DBConnection->new(
         host => 'HOST',
         port => 'PORT',
         dbname => 'DATABASE',
@@ -618,7 +653,7 @@ __END__
         connection => $dbc,
     );
   
-    my $injection_pool_adaptor = $db_adaptor->get_adaptor( 'injection_pool' );
+    my $injection_pool_adaptor = $db_connection->get_adaptor( 'injection_pool' );
     
     # store a injection_pool object in the db
     $injection_pool_adaptor->store( $injection_pool );

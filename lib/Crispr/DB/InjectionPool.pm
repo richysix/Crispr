@@ -20,8 +20,6 @@ with 'Crispr::SharedMethods';
                     pool_name => 'inj01',
 					cas9_prep => $cas9_prep,
 					cas9_conc => 200,
-					guideRNA_conc => 20,
-                    guideRNA_type => 'sgRNA'
                     date => '2014-09-30',
                     line_injected => 'line1',
                     line_raised => 'line2',
@@ -34,13 +32,11 @@ with 'Crispr::SharedMethods';
                 pool_name => Str,
                 cas9_prep => Crispr::DB:Cas9Prep,
                 cas9_conc => Num,
-                guideRNA_conc => Num,
-                guideRNA_type => Str,
                 date => DateTime || Str,
                 line_injected => Str,
                 line_raised => Str,
                 sorted_by => Str,
-                guideRNAs => ArrayRef[ Crispr::crRNA ],
+                guideRNAs => ArrayRef[ Crispr::DB::GuideRNAPrep ],
 
   Throws      : If parameters are not the correct type
   Comments    : None
@@ -110,39 +106,6 @@ has 'cas9_prep' => (
 has 'cas9_conc' => (
     is => 'ro',
 	isa =>  'Num',
-);
-
-=method guideRNA_conc
-
-  Usage       : $inj->guideRNA_conc;
-  Purpose     : Getter for guideRNA_conc attribute
-  Returns     : Num
-  Parameters  : None
-  Throws      : If input is given
-  Comments    : 
-
-=cut
-
-has 'guideRNA_conc' => (
-    is => 'ro',
-    isa => 'Num',
-);
-
-=method guideRNA_type
-
-  Usage       : $target->guideRNA_type;
-  Purpose     : Getter for guideRNA_type attribute
-  Returns     : Str (EITHER sgRNA OR tracrRNA)
-  Parameters  : None
-  Throws      : If input is given
-  Comments    : 
-
-=cut
-
-has 'guideRNA_type' => (
-    is => 'ro',
-    isa => enum( [ qw{ sgRNA tracrRNA } ] ),
-    default => 'sgRNA',
 );
 
 =method date
@@ -223,8 +186,8 @@ has 'sorted_by' => (
 =cut
 
 has 'guideRNAs' => (
-    is => 'ro',
-    isa => 'ArrayRef[Crispr::crRNA]',
+    is => 'rw',
+    isa => 'ArrayRef[Crispr::DB::GuideRNAPrep]',
 );
 
 around BUILDARGS => sub{
