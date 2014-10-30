@@ -461,11 +461,11 @@ foreach my $db_connection ( @db_connections ){
     $mock_well->mock('contents', sub { return $mock_crRNA1 } );
     $mock_well->mock('position', sub { return 'H12' } );
     
-    # add target and crRNA to db
+    # add target and crRNA to db - 15 tests
     ok( $crRNA_adaptor->store( $mock_well ), 'store mock crRNA and target');
     ok( $crRNA_adaptor->store_off_target_info( $mock_crRNA1 ), 'store off target info');
     
-    my @rows = ();
+    my @rows;
     row_ok(
         sql => "SELECT * FROM off_target_info WHERE crRNA_id = 100;",
         store_rows => \@rows,
@@ -485,7 +485,7 @@ foreach my $db_connection ( @db_connections ){
     }
     
     # destroy database
-    #$test_db_connections{$driver}->destroy();
+    $test_db_connections{$driver}->destroy();
 }
 
 sub increment {
