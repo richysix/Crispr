@@ -174,6 +174,12 @@ my $design_obj2 = Crispr->new(
 
 $design_obj2->_testing( 1 );
 ok( $design_obj2->find_off_targets( $design_obj2->all_crisprs,  ), 'off_targets' );
+## Off Targets for crRNA:test_chr1:101-123:1
+#exon:test_chr1:201-223:1 mismatches:2 annotation:exon
+#intron:test_chr2:101-123:1 mismatches:3 annotation:intron
+#intron:test_chr3:101-223:1 mismatches:1 annotation:intron
+#nongenic:test_chr1:1-23:1 mismatches:1 annotation:nongenic
+#nongenic:test_chr3:201-223:1 mismatches:2 annotation:nongenic
 is( $mock_crRNA1->off_target_hits->score, 0.76, 'check off target score 1');
 is( $mock_crRNA2->off_target_hits->score, 1, 'check off target score 2');
 $tests+=3;

@@ -864,8 +864,10 @@ sub create_crRNA_from_crRNA_name {
         start => $start,
         end => $end,
         strand => $strand || 1,
-        species => $species || undef,
     );
+    if( defined $species ){
+        $args{species} = $species;
+    }
     
     # get sequence if possible
     my $sequence;
