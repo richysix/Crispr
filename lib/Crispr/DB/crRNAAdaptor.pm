@@ -94,12 +94,15 @@ sub store {
                 If any of the objects inside the ArrayRef are not crRNA objects
                 If there is an error during the execution of the SQL statements
                     In this case the transaction will be rolled back
-  Comments    : 
+  Comments    : Only adds rows to the crRNA table. Does not store associated info.
+                Use other methods provided to add coding scores, off-targets,
+                    restriction enzymes, construction oligos, expression constructs,
+                    and primers.
 
 =cut
 
 sub store_crRNAs {
-	## Store crRNAs and related info
+	## Store crRNAs
 	##  DOES NOT STORE CONSTRUCTION OLIGOS OR EXPRESSION CONSTRUCTS OR PRIMERS  ##
     my ( $self, $wells ) = @_;
     my $dbh = $self->connection->dbh();
@@ -183,15 +186,6 @@ sub store_crRNAs {
 			
 			$self->target_adaptor->update_designed( $crRNA->target );
 			
-			#if( $crRNA->unique_restriction_sites ){
-			#	$self->store_restriction_enzyme_info( $crRNA );
-			#}
-			if( $crRNA->coding_scores ){
-				$self->store_coding_scores( $crRNA );
-			}
-			#if( $crRNA->off_target_hits && defined $crRNA->off_target_hits->score ){
-			#	$self->store_off_target_scores( $crRNA );
-			#}
         }
 	} );
     
@@ -288,9 +282,9 @@ sub store_coding_scores {
     return 1;
 }
 
-=method store_off_target_scores
+=method store_off_target_info
 
-  Usage       : $crRNA = $crRNA_adaptor->store_off_target_scores( $crRNA );
+  Usage       : $crRNA = $crRNA_adaptor->store_off_target_info( $crRNA );
   Purpose     : Store the off_target scores for a crispr RNA in the database
   Returns     : 1 on Success
   Parameters  : Crispr::crRNA object
@@ -299,49 +293,50 @@ sub store_coding_scores {
 
 =cut
 
-sub store_off_target_scores {
+sub store_off_target_info {
     my ( $self, $crRNA ) = @_;
     my $dbh = $self->connection->dbh();
-	#my $off_target_obj = $crRNA->off_target_hits;
 	
-	# insert values into table coding_scores
-    my $statement = "insert into off_target_info values( ?, ?, ?, ?, ?, ?, ?, ?, ? );";
-	## check warnings TO DO reinstate this comply with sqlite
-	#my $warning_st = "show warnings;";
-	my $bwa_exon_alignments;
-    if( defined $crRNA->off_target_hits->number_bwa_exon_hits ){
-        if( $crRNA->off_target_hits->number_bwa_exon_hits ){
-            $bwa_exon_alignments = join(",", @{$crRNA->off_target_hits->bwa_exon_alignments} );
+    # check object is a crRNA and that the OffTarget attribute is defined
+	if( !$crRNA ){
+		confess "A crRNA object must be supplied to add off-targets to the database!\n";
+	}
+    else{
+        if( !ref $crRNA || !$crRNA->isa('Crispr::crRNA') ){
+            confess "The supplied arguments must be a Crispr::crRNA object, not a ",
+                ref $crRNA || 'String', "\n";
         }
-        elsif( $crRNA->off_target_hits->number_bwa_exon_hits == 0 ){
-            $bwa_exon_alignments = '0';
+        if( !defined $crRNA->off_target_hits ){
+            warn "There is no off-target info for crRNA, ", $crRNA->name, "\n";
+            return;
         }
     }
     
+    # need to check that the crRNA exists in the db
+    if( !$crRNA->crRNA_id ){
+        confess "Supplied Crispr::crRNA does not have a database id.\n";
+    }
+    my $check_statement = 'select count(*) from crRNA where crRNA_id = ?;';
+	if( !$self->check_entry_exists_in_db( $check_statement, [ $crRNA->crRNA_id ] ) ){
+        confess "crRNA, ", $crRNA->name, "does not exists in the database\n";
+	}
+    
+	# insert values into table off_target_info
+    my $statement = "insert into off_target_info values( ?, ?, ?, ? );";
+	## check warnings TO DO reinstate this comply with sqlite
+	#my $warning_st = "show warnings;";
+    
     $self->connection->txn(  fixup => sub {
-		my $sth = $dbh->prepare($statement);
-		$sth->execute(
-			$crRNA->crRNA_id,
-			$crRNA->off_target_score,
-            $bwa_exon_alignments,
-            $crRNA->off_target_hits->number_bwa_intron_hits,
-            $crRNA->off_target_hits->number_bwa_nongenic_hits,
-			$crRNA->seed_score,
-			$crRNA->seed_hits eq 'NULL/NULL/NULL'   ?   undef
-                :                                       $crRNA->seed_hits,
-			$crRNA->exonerate_score,
-			$crRNA->exonerate_hits eq 'NULL/NULL/NULL'  ?   undef
-                :                                           $crRNA->exonerate_hits,
-		);
-		
-		#$sth = $dbh->prepare($warning_st);
-		#$sth->execute();
-		#while( my @fields = $sth->fetchrow_array ){
-		#	if( $fields[2] =~ m/Data\struncated.*'alignments'/xms){
-		#		warn join(q{ }, @fields, $crRNA->name, ), "\n";
-		#	}
-		#}
-		#$sth->finish();
+        my $sth = $dbh->prepare($statement);
+		foreach my $off_target ( $crRNA->off_target_hits->all_off_targets ){
+    		$sth->execute(
+                $crRNA->crRNA_id,
+                $off_target->position,
+                $off_target->mismatches,
+                $off_target->annotation,
+            );
+        }
+        
     } );
     return 1;
 }
