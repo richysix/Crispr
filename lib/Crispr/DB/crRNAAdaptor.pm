@@ -310,6 +310,9 @@ sub store_off_target_info {
             warn "There is no off-target info for crRNA, ", $crRNA->name, "\n";
             return;
         }
+        if( scalar $crRNA->off_target_hits->all_off_targets == 0 ){
+            return;
+        }
     }
     
     # need to check that the crRNA exists in the db
