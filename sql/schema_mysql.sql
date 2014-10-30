@@ -57,8 +57,8 @@ create table crRNA_pair (
 
 create table coding_scores (
     crRNA_id INT UNSIGNED NOT NULL,
-    transcript_id VARCHAR(20),
-    score DECIMAL(4,3),
+    transcript_id VARCHAR(20) NOT NULL,
+    score DECIMAL(4,3) NOT NULL,
     CONSTRAINT `coding_scores_crRNA_id_transcript_id` PRIMARY KEY (`crRNA_id`,`transcript_id`),
     FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id)
 ) ENGINE = InnoDB;
@@ -66,7 +66,7 @@ create table coding_scores (
 create table off_target_info (
     crRNA_id INT UNSIGNED NOT NULL,
     off_target_hit VARCHAR(120) NOT NULL,
-    mismatches VARCHAR(60) NOT NULL,
+    mismatches TINYINT UNSIGNED NOT NULL,
     annotation ENUM('exon', 'intron', 'nongenic') NOT NULL,
     CONSTRAINT `off_target_info_crRNA_id_off_target_hit` PRIMARY KEY (`crRNA_id`,`off_target_hit`),
     FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id)
