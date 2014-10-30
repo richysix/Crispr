@@ -263,6 +263,8 @@ has 'off_target_hits' => (
 has 'coding_scores' => (
     is => 'ro',
     isa => 'HashRef',
+    lazy => 1,
+    default => sub { return {}; },
 	writer => '_set_coding_scores',
 );
 
@@ -962,7 +964,7 @@ sub coding_score {
     my $coding_scores_for = $self->coding_scores;
     
     if( !keys %{$coding_scores_for} ){
-        return;
+        return undef;
     }
     else{
         my ( $num_transcripts, $sum );

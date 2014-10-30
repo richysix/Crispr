@@ -169,8 +169,8 @@ is( $crRNA->coding_score - 0.445 < 0.001, 1, "check overall coding score after a
 like( join(';', $crRNA->coding_scores_by_transcript), qr/ENSDART00000037671=0.1;ENSDART00000037681=0.5;ENSDART00000037691=0.734/,
      "check coding_scores_by_transcript after adding a new score");
 
-is( $crRNA_2->coding_score, undef, "check undef coding_scores");
-is( $crRNA_2->coding_scores, undef, "check undef coding_scores hashref");
+is( $crRNA_2->coding_score, undef, "check undef coding_score");
+isa_ok( $crRNA_2->coding_scores, 'HASH', "check coding_scores empty hashref");
 
 # check plasmid_backbone - 4 tests
 is( $crRNA->plasmid_backbone, 'pDR274', 'Get plasmid_backbone' );
