@@ -142,6 +142,12 @@ sub store_cas9_preps {
                     #try and store it
                     $self->cas9_adaptor->store( $cas9_prep->cas9 );
                 }
+                # if it exists, get the db_id if we don't have it already.
+                else{
+                    if( !$cas9_prep->cas9->db_id ){
+                        $cas9_prep->cas9->db_id( $self->cas9_adaptor->get_db_id_by_type( $cas9_prep->type ) )
+                    }
+                }
             };
             if( $EVAL_ERROR ){
                 if( $EVAL_ERROR =~ m/TOO\sMANY\sITEMS/xms ){
@@ -474,7 +480,7 @@ sub delete_cas9_prep_from_db {
 
 #_build_cas9_adaptor
 
-  #Usage       : $crRNAs = $crRNA_adaptor->_build_cas9_adaptor( $well, $type );
+  #Usage       : $crRNAs = $crRNA_adaptor->_build_cas9_adaptor();
   #Purpose     : Internal method to create a new Crispr::DB::Cas9Adaptor
   #Returns     : Crispr::DB::Cas9PrepAdaptor
   #Parameters  : None
