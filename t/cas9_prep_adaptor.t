@@ -89,7 +89,7 @@ foreach my $db_connection ( @db_connections ){
     
     # make mock Cas9 and Cas9Prep objects
     my $type = 'cas9_zf_dnls_native';
-    my $plasmid_name = 'pCS2_zf_dnls_Chen';
+    my $plasmid_name = 'pCS2_ZfnCas9n_Chen';
     my $species = 's_pyogenes';
     my $target_seq = 'NNNNNNNNNNNNNNNNNN';
     my $pam = 'NGG';
@@ -102,16 +102,14 @@ foreach my $db_connection ( @db_connections ){
     $mock_cas9_object->mock( 'target_seq', sub{ return $target_seq } );
     $mock_cas9_object->mock( 'PAM', sub{ return $pam } );
     $mock_cas9_object->mock( 'plasmid_name', sub{ return $plasmid_name } );
-    $mock_cas9_object->mock( 'notes', sub{ return 'some notes' } );
     $mock_cas9_object->mock( 'crispr_target_seq', sub{ return $crispr_target_seq } );
     $mock_cas9_object->mock( 'info', sub{ return ( $type, $species, $crispr_target_seq ) } );
     # add cas9 directly to db
-    my $insert_st = 'insert into cas9 values( ?, ?, ?, ? );';
+    my $insert_st = 'insert into cas9 values( ?, ?, ? );';
     my $sth = $dbh->prepare( $insert_st );
     $sth->execute(  undef,
         $mock_cas9_object->type,
         $mock_cas9_object->plasmid_name,
-        $mock_cas9_object->notes,
     );
     
     my $type_2 = 'cas9_zf_dnls_nickase';
@@ -123,7 +121,6 @@ foreach my $db_connection ( @db_connections ){
     $mock_cas9_object_2->mock( 'species', sub{ return $species } );
     $mock_cas9_object_2->mock( 'target_seq', sub{ return $target_seq } );
     $mock_cas9_object_2->mock( 'plasmid_name', sub{ return $plasmid_name_2 } );
-    $mock_cas9_object_2->mock( 'notes', sub{ return 'some different notes' } );
     $mock_cas9_object_2->mock( 'PAM', sub{ return $pam } );
     $mock_cas9_object_2->mock( 'crispr_target_seq', sub{ return $crispr_target_seq } );
     $mock_cas9_object_2->mock( 'info', sub{ return ( $type_2, $species, $crispr_target_seq ) } );
@@ -139,6 +136,7 @@ foreach my $db_connection ( @db_connections ){
     $mock_cas9_prep_object_1->mock( 'made_by', sub{ return $made_by } );
     $mock_cas9_prep_object_1->mock( 'date', sub{ return $todays_date_obj->ymd } );
     $mock_cas9_prep_object_1->mock( 'type', sub{ return $mock_cas9_object->type } );
+    $mock_cas9_prep_object_1->mock( 'notes', sub{ return 'some notes' } );
     #$mock_cas9_prep_object_1->mock( 'cas9_adaptor', sub{ return $cas9_adaptor } );
     
     
@@ -151,6 +149,7 @@ foreach my $db_connection ( @db_connections ){
     $mock_cas9_prep_object_2->mock( 'made_by', sub{ return 'cr_test' } );
     $mock_cas9_prep_object_2->mock( 'date', sub{ return $todays_date_obj->ymd } );
     $mock_cas9_prep_object_2->mock( 'type', sub{ return $mock_cas9_object->type } );
+    $mock_cas9_prep_object_2->mock( 'notes', sub{ return 'some notes' } );
     #$mock_cas9_prep_object_2->mock( 'cas9_adaptor', sub{ return $cas9_adaptor } );
 
     my $mock_cas9_prep_object_3 = Test::MockObject->new();
@@ -162,6 +161,7 @@ foreach my $db_connection ( @db_connections ){
     $mock_cas9_prep_object_3->mock( 'made_by', sub{ return 'cr_test2' } );
     $mock_cas9_prep_object_3->mock( 'date', sub{ return $todays_date_obj->ymd } );
     $mock_cas9_prep_object_3->mock( 'type', sub{ return $mock_cas9_object_2->type } );
+    $mock_cas9_prep_object_3->mock( 'notes', sub{ return 'some different notes' } );
     #$mock_cas9_prep_object_3->mock( 'cas9_adaptor', sub{ return $cas9_adaptor } );
 
     my $mock_cas9_prep_object_4 = Test::MockObject->new();
@@ -173,6 +173,7 @@ foreach my $db_connection ( @db_connections ){
     $mock_cas9_prep_object_4->mock( 'made_by', sub{ return 'cr_test2' } );
     $mock_cas9_prep_object_4->mock( 'date', sub{ return $todays_date_obj->ymd } );
     $mock_cas9_prep_object_4->mock( 'type', sub{ return $mock_cas9_object_2->type } );
+    $mock_cas9_prep_object_4->mock( 'notes', sub{ return 'some different notes' } );
     #$mock_cas9_prep_object_4->mock( 'cas9_adaptor', sub{ return $cas9_adaptor } );
 
     # make a new real Cas9Prep Adaptor
@@ -277,6 +278,7 @@ foreach my $db_connection ( @db_connections ){
     $mock_cas9_prep_object_5->mock( 'made_by', sub{ return 'cr_test2' } );
     $mock_cas9_prep_object_5->mock( 'date', sub{ return $todays_date_obj->ymd } );
     $mock_cas9_prep_object_5->mock( 'type', sub{ return $mock_cas9_object->type } );
+    $mock_cas9_prep_object_5->mock( 'notes', sub{ return 'some notes' } );
     my $mock_cas9_prep_object_6 = Test::MockObject->new();
     my $prep_type_6 = 'protein';
     $mock_cas9_prep_object_6->set_isa( 'Crispr::DB::Cas9Prep' );
@@ -286,16 +288,17 @@ foreach my $db_connection ( @db_connections ){
     $mock_cas9_prep_object_6->mock( 'made_by', sub{ return 'cr_test2' } );
     $mock_cas9_prep_object_6->mock( 'date', sub{ return $todays_date_obj->ymd } );
     $mock_cas9_prep_object_6->mock( 'type', sub{ return $mock_cas9_object->type } );
+    $mock_cas9_prep_object_6->mock( 'notes', sub{ return 'some notes' } );
 
     # _make_new_cas9_prep_from_db - 9 tests
     ok( $cas9_from_db_1 = $cas9_prep_adaptor->_make_new_cas9_prep_from_db(
-        [ 5, 'rna', 'cr_test2', $todays_date_obj->ymd, 1, 'cas9_zf_dnls_native', 'pCS2_zf_dnls_Chen', 'some notes' ]
+        [ 5, 'rna', 'cr_test2', $todays_date_obj->ymd, 'some notes', 1, 'cas9_zf_dnls_native', 'pCS2_zf_dnls_Chen', ]
     ), '_make_new_cas9_prep_from_db');
     check_attributes( $cas9_from_db_1, $mock_cas9_prep_object_5, $driver, '_make_new_cas9_prep_from_db' );
     
     # _make_new_object_from_db - 9 tests
     ok( $cas9_from_db_1 = $cas9_prep_adaptor->_make_new_object_from_db(
-        [ 6, 'protein', 'cr_test2', $todays_date_obj->ymd, 1, 'cas9_zf_dnls_native', 'pCS2_zf_dnls_Chen', 'some notes' ]
+        [ 6, 'protein', 'cr_test2', $todays_date_obj->ymd, 'some notes', 1, 'cas9_zf_dnls_native', 'pCS2_zf_dnls_Chen', ]
     ), '_make_new_cas9_prep_from_db');
     check_attributes( $cas9_from_db_1, $mock_cas9_prep_object_6, $driver, '_make_new_object_from_db' );
     
@@ -352,8 +355,8 @@ sub check_attributes {
     is( $object1->prep_type, $object2->prep_type, "$driver: object from db - check prep_type - $method");
     is( $object1->made_by, $object2->made_by, "$driver: object from db - check made_by - $method");
     is( $object1->date, $object2->date, "$driver: object from db - check date - $method");
+    is( $object1->notes, $object2->notes, "$driver: object from db - check notes - $method");
     is( $object1->cas9->db_id, $object2->cas9->db_id, "$driver: object from db - check db_id - $method");
     is( $object1->cas9->type, $object2->cas9->type, "$driver: object from db - check type - $method");
     is( $object1->cas9->plasmid_name, $object2->cas9->plasmid_name, "$driver: object from db - check plasmid_name - $method");
-    is( $object1->cas9->notes, $object2->cas9->notes, "$driver: object from db - check notes - $method");
 }

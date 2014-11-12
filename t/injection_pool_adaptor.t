@@ -106,14 +106,13 @@ foreach my $db_connection ( @db_connections ){
     $mock_cas9_object->mock( 'target_seq', sub{ return $target_seq } );
     $mock_cas9_object->mock( 'PAM', sub{ return $pam } );
     $mock_cas9_object->mock( 'plasmid_name', sub{ return $plasmid_name } );
-    $mock_cas9_object->mock( 'notes', sub{ return 'some notes' } );
     $mock_cas9_object->mock( 'crispr_target_seq', sub{ return $crispr_target_seq } );
     $mock_cas9_object->mock( 'info', sub{ return ( $type, $species, $crispr_target_seq ) } );
     # insert directly into db
-    my $statement = "insert into cas9 values( ?, ?, ?, ? );";
+    my $statement = "insert into cas9 values( ?, ?, ? );";
     my $sth = $dbh->prepare($statement);
     $sth->execute( $mock_cas9_object->db_id, $mock_cas9_object->type,
-        $mock_cas9_object->plasmid_name, $mock_cas9_object->notes );
+        $mock_cas9_object->plasmid_name );
     
     my $prep_type = 'rna';
     my $made_by = 'cr_test';
@@ -126,12 +125,13 @@ foreach my $db_connection ( @db_connections ){
     $mock_cas9_prep_object_1->mock( 'made_by', sub{ return $made_by } );
     $mock_cas9_prep_object_1->mock( 'date', sub{ return $todays_date_obj->ymd } );
     $mock_cas9_prep_object_1->mock( 'type', sub{ return $mock_cas9_object->type } );
+    $mock_cas9_prep_object_1->mock( 'notes', sub{ return 'some notes' } );
     # insert directly into db
-    $statement = "insert into cas9_prep values( ?, ?, ?, ?, ? );";
+    $statement = "insert into cas9_prep values( ?, ?, ?, ?, ?, ? );";
     $sth = $dbh->prepare($statement);
     $sth->execute( $mock_cas9_prep_object_1->db_id, $mock_cas9_object->db_id,
         $mock_cas9_prep_object_1->prep_type, $mock_cas9_prep_object_1->made_by,
-        $mock_cas9_prep_object_1->date );
+        $mock_cas9_prep_object_1->date, $mock_cas9_prep_object_1->notes  );
     
     my $mock_crRNA_object_1 = Test::MockObject->new();
     $mock_crRNA_object_1->set_isa( 'Crispr::crRNA' );

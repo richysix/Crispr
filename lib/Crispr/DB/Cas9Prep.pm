@@ -126,6 +126,22 @@ has 'date' => (
     builder => '_build_date',
 );
 
+=method notes
+
+  Usage       : $cas9->notes;
+  Purpose     : Getter for notes attribute
+  Returns     : String (Default: undef)
+  Parameters  : None
+  Throws      : If input is given
+  Comments    : 
+
+=cut
+
+has 'notes' => (
+    is => 'ro',
+    isa => 'Maybe[Str]',
+);
+
 around BUILDARGS => sub{
     my $method = shift;
     my $self = shift;

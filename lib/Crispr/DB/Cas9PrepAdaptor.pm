@@ -113,7 +113,7 @@ sub store_cas9_preps {
     }
     
     # insert statement
-    my $statement = "insert into cas9_prep values( ?, ?, ?, ?, ? );"; 
+    my $statement = "insert into cas9_prep values( ?, ?, ?, ?, ?, ? );"; 
     
     $self->connection->txn(  fixup => sub {
         my $sth = $dbh->prepare($statement);
@@ -154,11 +154,12 @@ sub store_cas9_preps {
             }
             
             $sth->execute($cas9_prep->db_id, $cas9_prep->cas9->db_id,
-                $cas9_prep->prep_type, $cas9_prep->made_by, $cas9_prep->date, );
+                $cas9_prep->prep_type, $cas9_prep->made_by,
+                $cas9_prep->date, $cas9_prep->notes, );
             
             my $last_id;
             $last_id = $dbh->last_insert_id( 'information_schema',
-                                    $self->dbname(), 'cas9_prep', 'cas9_id' );
+                                    $self->dbname(), 'cas9_prep', 'cas9_prep_id' );
             $cas9_prep->db_id( $last_id );
         }
         
@@ -355,10 +356,10 @@ sub _fetch {
             prep_type,
             made_by,
             date,
+            notes,
             c.cas9_id,
             type,
-            plasmid_name,
-            notes
+            plasmid_name
         FROM cas9_prep cp, cas9 c
         WHERE cp.cas9_id = c.cas9_id
 END_SQL
@@ -370,18 +371,19 @@ END_SQL
     my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
     $sth->execute();
 
-    my ( $cas9_prep_id, $prep_type, $made_by, $cas9_date,
-        $cas9_id, $type, $plasmid_name, $notes, );
+    my ( $cas9_prep_id, $prep_type, $made_by, $cas9_date, $notes,
+        $cas9_id, $type, $plasmid_name, );
     
-    $sth->bind_columns( \( $cas9_prep_id, $prep_type, $made_by, $cas9_date,
-        $cas9_id, $type, $plasmid_name, $notes, ) );
+    $sth->bind_columns( \( $cas9_prep_id, $prep_type, $made_by,
+        $cas9_date, $notes,
+        $cas9_id, $type, $plasmid_name, ) );
 
     my @cas9_preps = ();
     while ( $sth->fetch ) {
         my $cas9_prep;
         if( !exists $cas9_prep_cache{ $cas9_prep_id } ){
             my $cas9 = $self->cas9_adaptor->_make_new_cas9_from_db(
-                [ $cas9_id, $type, $plasmid_name, $notes, ],
+                [ $cas9_id, $type, $plasmid_name, ],
             );
             $cas9_prep = Crispr::DB::Cas9Prep->new(
                 db_id => $cas9_prep_id,
@@ -389,6 +391,7 @@ END_SQL
                 prep_type => $prep_type,
                 made_by => $made_by,
                 date => $cas9_date,
+                notes => $notes,
             );
             $cas9_prep_cache{ $cas9_prep_id } = $cas9_prep;
         }
@@ -435,7 +438,7 @@ sub _make_new_cas9_prep_from_db {
     
     if( !exists $cas9_prep_cache{ $fields->[0] } ){
         my $cas9 = $self->cas9_adaptor->_make_new_cas9_from_db(
-            [ @{$fields}[4..7] ],
+            [ @{$fields}[5..7] ],
         );
         my %args = (
             db_id => $fields->[0],
@@ -443,6 +446,7 @@ sub _make_new_cas9_prep_from_db {
             prep_type => $fields->[1],
             made_by => $fields->[2],
             date => $fields->[3],
+            notes => $fields->[4],
         );
         
         $cas9_prep = Crispr::DB::Cas9Prep->new( %args );

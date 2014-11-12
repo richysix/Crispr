@@ -189,7 +189,6 @@ create table cas9 (
     cas9_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     type VARCHAR(100) NOT NULL,
     plasmid_name VARCHAR(100),
-    notes VARCHAR(200),
     CONSTRAINT `cas9_type` UNIQUE ( `type` ),
     CONSTRAINT `cas9_plasmid_name` UNIQUE ( `plasmid_name` )
 ) ENGINE = InnoDB;
@@ -200,7 +199,9 @@ create table cas9_prep (
     prep_type ENUM('dna', 'rna', 'protein') NOT NULL,
     made_by VARCHAR(10) NOT NULL,
     date DATE NOT NULL,
-    CONSTRAINT `cas9_cas9_id_prep_type_made_by_date` UNIQUE ( `cas9_id`, `prep_type`, `made_by`, `date` )
+    notes VARCHAR(200),
+    CONSTRAINT `cas9_cas9_id_prep_type_made_by_date` UNIQUE ( `cas9_id`, `prep_type`, `made_by`, `date` ),
+    FOREIGN KEY (cas9_id) REFERENCES cas9(cas9_id)
 ) ENGINE = InnoDB;
 
 create table injection (

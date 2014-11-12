@@ -17,7 +17,7 @@ isa_ok( $cas9prep, 'Crispr::DB::Cas9Prep');
 $tests++;
 
 # check attributes and methods - 5 tests
-my @attributes = ( qw{ db_id cas9 prep_type made_by date } );
+my @attributes = ( qw{ db_id cas9 prep_type made_by date notes } );
 
 my @methods = ( qw{ _parse_date _build_date } );
 
@@ -61,6 +61,7 @@ $cas9prep = Crispr::DB::Cas9Prep->new(
     prep_type => 'dna',
     made_by => 'crispr_test_user',
     date => '2014-05-24',
+    notes => 'Some notes',
 );
 
 is( $cas9prep->type, $type, 'check delegation of type attribute');
@@ -69,7 +70,8 @@ is( $cas9prep->target_seq, $target_seq, 'check delegation of target_seq attribut
 is( $cas9prep->PAM, $pam, 'check delegation of PAM attribute');
 is( $cas9prep->crispr_target_seq, $crispr_target_seq, 'check delegation of crispr_target_seq attribute');
 is( $cas9prep->date, '2014-05-24', 'check date set by string');
-$tests += 6;
+is( $cas9prep->notes, 'Some notes', 'check notes set by string');
+$tests += 7;
 
 # check it throws with non date input
 throws_ok { Crispr::DB::Cas9Prep->new( date => '14-05-24' ) } qr/The\sdate\ssupplied\sis\snot\sa\svalid\sformat/, 'non valid date format';

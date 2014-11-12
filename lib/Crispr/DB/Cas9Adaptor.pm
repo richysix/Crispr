@@ -93,14 +93,16 @@ sub store_cas9s {
         }
     }
 	
-    my $statement = "insert into cas9 values( ?, ?, ?, ? );"; 
+    my $statement = "insert into cas9 values( ?, ?, ? );"; 
     
     $self->connection->txn(  fixup => sub {
 		my $sth = $dbh->prepare($statement);
 		
 		foreach my $cas9 ( @$cas9s ){
-			$sth->execute($cas9->db_id, $cas9->type,
-				$cas9->plasmid_name, $cas9->notes, );
+			$sth->execute($cas9->db_id,
+                $cas9->type,
+				$cas9->plasmid_name,
+            );
 			
 			my $last_id;
 			$last_id = $dbh->last_insert_id( 'information_schema', $self->dbname(), 'cas9', 'cas9_id' );
@@ -216,8 +218,7 @@ sub _fetch {
         SELECT
 			cas9_id,
 			type,
-			plasmid_name,
-			notes
+			plasmid_name
         FROM cas9
 END_SQL
 
@@ -228,9 +229,9 @@ END_SQL
     my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
     $sth->execute();
 
-    my ( $cas9_id, $type, $plasmid_name, $notes );
+    my ( $cas9_id, $type, $plasmid_name, );
     
-    $sth->bind_columns( \( $cas9_id, $type, $plasmid_name, $notes, ) );
+    $sth->bind_columns( \( $cas9_id, $type, $plasmid_name, ) );
 
     my @cas9s = ();
     while ( $sth->fetch ) {
@@ -240,7 +241,6 @@ END_SQL
                 db_id => $cas9_id,
                 type => $type,
                 plasmid_name => $plasmid_name,
-                notes => $notes,
             );
             $cas9_cache{ $cas9_id } = $cas9;
         }
@@ -272,7 +272,6 @@ sub _make_new_cas9_from_db {
             db_id => $fields->[0],
             type => $fields->[1],
             pasmid_name => $fields->[2],
-            notes => $fields->[3],
         );
         
         $cas9 = Crispr::Cas9->new( %args );

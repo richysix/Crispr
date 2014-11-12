@@ -94,12 +94,12 @@ foreach my $driver ( keys %test_db_connections ){
     }
     
     # insert some data directly into db
-    my $statement = "insert into cas9 values( ?, ?, ?, ? );";
+    my $statement = "insert into cas9 values( ?, ?, ? );";
     
     my $sth ;
     $sth = $dbh->prepare($statement);
-    $sth->execute( 1, 'cas9_dnls_native', 'pCS2_dnls_Chen', 'some notes', );
-    $sth->execute( 2, 'cas9_dnls_nickase', 'pCS2_dnls_nick_Chen', undef, );
+    $sth->execute( 1, 'cas9_dnls_native', 'pCS2_dnls_Chen', );
+    $sth->execute( 2, 'cas9_dnls_nickase', 'pCS2_dnls_nick_Chen', );
 
     #$sth->execute( 1, 'cas9_dnls_native', 'rna', 'cr_test', '2014-10-13', );
     #$sth->execute( 2, 'cas9_dnls_native', 'protein', 'cr_test', '2014-10-13', );
@@ -124,7 +124,7 @@ foreach my $driver ( keys %test_db_connections ){
     
     # fetch_rows_expecting_single_row - 3 tests
     $results = $base_adaptor->fetch_rows_expecting_single_row( $select_statement, [ 1, ] );
-    is( join(":", @{$results} ), '1:cas9_dnls_native:pCS2_dnls_Chen:some notes', "$driver: check fields returned by fetch_rows_expecting_single_row" );
+    is( join(":", @{$results} ), '1:cas9_dnls_native:pCS2_dnls_Chen', "$driver: check fields returned by fetch_rows_expecting_single_row" );
     throws_ok{ $base_adaptor->fetch_rows_expecting_single_row( $select_statement, [ 3, ] ) }
         qr/NO\sROWS/xms, "$driver: check fetch_rows_expecting_single_row throws on no rows returned";
     $select_statement = 'select * from cas9;';

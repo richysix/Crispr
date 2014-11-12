@@ -143,22 +143,6 @@ has 'plasmid_name' => (
     builder => '_build_plasmid_name',
 );
 
-=method notes
-
-  Usage       : $cas9->notes;
-  Purpose     : Getter for notes attribute
-  Returns     : String (Default: undef)
-  Parameters  : None
-  Throws      : If input is given
-  Comments    : 
-
-=cut
-
-has 'notes' => (
-    is => 'ro',
-    isa => 'Maybe[Str]',
-);
-
 around BUILDARGS => sub{
     my $method = shift;
     my $self = shift;
