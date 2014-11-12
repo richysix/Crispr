@@ -109,12 +109,12 @@ foreach my $db_connection ( @db_connections ){
     $sth->execute( 2, 'crRNA:4:21-43:1', '4', 21, 43, '1', 'TAGATCAGTAGATCGATAGTAGG', 0, 0.81, 0.9, 0.9, 1, 1, 'B01' );
 
     # cas9 and injection pools
-    $statement = "insert into cas9 values( ?, ?, ?, ? );";
+    $statement = "insert into cas9 values( ?, ?, ? );";
     $sth = $dbh->prepare($statement);
-    $sth->execute( 1, 'cas9_zf_dnls_native', 'pCS2_zf_dnls_Chen', 'some notes' );
-    $statement = "insert into cas9_prep values( ?, ?, ?, ?, ? );";
+    $sth->execute( 1, 'cas9_zf_dnls_native', 'pCS2_ZfnCas9n_Chen', );
+    $statement = "insert into cas9_prep values( ?, ?, ?, ?, ?, ? );";
     $sth = $dbh->prepare($statement);
-    $sth->execute( 1, 1, 'rna', 'cr1', '2014-10-02' );
+    $sth->execute( 1, 1, 'rna', 'cr1', '2014-10-02', 'some notes' );
     $statement = "insert into injection values( ?, ?, ?, ?, ?, ?, ?, ? );";
     $sth = $dbh->prepare($statement);
     $sth->execute( 1, '170', 1, 200, '2014-10-02', 'H1435', 'MR1435', undef );

@@ -25,6 +25,8 @@ subtype 'Crispr::Cas9::DNA',
 					species => 's_pyogenes',
 					target_seq => 'NNNNNNNNNNNNNNNNNN',
 					PAM => 'NGG',
+                    plasmid_name => 'pCS2_ZfnCas9n',
+                    notes => 'Some notes about prep'
                 );
   Purpose     : Constructor for creating Cas9 objects
   Returns     : Crispr::Cas9 object
@@ -309,7 +311,7 @@ sub _build_plasmid_name {
     my ( $self, ) = @_;
     
     my %names_for = (
-        cas9_zf_dnls_native => 'pCS2_zf_dnls_Chen',
+        cas9_zf_dnls_native => 'pCS2_ZfnCas9n_Chen',
         cas9_zf_dnls_nickase => 'pCS2_zf_dnls_nick_Chen',
         cas9_cherry_native => 'pCS2_zf_dnls_cherry',
         cas9_nanos_native => 'pCS2_zf_dnls_nanos',
