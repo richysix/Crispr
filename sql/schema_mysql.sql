@@ -105,7 +105,7 @@ create table expression_construct (
 create table guideRNA_prep (
     guideRNA_prep_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     crRNA_id INT UNSIGNED NOT NULL,
-    guideRNA_type ENUM('sgRNA', 'tracrRNA'),
+    guideRNA_type ENUM('sgRNA', 'tracrRNA') NOT NULL,
     concentration DECIMAL(5,1) NOT NULL,
     made_by VARCHAR(5) NOT NULL,
     date DATE NOT NULL,
@@ -135,26 +135,20 @@ create table primer_pair (
     type ENUM('ext', 'int', 'illumina', 'illumina_tailed' ) NOT NULL,
     left_primer_id INT UNSIGNED NOT NULL,
     right_primer_id INT UNSIGNED NOT NULL,
+    chr VARCHAR(30),
+    start INT UNSIGNED NOT NULL,
+    end INT UNSIGNED NOT NULL,
+    strand ENUM('1', '-1') NOT NULL,
     product_size SMALLINT NOT NULL,
     FOREIGN KEY (left_primer_id) REFERENCES primer(primer_id),
     FOREIGN KEY (right_primer_id) REFERENCES primer(primer_id)
 ) ENGINE = InnoDB;
 
-create table amplicon (
-    amplicon_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    primer_pair_id INT UNSIGNED NOT NULL,
-    chr VARCHAR(30),
-    start INT UNSIGNED NOT NULL,
-    end INT UNSIGNED NOT NULL,
-    strand ENUM('1', '-1') NOT NULL,
-    FOREIGN KEY (primer_pair_id) REFERENCES primer_pair(primer_pair_id)
-) ENGINE = InnoDB;
-
 create table amplicon_to_crRNA (
-    amplicon_id INT UNSIGNED NOT NULL,
+    primer_pair_id INT UNSIGNED NOT NULL,
     crRNA_id INT UNSIGNED NOT NULL,
-    CONSTRAINT `amplicon_to_crRNA_amplicon_id_crRNA_id` PRIMARY KEY ( `amplicon_id`, `crRNA_id` ),
-    FOREIGN KEY (amplicon_id) REFERENCES amplicon(amplicon_id),
+    CONSTRAINT `amplicon_to_crRNA_primer_pair_id_crRNA_id` PRIMARY KEY ( `primer_pair_id`, `crRNA_id` ),
+    FOREIGN KEY (primer_pair_id) REFERENCES primer_pair(primer_pair_id),
     FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id)
 ) ENGINE = InnoDB;
 
@@ -195,7 +189,7 @@ create table cas9 (
 
 create table cas9_prep (
     cas9_prep_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    cas9_id INT UNSIGNED,
+    cas9_id INT UNSIGNED NOT NULL,
     prep_type ENUM('dna', 'rna', 'protein') NOT NULL,
     made_by VARCHAR(10) NOT NULL,
     date DATE NOT NULL,
@@ -206,9 +200,9 @@ create table cas9_prep (
 
 create table injection (
     injection_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    injection_name INT UNSIGNED NOT NULL,
+    injection_name VARCHAR(30) NOT NULL,
     cas9_prep_id INT UNSIGNED NOT NULL,
-    cas9_concentration INT UNSIGNED NOT NULL,
+    cas9_concentration DECIMAL(5,1) NOT NULL,
     date DATE NOT NULL,
     line_injected VARCHAR(10) NOT NULL,
     line_raised VARCHAR(10),
@@ -222,9 +216,10 @@ create table injection_pool (
     crRNA_id INT UNSIGNED NOT NULL,
     guideRNA_prep_id INT UNSIGNED NOT NULL,
     guideRNA_concentration INT UNSIGNED NOT NULL,
-    CONSTRAINT `injection_pool_injection_id_crRNA_id` PRIMARY KEY ( `injection_id`, `guideRNA_prep_id` ),
+    CONSTRAINT `injection_pool_injection_id_guideRNA_prep_id` PRIMARY KEY ( `injection_id`, `guideRNA_prep_id` ),
     FOREIGN KEY (injection_id) REFERENCES injection(injection_id),
-    FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id)
+    FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id),
+    FOREIGN KEY (guideRNA_prep_id) REFERENCES guideRNA_prep(guideRNA_prep_id)
 ) ENGINE = InnoDB;
 
 create table plex (
@@ -254,6 +249,7 @@ create table sample (
     barcode_number SMALLINT NOT NULL,
     generation ENUM('G0', 'F1', 'F2') NOT NULL,
     type ENUM('sperm', 'embryo', 'finclip') NOT NULL,
+    species VARCHAR(50) NOT NULL,
     FOREIGN KEY (injection_id) REFERENCES injection(injection_id),
     FOREIGN KEY (subplex_id) REFERENCES subplex(subplex_id)
 ) ENGINE = InnoDB;
@@ -285,14 +281,14 @@ create table allele (
 create table sample_allele (
     sample_id INT UNSIGNED NOT NULL,
     allele_id INT UNSIGNED NOT NULL,
-    amplicon_id INT UNSIGNED NOT NULL,
+    primer_pair_id INT UNSIGNED NOT NULL,
     type ENUM("crispr", "crispr_pair" ),
     crispr_id INT UNSIGNED NOT NULL,
     percentage_of_reads DECIMAL(4,1) NOT NULL,
     CONSTRAINT `sample_allele_sample_id_allele_id` PRIMARY KEY ( `sample_id`, `allele_id` ),
     FOREIGN KEY (sample_id) REFERENCES sample(sample_id),
     FOREIGN KEY (allele_id) REFERENCES allele(allele_id),
-    FOREIGN KEY (amplicon_id) REFERENCES amplicon(amplicon_id)
+    FOREIGN KEY (primer_pair_id) REFERENCES primer_pair(primer_pair_id)
 ) ENGINE = InnoDB;
 
 create table kasp (
