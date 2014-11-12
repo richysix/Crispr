@@ -415,7 +415,7 @@ sub check_attributes {
     my ( $object1, $object2, $driver, $method ) = @_;
     is( $object1->db_id, $object2->db_id, "$driver: object from db $method - check db_id");
     is( $object1->pool_name, $object2->pool_name, "$driver: object from db $method - check pool_name");
-    is( $object1->cas9_conc, $object2->cas9_conc, "$driver: object from db $method - check cas9_conc");
+    is( abs($object1->cas9_conc - $object2->cas9_conc ) < 0.1, 1, "$driver: object from db $method - check cas9_conc");
     is( $object1->date, $object2->date, "$driver: object from db $method - check date");
     is( $object1->line_injected, $object2->line_injected, "$driver: object from db $method - check line_injected");
     is( $object1->line_raised, $object2->line_raised, "$driver: object from db $method - check line_raised");
