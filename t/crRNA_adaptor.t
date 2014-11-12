@@ -245,7 +245,7 @@ foreach my $db_connection ( @db_connections ){
         
         # store crRNA - 3 tests
         #check throws on no target
-        throws_ok{ $crRNA_adaptor->store($mock_well) } qr/must\shave\san\sassociated\starget/, 'Store crRNA without target';
+        throws_ok{ $crRNA_adaptor->store($mock_well) } qr/must\shave\san\sassociated\sTarget/, 'Store crRNA without target';
         my $target = $mock_target;
         $mock_crRNA->mock('target', sub { my @args = @_; if( $_[1] ){ $target = $_[1] } return $target; } );
         is($crRNA_adaptor->store($mock_well), 1, 'Store crRNA');
@@ -424,6 +424,7 @@ foreach my $db_connection ( @db_connections ){
                 );
         }
     );
+    $mock_off_target_info->mock( 'number_hits', sub { return 3 } );
     
     $mock_target->mock('target_id', sub { return 100; } );
     $mock_target->mock('target_name', sub { return 'gene001' } );

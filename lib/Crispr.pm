@@ -1125,6 +1125,48 @@ sub score_off_targets_from_sam_output {
 	return $crRNAs;
 }
 
+sub make_and_add_off_target_from_position {
+    my ( $self, $crRNA, $pos, $annotation ) = @_;
+    
+    # check args
+    if( !$crRNA || !$pos || !$annotation ){
+        confess "method: make_and_add_off_target_from_position - ",
+            "One of the arguments was not specified\n",
+            "Arguments are: crRNA, position, annotation\n";
+    }
+    # check crispr off_target_info object exists
+    if( !defined $crRNA->off_target_hits ){
+        $crRNA->off_target_hits(
+            Crispr::OffTargetInfo->new(
+                crRNA_name => $crRNA->name,
+            )
+        );
+    }
+    
+    my ( $chr, $range, $strand ) = split /:/, $pos;
+    my ( $start, $end ) = split /-/, $range;
+    $strand = $strand  ?   $strand   :   '1';
+    
+    # get sequence to check for mismatches
+    my $off_target_seq = $self->_fetch_sequence( $chr, $start, $end, $strand, );
+    if( !$off_target_seq ){
+        confess "Couldn't fetch sequence for off-target position to check for mismatches!\n";
+    }
+    my $mismatches = (uc($off_target_seq->seq) ^ uc($crRNA->sequence)) =~ tr/\001-\255//;
+    
+    my %args = (
+        crRNA_name => $crRNA->name,
+        chr => $chr,
+        start => $start,
+        end => $end,
+        strand => $strand,
+        mismatches => $mismatches,
+        annotation => $annotation,
+    );
+    
+    $crRNA->off_target_hits->_make_and_add_off_target( \%args );
+}
+
 =method _fetch_sequence
 
   Usage       : $crispr->_fetch_sequence( $chr, $pos, $end, $strand, );

@@ -12,6 +12,11 @@ use Carp qw( cluck confess );
 use Number::Format;
 my $num = new Number::Format( DECIMAL_DIGITS => 3, );
 
+has 'crRNA_name' => (
+    is => 'ro',
+    isa => 'Str',
+);
+
 has '_off_targets' => (
     is => 'rw',
     isa => 'HashRef',
@@ -32,6 +37,22 @@ sub add_off_target {
 sub all_off_targets {
     my ( $self, ) = @_;
     return ( @{ $self->_off_targets->{exon} }, @{ $self->_off_targets->{intron} }, @{ $self->_off_targets->{nongenic} }, )
+}
+
+sub _make_and_add_off_target {
+    my ( $self, $args, ) = @_;
+    
+    my $off_target_obj = Crispr::OffTarget->new(
+        crRNA_name => $args->{crRNA_name},
+        chr => $args->{chr},
+        start => $args->{start},
+        end => $args->{end},
+        strand => $args->{strand},
+        mismatches => $args->{mismatches},
+        annotation => $args->{annotation},
+    );
+    
+    $self->add_off_target( $off_target_obj );
 }
 
 sub score {
@@ -111,6 +132,11 @@ sub number_intron_hits {
 sub number_nongenic_hits {
     my ( $self, ) = @_;
     return scalar @{$self->_off_targets->{nongenic}};
+}
+
+sub number_hits {
+    my ( $self, ) = @_;
+    return $self->number_exon_hits + $self->number_intron_hits + $self->number_nongenic_hits;
 }
 
 sub _build_off_targets {
