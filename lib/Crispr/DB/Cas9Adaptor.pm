@@ -115,6 +115,23 @@ sub store_cas9s {
     return $cas9s;
 }
 
+=method get_db_id_by_type
+
+  Usage       : $cas9 = $cas9_adaptor->get_db_id_by_type( $cas9_id );
+  Purpose     : Get the database id of a Cas9 given it's type.
+  Returns     : Int
+  Parameters  : Cas9 type - Str
+  Throws      : If no rows are returned from the database
+  Comments    : None
+
+=cut
+
+sub get_db_id_by_type {
+    my ( $self, $type ) = @_;
+    my $cas9 = $self->fetch_by_type( $type );
+    return $cas9->db_id;
+}
+
 =method fetch_by_id
 
   Usage       : $cas9 = $cas9_adaptor->fetch_by_id( $cas9_id );
