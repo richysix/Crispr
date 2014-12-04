@@ -10,6 +10,8 @@ use Moose::Util::TypeConstraints;
 use Bio::Restriction::EnzymeCollection;
 use Bio::Restriction::Analysis;
 use Readonly;
+use List::MoreUtils qw{ any };
+use Scalar::Util qw{ weaken };
 
 =method crRNA
 
@@ -72,23 +74,21 @@ has 'amplicon_analysis' => (
 =method uniq_in_both
 
   Usage       : $enzyme_info->uniq_in_both;
-  Purpose     : Getter for the enzymes that are unique in both the crRNA target
-                sequence and the PCR amplicon
+  Purpose     : Works out the overlap between unique enzymes in amplicon and
+                crispr target site
   Returns     : Bio::Restriction::EnzymeCollection object
   Parameters  : None
-  Throws      : If input is given
-  Comments    : None
-
+  Throws      : If either analysis or amplicon_analysis attributes are undefined
+  Comments    :
+  
 =cut
 
 has 'uniq_in_both' => (
     is => 'ro',
     isa => 'Bio::Restriction::EnzymeCollection',
-    writer => '_set_enzymes',
+    lazy => 1,
+    builder => '_build_uniq_in_both', 
 );
-
-my $_proximities_for;
-my $_uniq_in_both_checked;
 
 # This is to weaken the crRNA reference in the EnzymeInfo object.
 # The crRNA object contains a reference to the EnzymeInfo object
@@ -120,20 +120,20 @@ around BUILDARGS => sub{
     }
 };
 
-# check uniq_in_both for overlapping sites
-around 'uniq_in_both' => sub {
-    my ( $orig, $self, ) = @_;
-    
-    if( $_uniq_in_both_checked ){
-        return $self->$orig;
-    }
-    else{
-        my $enzymes = $self->_parse_uniq_in_both( $self->$orig );
-        $self->_set_enzymes( $enzymes );
-        $_uniq_in_both_checked = 1;
-        return $enzymes;
-    }
-};
+## check uniq_in_both for overlapping sites
+#around 'uniq_in_both' => sub {
+#    my ( $orig, $self, ) = @_;
+#    
+#    if( $_uniq_in_both_checked ){
+#        return $self->$orig;
+#    }
+#    else{
+#        my $enzymes = $self->_parse_uniq_in_both( $self->$orig );
+#        $self->_set_enzymes( $enzymes );
+#        $_uniq_in_both_checked = 1;
+#        return $enzymes;
+#    }
+#};
 
 =method proximity_to_cut_site
 
@@ -148,6 +148,9 @@ around 'uniq_in_both' => sub {
                 site, 1000000 is returned
 
 =cut
+
+# internal hash for caching proximity values
+my $_proximities_for;
 
 sub proximity_to_cut_site {
     my ( $self, $enzyme, ) = @_;
@@ -251,26 +254,49 @@ sub _construct_enzyme_site_regex_from_target_seq {
 }
 
 ################################################################################
-# func _parse_uniq_in_both
+# func _build_uniq_in_both
 #
-#  Usage       : $self->_parse_uniq_in_both( $enzyme_collection );
-#  Purpose     : Goes through an enzyme collection and keeps only those that
-#                do not have a proximity of 1000000
-#  Returns     : Bio::Restriction:EnzymeCollection
-#  Parameters  : Bio::Restriction:EnzymeCollection
-#  Throws      : 
+#  Usage       : $self->_build_uniq_in_both();
+#  Purpose     : Works out the overlap between unique enzymes in amplicon and
+#                crispr target site.
+#  Returns     : Bio::Restriction::EnzymeCollection
+#  Parameters  : None
+#  Throws      : If either analysis or amplicon_analysis attributes are undefined
 #  Comments    : None
 ################################################################################
 
-sub _parse_uniq_in_both {
-    my ( $self, $enzyme_collection ) = @_;
+sub _build_uniq_in_both {
+    my ( $self, ) = @_;
     
-    my $new_enzymes = Bio::Restriction::EnzymeCollection->new( -empty => 1 );
+    if( !defined $self->analysis || !defined $self->amplicon_analysis ){
+        confess join(q{ }, "Analyses of both the crispr target site and the PCR amplicon",
+            "are required to calculate which enzymes are unique in both.",
+            "One of them is missing!", ), "\n";
+    }
     
-    $new_enzymes->enzymes(
-        grep { $self->proximity_to_cut_site( $_ ) != 1000000 } $enzyme_collection->each_enzyme() );
+    my $uniq_in_both = Bio::Restriction::EnzymeCollection->new( -empty => 1 );
+    # go through enzymes unique in amplicon and pull matching ones out of crispr target site set
+    foreach my $enzyme ( $self->amplicon_analysis->unique_cutters->each_enzyme() ){
+        my $match = 0;
+        foreach my $crispr_enzyme ( $self->analysis->unique_cutters->each_enzyme() ){
+            if( $enzyme->name eq $crispr_enzyme->name ){
+                $match = 1;
+            }
+        }
+        if( $match ){
+            my ( $vendors, ) = $enzyme->vendors;
+            if( any { $_ eq 'N' } @{$vendors} ){
+                $uniq_in_both->enzymes( $enzyme );
+            }
+        }
+    }
     
-    return $new_enzymes;
+    # filter out ones which actually cut twice
+    my $uniq_in_both_filtered = Bio::Restriction::EnzymeCollection->new( -empty => 1 );
+    $uniq_in_both_filtered->enzymes(
+        grep { $self->proximity_to_cut_site( $_ ) != 1000000 } $uniq_in_both->each_enzyme() );
+    
+    return $uniq_in_both_filtered;
 }
 
 __PACKAGE__->meta->make_immutable;

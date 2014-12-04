@@ -239,23 +239,47 @@ sub store_crRNAs {
 =cut
 
 sub store_restriction_enzyme_info {
-	my ( $self, $crRNA ) = @_;
+	my ( $self, $crRNA, $primer_pair ) = @_;
     my $dbh = $self->connection->dbh();
+    
+    # check inputs
+    if( !$crRNA ){
+        confess "A crRNA object is required for adding enzyme info to the database.\n";
+    }
+    elsif( !ref $crRNA || !$crRNA->isa('Crispr::crRNA' ) ){
+        confess join(q{ },
+            "The supplied object should be a Crispr::crRNA object, not",
+            ref $crRNA, ), ".\n";
+    }
+    elsif( !$crRNA->unique_restriction_sites ){
+        confess "The Crispr::crRNA object must contain an EnzymeInfo object!\n";
+    }
+    
+    if( !$primer_pair ){
+        confess "A primer pair object is required for adding enzyme info to the database.\n";
+    }
+    elsif( !ref $primer_pair || !$primer_pair->isa('Crispr::PrimerPair' ) ){
+        confess join(q{ },
+            "The supplied object should be a Crispr::PrimerPair object, not",
+            ref $primer_pair, ), ".\n";
+    }
+    
+    # get enzyme info
 	my $enzyme_info = $crRNA->unique_restriction_sites;
 	
 	# will need to check that enzymes already exist in the db
 	my $check_re_st = "select count(*) from enzyme where name = ?;";
 	# insert values into table restriction_enzymes
     my $statement = <<"END_ST";
-insert into restriction_enzymes values( ?,
-(select enzyme_id from enzyme where name = ?), ? );
+insert into restriction_enzymes values( ?, ?,
+(select enzyme_id from enzyme where name = ?), ?, ? );
 END_ST
 	
-	my $add_enzyme_st = "insert into enzyme values(?, ?, ?, ?, ?, ?, ?);";
+	my $add_enzyme_st = "insert into enzyme values(?, ?, ?);";
 	
     $self->connection->txn(  fixup => sub {
 		my $sth = $dbh->prepare($statement);
-		foreach my $enzyme ( $enzyme_info->unique_cutters->each_enzyme ){
+		foreach my $enzyme ( $enzyme_info->uniq_in_both->each_enzyme ){
 			if( !$self->check_entry_exists_in_db( $check_re_st, [ $enzyme->name ] ) ){
 				# complain
 				warn q{Couldn't find enzyme:}, $enzyme->name, " in the database!\nAdding...";
@@ -264,18 +288,18 @@ END_ST
 					undef,
 					$enzyme->name,
 					$enzyme->site,
-					undef,
-					undef,
-					'No company info',
-					undef,
 				);
 				$add_sth->finish();
 			}
 			
+            # get fragments sizes. returns an array of sizes in bp sorted from largest to smallest
+            my @fragments = $enzyme_info->amplicon_analysis->sizes($enzyme, 0, 1);
 			$sth->execute(
+                $primer_pair->primer_pair_id,
 				$crRNA->crRNA_id,
 				$enzyme->name,
-				join(',', $enzyme_info->amplicon_analysis->sizes($enzyme, 0, 1), ),
+                $enzyme_info->proximity_to_cut_site( $enzyme ),
+				join(',', @fragments ),
 			);
 		}
 		$sth->finish();
