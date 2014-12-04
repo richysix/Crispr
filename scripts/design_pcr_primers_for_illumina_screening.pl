@@ -101,9 +101,9 @@ while(<>){
     if( $name =~ m/\AcrRNA:[[:alnum:]_]+:   # crRNA:CHR:
                     [0-9]+\-[0-9]+:         # RANGE:
                     [1-]+                   # STRAND
-                    _crRNA:[[:alnum:]_]+:[0-9]+\-[0-9]+:[1-]+ #SAME AGAIN JOINED BY UNDERSCORE
+                    \.crRNA:[[:alnum:]_]+:[0-9]+\-[0-9]+:[1-]+ #SAME AGAIN JOINED BY .
                     \z/xms ){ # matches a crispr pair name
-        my ( $name1, $name2 ) = split /_/, $name;
+        my ( $name1, $name2 ) = split /\./, $name;
         # make crRNA for each name and then Crispr pair
         my $crRNA_1 = $crispr_design->create_crRNA_from_crRNA_name( $name1 );
         my $crRNA_2 = $crispr_design->create_crRNA_from_crRNA_name( $name2 );

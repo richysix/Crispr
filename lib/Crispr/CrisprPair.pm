@@ -212,7 +212,7 @@ sub crRNAs {
 
 sub pair_name {
     my ( $self, ) = @_;
-    return $self->crRNA_1->name . q{_} . $self->crRNA_2->name;
+    return $self->crRNA_1->name . q{.} . $self->crRNA_2->name;
 }
 
 =method name
@@ -228,7 +228,7 @@ sub pair_name {
 
 sub name {
     my ( $self, ) = @_;
-    return $self->crRNA_1->name . q{_} . $self->crRNA_2->name;
+    return $self->crRNA_1->name . q{.} . $self->crRNA_2->name;
 }
 
 =method combined_single_off_target_score
