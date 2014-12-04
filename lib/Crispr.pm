@@ -409,7 +409,7 @@ sub find_crRNAs_by_region {
 		my $crRNA = Crispr::crRNA->new(
 			chr => $chr,
 			start => $match_offset + $match_start,
-			end => $match_offset + $match_start + $self->target_seq_length,
+			end => $match_offset + $match_start + ($self->target_seq_length - 1),
 			strand => '1',
 			sequence => $1,
 			species => $self->species,
@@ -436,7 +436,7 @@ sub find_crRNAs_by_region {
 		my $crRNA = Crispr::crRNA->new(
 			chr => $chr,
 			start => $match_offset + $match_start,
-			end => $match_offset + $match_start + 22,
+			end => $match_offset + $match_start + ($self->target_seq_length - 1),
 			strand => '-1',
 			sequence => $rev_com_seq,
 			species => $self->species,
@@ -1110,7 +1110,7 @@ sub score_off_targets_from_sam_output {
 
 	# make an off target object and add it to interval tree
 	my $off_target_obj = Crispr::OffTarget->new(
-		crRNA_name => $id,
+		crRNA_name => $crRNA->name,
 		chr => $chr,
 		start => $start,
 		end => $end,
