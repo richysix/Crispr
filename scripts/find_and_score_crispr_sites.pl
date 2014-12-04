@@ -28,8 +28,8 @@ my $date_obj = DateTime->now();
 my $todays_date = $date_obj->ymd;
 
 # check registry file
-if( $options{registry} ){
-    Bio::EnsEMBL::Registry->load_all( $options{registry} );
+if( $options{registry_file} ){
+    Bio::EnsEMBL::Registry->load_all( $options{registry_file} );
 }
 else{
     # if no registry file connect anonymously to the public server
@@ -234,13 +234,14 @@ sub get_exon {
             ensembl_version => $ensembl_version,
         );
         
+        if( $options{enzyme} ){
+            $target->requires_enzyme( $options{enzyme} );
+        }
+        
         if( $options{no_crRNA} ){
             $crispr_design->add_target( $target );
         }
         else{
-            if( $options{enzyme} ){
-                $target->requires_enzyme( $options{enzyme} );
-            }
             my $crRNAs = [];
             eval{
                 $crRNAs = $crispr_design->find_crRNAs_by_target( $target, );
@@ -331,13 +332,14 @@ sub get_gene {
                     ensembl_version => $ensembl_version,
                 );
                 
+                if( $options{enzyme} ){
+                    $target->requires_enzyme( $options{enzyme} );
+                }
+                
                 if( $options{no_crRNA} ){
                     $crispr_design->add_target( $target );
                 }
                 else{
-                    if( $options{enzyme} ){
-                        $target->requires_enzyme( $options{enzyme} );
-                    }
                     my $crRNAs = [];
                     eval{
                         $crRNAs = $crispr_design->find_crRNAs_by_target( $target, );
@@ -413,13 +415,14 @@ sub get_transcript {
                 ensembl_version => $ensembl_version,
             );
             
+            if( $options{enzyme} ){
+                $target->requires_enzyme( $options{enzyme} );
+            }
+            
             if( $options{no_crRNA} ){
                 $crispr_design->add_target( $target );
             }
             else{
-                if( $options{enzyme} ){
-                    $target->requires_enzyme( $options{enzyme} );
-                }
                 my $crRNAs = [];
                 eval{
                     $crRNAs = $crispr_design->find_crRNAs_by_target( $target, );
@@ -520,13 +523,14 @@ sub get_posn {
             ensembl_version => $ensembl_version,
         );
         
+        if( $options{enzyme} ){
+            $target->requires_enzyme( $options{enzyme} );
+        }
+        
         if( $options{no_crRNA} ){
             $crispr_design->add_target( $target );
         }
         else{
-            if( $options{enzyme} ){
-                $target->requires_enzyme( $options{enzyme} );
-            }
             my $crRNAs = [];
             eval{
                 $crRNAs = $crispr_design->find_crRNAs_by_target( $target, );
@@ -592,7 +596,7 @@ sub get_and_check_options {
     
     GetOptions(
         \%options,
-        'registry=s',
+        'registry_file=s',
         'species=s',
         'assembly=s',
         'target_genome=s',
@@ -710,7 +714,7 @@ possible off-target effects and optionally for its position in coding transcript
 =head1 SYNOPSIS
 
     find_and_score_crRNAs.pl [options] filename(s) | target info on STDIN
-        --registry              a registry file for connecting to the Ensembl database
+        --registry_file         a registry file for connecting to the Ensembl database
         --species               species for the targets
         --assembly              current assembly
         --target_genome         a target genome fasta file for scoring off-targets
@@ -753,7 +757,7 @@ This input can also be supplied on STDIN rather than a file.
 
 =over
 
-=item B<--registry>
+=item B<--registry_file>
 
 a registry file for connecting to the Ensembl database.
 If no file is supplied the script connects anonymously to the current version of the database.
