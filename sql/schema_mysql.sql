@@ -41,16 +41,17 @@ create table crRNA (
     target_id INT UNSIGNED NOT NULL,
     plate_id INT UNSIGNED,
     well_id CHAR(3),
+    CONSTRAINT `crRNA_plate_id_well_id` UNIQUE (`plate_id`, `well_id`),
     FOREIGN KEY (target_id) REFERENCES target (target_id),
     FOREIGN KEY (plate_id) REFERENCES plate (plate_id)
 )  ENGINE = InnoDB;
-CREATE UNIQUE INDEX `crRNA_crRNA_name_target_id` ON crRNA ( `crRNA_name`, `target_id` );
+CREATE UNIQUE INDEX `crRNA_crRNA_name_target_id_plate_id` ON crRNA ( `crRNA_name`, `target_id`, `plate_id` );
 
 create table crRNA_pair (
     crRNA_pair_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    crRNA_pair_name VARCHAR(100) NOT NULL,
     crRNA_1_id INT UNSIGNED NOT NULL,
     crRNA_2_id INT UNSIGNED NOT NULL,
+    CONSTRAINT `crRNA_pair_crRNA_pair_id_crRNA_1_id_crRNA_2_id` UNIQUE ( `crRNA_pair_id`, `crRNA_1_id`, `crRNA_2_id` ),
     FOREIGN KEY (crRNA_1_id) REFERENCES crRNA (crRNA_id),
     FOREIGN KEY (crRNA_2_id) REFERENCES crRNA (crRNA_id)
 )  ENGINE = InnoDB;
@@ -155,7 +156,8 @@ create table amplicon_to_crRNA (
 create table enzyme (
     enzyme_id SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(20) NOT NULL,
-    site VARCHAR(20) NOT NULL
+    site VARCHAR(20) NOT NULL,
+    CONSTRAINT `enzyme_name` UNIQUE ( `name` )
 ) ENGINE = InnoDB;
 
 create table enzyme_ordering (
@@ -234,7 +236,7 @@ create table plex (
 create table subplex (
     subplex_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     plex_id INT UNSIGNED NOT NULL,
-    plate_num ENUM('1', '2', '3', '4' ) NOT NULL,
+    plate_num TINYINT NOT NULL,
     injection_id INT UNSIGNED NOT NULL,
     FOREIGN KEY (plex_id) REFERENCES plex(plex_id),
     FOREIGN KEY (injection_id) REFERENCES injection(injection_id)
