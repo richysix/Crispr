@@ -16,10 +16,13 @@ use Data::Dumper;
 use Crispr::Config;
 use Crispr::DB::TargetAdaptor;
 use Crispr::DB::crRNAAdaptor;
+use Crispr::DB::CrisprPairAdaptor;
 use Crispr::DB::PlateAdaptor;
 use Crispr::DB::Cas9Adaptor;
 use Crispr::DB::Cas9PrepAdaptor;
 use Crispr::DB::GuideRNAPrepAdaptor;
+use Crispr::DB::PrimerAdaptor;
+use Crispr::DB::PrimerPairAdaptor;
 
 =method new
 
@@ -368,6 +371,12 @@ sub get_adaptor {
         guidernaprepadaptor => 'Crispr::DB::GuideRNAPrepAdaptor',
         plate => 'Crispr::DB::PlateAdaptor',
         plateadaptor => 'Crispr::DB::PlateAdaptor',
+        primer => 'Crispr::DB::PrimerAdaptor',
+        primeradaptor => 'Crispr::DB::PrimerAdaptor',
+        primerpair => 'Crispr::DB::PrimerPairAdaptor',
+        primerpairadaptor => 'Crispr::DB::PrimerPairAdaptor',
+        crisprpair => 'Crispr::DB::CrisprPairAdaptor',
+        crisprpairadaptor => 'Crispr::DB::CrisprPairAdaptor',
     );
     
     my %args = (
