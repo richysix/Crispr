@@ -200,7 +200,7 @@ foreach my $target_id ( keys %{$targets_for} ){
             warn $a_crRNA->name, ':', "\n" if $options{debug};
             # add key for this a_crRNA so we get self matches as well
             $relevant_crRNAs_lookup{ $a_crRNA->name } = 1;
-            warn Dumper( %relevant_crRNAs_lookup ) if $options{debug};
+            warn "crRNAs lookup:\n", Dumper( %relevant_crRNAs_lookup ) if $options{debug};
             #lookup overlapping intervals
             if( $a_crRNA->off_target_hits->all_off_targets ){
                 foreach my $off_target_obj ( $a_crRNA->off_target_hits->all_off_targets ){
