@@ -267,6 +267,7 @@ sub get_and_check_options {
         \%options,
         'singles',
         'pairs',
+        'registry_file=s',
         'species=s',
         'target_genome=s',
         'annotation_file=s',
@@ -293,6 +294,7 @@ sub get_and_check_options {
     }
     if( !exists $options{singles} && !exists $options{pairs} ){
         warn "Neither option of --singles or --pairs specified. Assuming --singles...\n";
+        $options{singles} = 1;
     }
     
     if( !$options{target_genome} && $options{species} ){
