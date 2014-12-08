@@ -486,7 +486,7 @@ sub store_expression_construct_info {
 =cut
 
 sub store_construction_oligos {
-	my ( $self, $well ) = @_;
+	my ( $self, $well, $oligo_type ) = @_;
     my $dbh = $self->connection->dbh();
 	
 	my $crRNA = $well->contents;
@@ -508,7 +508,21 @@ sub store_construction_oligos {
             confess "The supplied object must be a Labware::Well object, not a ", ref $well, "one.\n";
         }
     }
-	
+    
+    my ( $oligo1, $oligo2, $backbone_id );
+    if( $oligo_type eq 'cloning' ){
+        $oligo1 = $crRNA->forward_oligo;
+		$oligo2 = $crRNA->reverse_oligo;
+        $backbone_id = $self->check_plasmid_backbone_exists( $dbh, $crRNA );
+    }
+    elsif( $oligo_type eq 't7_hairpin' ){
+        $oligo1 = $crRNA->t7_hairpin_oligo;
+    }
+    else{
+        confess "store_construction_oligos: Couldn't understand oligo type - ",
+            $oligo_type, "\n";
+    }
+    
 	# check plate exists - check_entry_exists_in_db inherited from BaseAdaptor.
     my $plate_id;
 	my $check_plate_st = 'select count(*) from plate where plate_name = ?';
@@ -524,16 +538,14 @@ sub store_construction_oligos {
 		$plate_id = $well->plate->plate_id;
 	}
 	
-    my $backbone_id = $self->check_plasmid_backbone_exists( $dbh, $crRNA );
-    
 	my $insert_oligos_st = "insert into construction_oligos values( ?, ?, ?, ?, ?, ? );";
 	
     $self->connection->txn(  fixup => sub {
 		my $sth = $dbh->prepare($insert_oligos_st);
 		$sth->execute(
 			$crRNA->crRNA_id,
-			$crRNA->forward_oligo,
-			$crRNA->reverse_oligo,
+			$oligo1,
+			$oligo2,
             $backbone_id,
 			$plate_id,
 			$well->position,

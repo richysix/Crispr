@@ -7,6 +7,7 @@
 use warnings; use strict;
 use Getopt::Long;
 use English qw( -no_match_vars );
+use Readonly;
 use Pod::Usage;
 use Data::Dumper;
 use DateTime;
@@ -274,132 +275,138 @@ foreach my $well ( @{$wells} ){
     }
 }
 
-# make a new plate to fill for construction oligos
-$plate_name = 'CR_' . sprintf("%06d", $options{plate_num}) . 'a';
-my $oligo_plate = Crispr::Plate->new(
-    plate_id => undef,
-    plate_name => $plate_name,
-    plate_category => 'construction_oligos',
-    plate_type => $options{plate_type},
-    fill_direction => $options{fill_direction},
-    ordered => $options{ordered},
-    received => $options{received},
-);
-
-# fill plate with crisprs for adding construction oligos to db
-if( scalar @crisprs <= $oligo_plate->plate_type ){
-    # add plate to db
-    eval{
-        $plate_adaptor->store( $oligo_plate );
-    };
-    if( $EVAL_ERROR ){
-        if( $EVAL_ERROR =~ m/PLATE\sALREADY\sEXISTS/xms ){
-            warn join(q{ }, 'Construction Plate', $oligo_plate->plate_name,
-                      'already exists in the database. Using this plate to add oligos to...'
-                     ), "\n";
+if( $options{construction_oligos} ){
+    # make a new plate to fill for construction oligos
+    $plate_name = 'CR_' . sprintf("%06d", $options{plate_num}) . 'a';
+    my $plate_cat = $options{construction_oligos} eq 't7_hairpin'  ?   't7_hairpin_oligos'
+        :           'construction_oligos';
+    my $oligo_plate = Crispr::Plate->new(
+        plate_id => undef,
+        plate_name => $plate_name,
+        plate_category => $plate_cat,
+        plate_type => $options{plate_type},
+        fill_direction => $options{fill_direction},
+        ordered => $options{ordered},
+        received => $options{received},
+    );
+    
+    # fill plate with crisprs for adding construction oligos to db
+    if( scalar @crisprs <= $oligo_plate->plate_type ){
+        # add plate to db
+        eval{
+            $plate_adaptor->store( $oligo_plate );
+        };
+        if( $EVAL_ERROR ){
+            if( $EVAL_ERROR =~ m/PLATE\sALREADY\sEXISTS/xms ){
+                warn join(q{ }, 'Construction Plate', $oligo_plate->plate_name,
+                          'already exists in the database. Using this plate to add oligos to...'
+                         ), "\n";
+            }
+            else{
+                die "There was a problem storing the construction oligos plate in the database.\n",
+                        "ERROR MSG:", $EVAL_ERROR, "\n";
+            }
         }
         else{
-            die "There was a problem storing the construction oligos plate in the database.\n",
+            print join(q{ }, $oligo_plate->plate_name,
+                       'was stored correctly in the database with id:',
+                       $oligo_plate->plate_id, ), "\n";
+        }
+        # fill wells of the plate
+        if( $has_well_ids ){
+            foreach my $crRNA ( @crisprs ){
+                $oligo_plate->fill_well( $crRNA, $well_id_for{$crRNA->name} );
+            }
+        }
+        else{
+            $oligo_plate->fill_wells_from_first_empty_well( \@crisprs );
+        }
+    }
+    else{
+        die "More than one plate full of stuff!\n";
+    }
+    
+    # return wells from plate and add to db
+    $wells = $oligo_plate->return_all_non_empty_wells;
+    foreach my $well ( @{$wells} ){
+        eval{
+            $crRNA_adaptor->store_construction_oligos( $well, $options{construction_oligos} );
+        };
+        if( $EVAL_ERROR ){
+            die "There was a problem storing one of the construction oligos in the database.\n",
                     "ERROR MSG:", $EVAL_ERROR, "\n";
         }
-    }
-    else{
-        print join(q{ }, $oligo_plate->plate_name,
-                   'was stored correctly in the database with id:',
-                   $oligo_plate->plate_id, ), "\n";
-    }
-    # fill wells of the plate
-    if( $has_well_ids ){
-        foreach my $crRNA ( @crisprs ){
-            $oligo_plate->fill_well( $crRNA, $well_id_for{$crRNA->name} );
+        else{
+            print join(q{ }, 'Construction oligos for', $well->contents->name,
+                    'were stored correctly in the database.'), "\n";
         }
-    }
-    else{
-        $oligo_plate->fill_wells_from_first_empty_well( \@crisprs );
-    }
-}
-else{
-    die "More than one plate full of stuff!\n";
-}
-
-# return wells from plate and add to db
-$wells = $oligo_plate->return_all_non_empty_wells;
-foreach my $well ( @{$wells} ){
-    eval{
-        $crRNA_adaptor->store_construction_oligos( $well );
-    };
-    if( $EVAL_ERROR ){
-        die "There was a problem storing one of the construction oligos in the database.\n",
-                "ERROR MSG:", $EVAL_ERROR, "\n";
-    }
-    else{
-        print join(q{ }, 'Construction oligos for', $well->contents->name,
-                'were stored correctly in the database.'), "\n";
     }
 }
 
 # add expression constructs to db
-foreach my $suffix ( qw{ b c } ){
-    my $construct_plate = Crispr::Plate->new(
-        plate_id => undef,
-        plate_category => 'expression_construct',
-        plate_type => $options{plate_type},
-        fill_direction => $options{fill_direction},
-    );
-    # add name to plate
-    $plate_name = 'CR_' . sprintf("%06d", $options{plate_num}) . $suffix;
-    $construct_plate->plate_name( $plate_name );
-    
-    # fill wells of the plate
-    if( $has_well_ids ){
-        foreach my $crRNA ( @crisprs ){
-            $construct_plate->fill_well( $crRNA, $well_id_for{$crRNA->name} );
-        }
-    }
-    else{
-        $construct_plate->fill_wells_from_first_empty_well( \@crisprs );
-    }
-    
-    # add plate to db
-    eval{
-        $plate_adaptor->store( $construct_plate );
-    };
-    if( $EVAL_ERROR ){
-        if( $EVAL_ERROR =~ m/PLATE\sALREADY\sEXISTS/xms ){
-            warn join(q{ }, 'Expression Plate', $construct_plate->plate_name,
-                      'already exists in the database. Using this plate to add oligos to...'
-                     ), "\n";
+if( $options{expression_constructs} ){
+    foreach my $suffix ( qw{ b c } ){
+        my $construct_plate = Crispr::Plate->new(
+            plate_id => undef,
+            plate_category => 'expression_construct',
+            plate_type => $options{plate_type},
+            fill_direction => $options{fill_direction},
+        );
+        # add name to plate
+        $plate_name = 'CR_' . sprintf("%06d", $options{plate_num}) . $suffix;
+        $construct_plate->plate_name( $plate_name );
+        
+        # fill wells of the plate
+        if( $has_well_ids ){
+            foreach my $crRNA ( @crisprs ){
+                $construct_plate->fill_well( $crRNA, $well_id_for{$crRNA->name} );
+            }
         }
         else{
-            die "There was a problem storing the expression construct plate, ",
-                $construct_plate->plate_name, " in the database.\n",
-                    "ERROR MSG:", $EVAL_ERROR, "\n";
+            $construct_plate->fill_wells_from_first_empty_well( \@crisprs );
         }
-    }
-    else{
-        print join(q{ }, $construct_plate->plate_name,
-                   'was stored correctly in the database with id:',
-                   $construct_plate->plate_id, ), "\n";
-    }
-    
-    # return wells from plate and add to db
-    $wells = $construct_plate->return_all_non_empty_wells;
-    foreach my $well ( @{$wells} ){
+        
+        # add plate to db
         eval{
-            $crRNA_adaptor->store_expression_construct_info( $well );
+            $plate_adaptor->store( $construct_plate );
         };
         if( $EVAL_ERROR ){
-            die "There was a problem storing the expression construct info, ",
-                join(':', $construct_plate->plate_name, $well->position, ),
-                " in the database.\n",
-                    "ERROR MSG:", $EVAL_ERROR, "\n";
+            if( $EVAL_ERROR =~ m/PLATE\sALREADY\sEXISTS/xms ){
+                warn join(q{ }, 'Expression Plate', $construct_plate->plate_name,
+                          'already exists in the database. Using this plate to add oligos to...'
+                         ), "\n";
+            }
+            else{
+                die "There was a problem storing the expression construct plate, ",
+                    $construct_plate->plate_name, " in the database.\n",
+                        "ERROR MSG:", $EVAL_ERROR, "\n";
+            }
         }
         else{
-            print join(q{ }, 'Expression Constructs for', $well->contents->name,
-                join(q{}, '(', $well->plate->plate_name, ' id: ',
-                    $well->plate->plate_id, ')', ),
-                'were stored correctly in the database.',
-            ), "\n";
+            print join(q{ }, $construct_plate->plate_name,
+                       'was stored correctly in the database with id:',
+                       $construct_plate->plate_id, ), "\n";
+        }
+        
+        # return wells from plate and add to db
+        $wells = $construct_plate->return_all_non_empty_wells;
+        foreach my $well ( @{$wells} ){
+            eval{
+                $crRNA_adaptor->store_expression_construct_info( $well );
+            };
+            if( $EVAL_ERROR ){
+                die "There was a problem storing the expression construct info, ",
+                    join(':', $construct_plate->plate_name, $well->position, ),
+                    " in the database.\n",
+                        "ERROR MSG:", $EVAL_ERROR, "\n";
+            }
+            else{
+                print join(q{ }, 'Expression Constructs for', $well->contents->name,
+                    join(q{}, '(', $well->plate->plate_name, ' id: ',
+                        $well->plate->plate_id, ')', ),
+                    'were stored correctly in the database.',
+                ), "\n";
+            }
         }
     }
 }
@@ -444,6 +451,8 @@ sub get_and_check_options {
         'plate_type=s',
         'fill_direction=s',
         'registry_file=s',
+        'construction_oligos:s',
+        'expression_constructs+',        
         'species=s',
         'target_genome=s',
         'annotation_file=s',
@@ -466,6 +475,19 @@ sub get_and_check_options {
     }
 
     # Check options
+    Readonly my @OLIGO_TYPES => ( qw{ cloning t7_hairpin } );
+    Readonly my %OLIGO_TYPES => map { $_ => 1 } @OLIGO_TYPES;
+    if( !defined $options{construction_oligos} ){
+        $options{construction_oligos} = undef;
+    }
+    elsif( $options{construction_oligos} eq '' ){
+        $options{construction_oligos} = $OLIGO_TYPES[0];
+    }
+    elsif( !exists $OLIGO_TYPES{ $options{construction_oligos} } ){
+        die join(q{ }, 'Construction oligo type,', $options{construction_oligos}, 'is not a recognised type!', ), "\n",
+            "Accepted types are: ", join(q{ }, sort keys %OLIGO_TYPES ), "\n";
+    }
+    
     if( !$options{designed} ){
         $options{designed} = DateTime->now();
     }
@@ -531,17 +553,20 @@ Takes Information on crispr target sites and enter guide RNA info into a MySQL o
 =head1 SYNOPSIS
 
     add_crRNAs_to_db_from_file.pl [options] filename(s) | target info on STDIN
-        --crispr_db             config file for connecting to the database
-        --plate_num             Plate number
-        --plate_type            Type of plate (96 or 384) [default:96]
-        --fill_direction        row or column [default:column]
-        --registry_file         a registry file for connecting to the Ensembl database
-        --designed              date on which the crisprs were designed
-        --ordered               date on which the crisprs were ordered
-        --received              date on which the crisprs were received
-        --help                  prints help message and exits
-        --man                   prints manual page and exits
-        --debug                 prints debugging information
+        --crispr_db                     config file for connecting to the database
+        --plate_num                     Plate number
+        --plate_type                    Type of plate (96 or 384) [default:96]
+        --fill_direction                row or column [default:column]
+        --registry_file                 a registry file for connecting to the Ensembl database
+        --construction_oligos           turns on adding construction oligos to the database for each crispr
+                                        Also can dictate which type of oligos are added [default: cloning oligos]
+        --expression_constructs         turns on adding expression constructs to the database for each crispr
+        --designed                      date on which the crisprs were designed
+        --ordered                       date on which the crisprs were ordered
+        --received                      date on which the crisprs were received
+        --help                          prints help message and exits
+        --man                           prints manual page and exits
+        --debug                         prints debugging information
 
 =head1 REQUIRED ARGUMENTS
 
@@ -633,6 +658,17 @@ fill_direction is ignored if well ids are explicitly supplied in the input.
 =item B<--registry_file file>
 
 a registry file for connecting to the Ensembl database
+
+=item B<--construction_oligos>
+
+If set, construction oligos are added to the database.
+Also, controls which sort of oligos are added.
+Default is 'cloning' oligos. Other option at the moment is 't7_hairpin'.
+
+=item B<--expression_constructs>
+
+If set, expression constructs are are added to the database.
+By default, 2 duplicate plates are added as we routinely pick 2 colonies during cloning.
 
 =item B<--designed >
 
