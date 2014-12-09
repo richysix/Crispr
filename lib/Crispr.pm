@@ -603,6 +603,99 @@ sub filter_crRNAs_from_target_by_score {
 	return \@crRNAs_to_keep;
 }
 
+=method filter_crRNAs_from_target_by_snps_and_indels
+
+  Usage       : $crispr_design->filter_crRNAs_from_target_by_snps_and_indels( $target, $common_var_file, $var_threshold );
+  Purpose     : method to filter out crRNAs with SNPs and indels above a threshold
+  Returns     : ArrayRef of Crispr::crRNA objects
+  Parameters  : Crispr::Target
+                Str - filename for variation file
+                Int (Variation threshold)
+  Throws      : If Target not supplied.
+                If variation file not supplied or file does not exist or is empty
+  Comments    : Numbers of SNPs/indels must be strictly lower than the supplied threshold
+                The threshold defaults to 1 (i.e. remove crRNAs with 1 or more SNPs/indels )
+                Variation file must be bgzipped and tabix indexed
+
+=cut
+
+sub filter_crRNAs_from_target_by_snps_and_indels {
+    my ( $self, $target, $common_var_file, $var_threshold, ) = @_;
+	
+    # check parameters
+    if( !$target ){
+        die "A Crispr::Target object must be supplied!\n";
+    }
+    elsif( !$common_var_file ){
+        die "A variation filename must be supplied!\n";
+    }
+    if( !-e $common_var_file || -z $common_var_file ){
+        die "Variation file does not exist or is empty!\n",
+            $common_var_file, "\n";
+    }
+    $var_threshold = $var_threshold ?   $var_threshold
+        :                               1;
+    
+	my @crRNAs_to_keep;
+	my @crRNAs_to_delete;
+	my $crRNAs = $target->crRNAs;
+	foreach my $crRNA ( @{$crRNAs} ){
+		if( $self->count_var_for_crRNA( $crRNA, $common_var_file, ) < $var_threshold ){
+			push @crRNAs_to_keep, $crRNA;
+		}
+		else{
+			push @crRNAs_to_delete, $crRNA;
+		}
+	}
+	$target->crRNAs( \@crRNAs_to_keep );
+	$self->remove_crisprs( \@crRNAs_to_delete );
+	return \@crRNAs_to_keep;
+}
+
+=method count_var_for_crRNA
+
+  Usage       : $crispr_design->count_var_for_crRNA( $crRNA, $common_var_file );
+  Purpose     : method to count SNPs and indels within a crispr target sequence
+  Returns     : Int
+  Parameters  : Crispr::crRNA
+                Str - filename for variation file
+  Throws      : 
+  Comments    : Variation file must be bgzipped and tabix indexed
+
+=cut
+
+sub count_var_for_crRNA {
+    my ( $self, $crRNA, $common_var_file, ) = @_;
+    # get coords of crRNA and construct tabix command
+    my $region = join(":", $crRNA->chr, join("-", $crRNA->start, $crRNA->end ) );
+    
+    my $tabix_cmd = qq{ tabix $common_var_file $region 2>&1 };
+    open my $var_pipe, '-|', $tabix_cmd;
+    my $error_message = '[tabix] the index file either does not exist or is older than the vcf file. Please reindex';
+    my $err_regex = qr/$error_message/;
+    
+    # count up SNPs and indels
+    my $var_count = 0;
+    while ( my $line = <$var_pipe>) {
+        chomp $line;
+        if( $line =~ m/$err_regex/xms ){
+            die $error_message, "\n", $common_var_file, "\n";
+        }
+        elsif( $line =~ m/\[tabix]/xms ){
+            warn $line, "\n", $common_var_file, "\n";
+            next;
+        }
+        else{
+            my ( $type, $chr, $pos, $ref, $alt, undef, ) = split /\t/xms, $line;
+            next if $type ne '-';
+            $var_count++;
+        }
+    }
+    
+    # return count
+    return $var_count;
+}
+
 =method add_targets
 
   Usage       : $crispr_design->add_targets( $targets, );

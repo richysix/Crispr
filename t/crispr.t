@@ -251,7 +251,7 @@ SKIP: {
 
 # calculate protein coding scores
 # change output of mock methods
-$mock_crRNA1->mock( 'name', sub{ return 'crRNA:3:5689156-5689178:1' });
+$mock_crRNA1->mock( 'name', sub{ return 'crRNA:3:5689156-5689178:1' } );
 $mock_crRNA1->mock( 'chr', sub{ return '3' });
 $mock_crRNA1->mock( 'start', sub{ return 5689156 });
 $mock_crRNA1->mock( 'end', sub{ return 5689178 });
@@ -290,10 +290,29 @@ $mock_crRNA2->mock( 'score', sub{ return 0.504 });
 $mock_crRNA2->mock( 'target', sub{ return $mock_target });
 
 $crRNAs = [ $mock_crRNA1, $mock_crRNA2 ];
-
 ok( $design_obj->filter_crRNAs_from_target_by_score( $mock_target, 1 ), 'filter crRNAs by score');
 is( scalar @{ $mock_target->crRNAs }, 1, 'check crisprs left after filtering by score' );
 $tests+=2;
+
+# add crispr 1 back to target
+$crRNAs = [ $mock_crRNA1, $mock_crRNA2 ];
+# test snps methods - 2 tests
+is( $design_obj->count_var_for_crRNA( $mock_crRNA1, 't/data/test.var.gz' ), 3, 'check count snps for crRNA 1' );
+is( $design_obj->count_var_for_crRNA( $mock_crRNA2, 't/data/test.var.gz' ), 0, 'check count snps for crRNA 2' );
+ok( $design_obj->filter_crRNAs_from_target_by_snps_and_indels($mock_target, 't/data/test.var.gz', 1 ), 'check filter crRNAs by SNPs' );
+is( scalar @{ $mock_target->crRNAs }, 1, 'check crisprs left after filtering by SNPs' );
+
+# check parameter testing of filter method
+throws_ok{ $design_obj->filter_crRNAs_from_target_by_snps_and_indels() }
+    qr/A Crispr::Target object must be supplied/,
+    'check filter_crRNAs_from_target_by_snps_and_indels throws when no target supplied';
+throws_ok{ $design_obj->filter_crRNAs_from_target_by_snps_and_indels($mock_target) }
+    qr/A variation filename must be supplied/,
+    'check filter_crRNAs_from_target_by_snps_and_indels throws when no var file supplied';
+throws_ok{ $design_obj->filter_crRNAs_from_target_by_snps_and_indels($mock_target, 't/data/test.var.g' ) }
+    qr/Variation file does not exist or is empty/,
+    'check filter_crRNAs_from_target_by_snps_and_indels throws when var file does not exist';
+$tests+=7;
 
 # test method remove targets
 ok( $design_obj->remove_target( $mock_target ), 'remove target');
