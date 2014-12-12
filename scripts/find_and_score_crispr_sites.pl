@@ -137,6 +137,9 @@ else{
                     my $transcripts;
                     my $gene_id = $crRNA->target_gene_id;
                     my $gene = $gene_adaptor->fetch_by_stable_id( $gene_id );
+                    if( !$gene ){
+                        next;
+                    }
                     $transcripts = $gene->get_all_Transcripts;
                     $crRNA = $crispr_design->calculate_all_pc_coding_scores( $crRNA, $transcripts );
                 }
@@ -318,8 +321,8 @@ sub get_gene {
         my $transcripts = $gene->get_all_Transcripts();
         
         foreach my $transcript ( @{$transcripts} ){
-            ## check whether transcript is protein-coding
-            #next if( $transcript->biotype() ne 'protein_coding' );
+            # check whether transcript is protein-coding
+            next if( $transcript->biotype() ne 'protein_coding' );
             # get all exons
             my $exons = $transcript->get_all_Exons();
             
