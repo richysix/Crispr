@@ -115,11 +115,17 @@ if( $options{no_crRNA} ){
 }
 else{
     foreach my $target ( @{ $crispr_design->targets } ){
+        # filter for variation if option selected
+        if( defined $options{variation_file} ){
+            $crispr_design->filter_crRNAs_from_target_by_snps_and_indels( $target, $options{variation_file}, 1 );
+        }
         if( !@{$target->crRNAs} ){
             #remove from targets if there are no crispr sites for that target
+            warn "No crRNAs for ", $target->target_name, " after filtering by variation\n";
             $crispr_design->remove_target( $target );
         }
     }
+    
     print "Scoring Off-Targets...\n" if $options{verbose};
     $crispr_design->find_off_targets( $crispr_design->all_crisprs, $basename, );
     
@@ -601,6 +607,7 @@ sub get_and_check_options {
         'assembly=s',
         'target_genome=s',
         'annotation_file=s',
+        'variation_file=s',
         'enzyme+',
         'target_sequence=s',
         'num_five_prime_Gs=i',
@@ -638,6 +645,15 @@ sub get_and_check_options {
     }
     elsif( !$options{target_genome} && !$options{species} ){
         pod2usage( "Must specify at least one of --target_genome and --species!\n." );
+    }
+    
+    # check annotation file and variation file exist
+    foreach my $file ( $options{annotation_file}, $options{variation_file} ){
+        if( $file ){
+            if( !-e $file || -z $file ){
+                die "$file does not exists or is empty!\n";
+            }
+        }
     }
     
     if( defined $options{num_five_prime_Gs} ){
@@ -719,6 +735,7 @@ possible off-target effects and optionally for its position in coding transcript
         --assembly              current assembly
         --target_genome         a target genome fasta file for scoring off-targets
         --annotation_file       an annotation gff file for scoring off-targets
+        --variation_file        a file of known background variation for filtering crispr target sites
         --target_sequence       crRNA consensus sequence (e.g. GGNNNNNNNNNNNNNNNNNNNGG)
         --num_five_prime_Gs     The number of 5' Gs present in the consensus sequence, 0,1 OR 2
         --enzyme                Sets the requires_enzyme attribute of targets [default: n]
@@ -778,6 +795,14 @@ The path of the target genome file. This needs to have been indexed by bwa in or
 
 The path of the annotation file for the appropriate species. Must be in gff format.
 
+=item B<--variation_file >
+
+A file of known background variation for filtering crispr target sites.
+all_var format at the moment.
+
+## TO DO:
+Change to vcf.
+
 =item B<--target_sequence >
 
 The Cas9 target sequence [default: NNNNNNNNNNNNNNNNNNNNNGG ]
@@ -808,7 +833,7 @@ A prefix for all output files. This is added to output filenames with a '_' as s
 
 All targets need a requestor. If the requestor is the same for all the targets
 supplied to the script it can be supplied here instead of with each target.
-If this option is not set, it will be set to 'NULL'in case requestors are not
+If this option is not set, it will be set to 'NULL' to allow for checking that requestors have been 
 supplied with each target.
 
 =item B<--no_crRNA>
