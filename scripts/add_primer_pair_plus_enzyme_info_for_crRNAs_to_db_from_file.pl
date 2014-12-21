@@ -515,11 +515,20 @@ Takes information on primer pairs for crispr guides and enters it into a MySQL d
 
 Information on primer pairs.
 
-Should contain the following columns: 
-product_size crRNA_names left_primer_info right_primer_info
+Should contain the following columns:
+
+ * product_size       - size of PCR product (Int)
+ * crRNA_names        - comma-separated list of crRNAs covered by amplicon
+ * left_primer_info   - comma-separated list (primer_name,sequence)
+ * right_primer_info  - comma-separated list (primer_name,sequence)
 
 Optional columns are:
-well_id product_size crRNA_names left_primer_info right_primer_info enzyme_info
+
+ * well_id            - well id to use for adding primers to db.
+    (A01-H12 for 96 well plates. A01-P24 for 384 well plates.)
+ * enzyme_info        - comma-separated list of enzymes that cut the amplicon
+    and the crispr target site uniquely
+    each item should consist of Enzyme_name:Site:Distance_to_crispr_cut_site
 
 =item B<--type>
 
