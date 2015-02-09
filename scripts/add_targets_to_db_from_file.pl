@@ -141,7 +141,7 @@ Takes Information on crispr target region and enters it into a MySQL or SQLite d
 
 Tab-separated information on CRISPR target regions to add to an instance of a MySQL/SQLite database.
 
-It must contain header line and should contain the following columns: 
+It must contain a header line (starting with #) and should contain the following columns: 
 target_name start end strand requires_enzyme requestor
 
 Optional columns are:
