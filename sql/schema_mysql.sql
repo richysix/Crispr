@@ -80,7 +80,7 @@ create table plasmid_backbone (
 
 create table construction_oligos (
     crRNA_id INT UNSIGNED NOT NULL,
-    forward_oligo VARCHAR(30) NOT NULL,
+    forward_oligo VARCHAR(100) NOT NULL,
     reverse_oligo VARCHAR(30),
     plasmid_backbone_id INT UNSIGNED,
     plate_id INT UNSIGNED,
