@@ -487,6 +487,15 @@ sub get_and_check_options {
         die join(q{ }, 'Construction oligo type,', $options{construction_oligos}, 'is not a recognised type!', ), "\n",
             "Accepted types are: ", join(q{ }, sort keys %OLIGO_TYPES ), "\n";
     }
+    else{
+        if( $options{construction_oligos} eq 't7_hairpin' ){
+            if( defined $options{expression_constructs} ){
+                warn "Setting option --construction_oligos to t7_hairpin is not compatible with setting option --expression_constructs.\n",
+                    "Unsetting --expression_constructs...\n";
+                $options{expression_constructs} = undef;
+            }
+        }
+    }
     
     if( !$options{designed} ){
         $options{designed} = DateTime->now();
