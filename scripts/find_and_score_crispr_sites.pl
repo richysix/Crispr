@@ -96,6 +96,9 @@ while(<>){
     if( $rv =~ m/\ACouldn't\smatch/xms ){
         die $rv;
     }
+    if( $rv == 0 ){
+        warn "No crRNAs for ", $columns[0], ".\n";
+    }
 }
 
 if( !@{ $crispr_design->targets } ){
