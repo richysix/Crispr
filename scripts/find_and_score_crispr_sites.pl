@@ -75,7 +75,7 @@ if( defined $options{num_five_prime_Gs} ){
     $crispr_design->five_prime_Gs( $options{num_five_prime_Gs} );
 }
 
-warn "Reading input...\n" if $options{verbose};
+print "Reading input...\n" if $options{verbose};
 while(<>){
     chomp;
     s/,//xmsg;
@@ -133,7 +133,7 @@ else{
     $crispr_design->find_off_targets( $crispr_design->all_crisprs, $basename, );
     
     if( $options{coding} ){
-        warn "Calculating coding scores...\n" if $options{verbose};
+        print "Calculating coding scores...\n" if $options{verbose};
         foreach my $target ( @{ $crispr_design->targets } ){
             foreach my $crRNA ( @{$target->crRNAs} ){
                 if( $crRNA->target && $crRNA->target_gene_id ){
@@ -151,7 +151,7 @@ else{
     }
 }
 
-warn "Outputting results...\n" if $options{verbose};
+print "Outputting results...\n" if $options{verbose};
 Readonly my @columns => (
     qw{ target_id target_name assembly chr start end strand
         species requires_enzyme gene_id gene_name requestor ensembl_version
