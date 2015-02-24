@@ -853,8 +853,6 @@ sub _make_new_crRNA_from_db {
         five_prime_Gs => $fields->[7],
 	);
 	$args{ 'chr' } = $fields->[2] if( defined $fields->[2] );
-	$args{ 'score' } = $fields->[8] if( defined $fields->[8] );
-	$args{ 'coding_score' } = $fields->[10] if( defined $fields->[10] );
 	
 	$crRNA = Crispr::crRNA->new( %args );
 	$crRNA->crRNA_adaptor( $self );
