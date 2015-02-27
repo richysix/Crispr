@@ -13,7 +13,9 @@ has 'plate_id' => (
 
 has 'plate_category' => (
     is => 'rw',
-    isa => enum( [qw{ crispr construction_oligos t7_hairpin_oligos expression_construct guideRNA_prep pcr_primers kaspar_assays }] ),
+    isa => enum( [qw{ crispr cloning_oligos expression_construct
+        t7_hairpin_oligos t7_fill-in_oligos guideRNA_prep pcr_primers
+        kaspar_assays }] ),
 );
 
 has [ 'ordered', 'received' ] => (

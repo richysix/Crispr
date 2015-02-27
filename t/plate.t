@@ -34,7 +34,7 @@ my $plate_2 = Crispr::Plate->new(
     plate_id => 1,
     plate_name => 'CR-000002b',
     plate_type => '96',
-    plate_category => 'construction_oligos',
+    plate_category => 'cloning_oligos',
     fill_direction => 'row',
     ordered => '2013-06-07',
     received => '2013-06-07',
@@ -97,7 +97,7 @@ throws_ok{ Crispr::Plate->new( plate_id=> 'string') } qr/Validation failed/, 'Tr
 
 # plate_category - 3 tests
 is( $plate->plate_category, undef, 'Get default plate_category 1' );
-is( $plate_2->plate_category, 'construction_oligos', 'Get plate_category 2' );
+is( $plate_2->plate_category, 'cloning_oligos', 'Get plate_category 2' );
 throws_ok{ Crispr::Plate->new( plate_category => 'expression', ) } qr/Validation failed/, 'Set plate_category to incorrect value'; 
 
 # ordered - 4 tests
