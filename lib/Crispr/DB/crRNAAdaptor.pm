@@ -510,13 +510,16 @@ sub store_construction_oligos {
     }
     
     my ( $oligo1, $oligo2, $backbone_id );
-    if( $oligo_type eq 'cloning' ){
+    if( $oligo_type eq 'cloning_oligos' ){
         $oligo1 = $crRNA->forward_oligo;
 		$oligo2 = $crRNA->reverse_oligo;
         $backbone_id = $self->check_plasmid_backbone_exists( $dbh, $crRNA );
     }
-    elsif( $oligo_type eq 't7_hairpin' ){
+    elsif( $oligo_type eq 't7_hairpin_oligos' ){
         $oligo1 = $crRNA->t7_hairpin_oligo;
+    }
+    elsif( $oligo_type eq 't7_fill-in_oligos' ){
+        $oligo1 = $crRNA->t7_fillin_oligo;
     }
     else{
         confess "store_construction_oligos: Couldn't understand oligo type - ",

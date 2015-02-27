@@ -278,12 +278,10 @@ foreach my $well ( @{$wells} ){
 if( $options{construction_oligos} ){
     # make a new plate to fill for construction oligos
     $plate_name = 'CR_' . sprintf("%06d", $options{plate_num}) . 'a';
-    my $plate_cat = $options{construction_oligos} eq 't7_hairpin'  ?   't7_hairpin_oligos'
-        :           'construction_oligos';
     my $oligo_plate = Crispr::Plate->new(
         plate_id => undef,
         plate_name => $plate_name,
-        plate_category => $plate_cat,
+        plate_category => $options{construction_oligos},
         plate_type => $options{plate_type},
         fill_direction => $options{fill_direction},
         ordered => $options{ordered},
@@ -475,7 +473,7 @@ sub get_and_check_options {
     }
 
     # Check options
-    Readonly my @OLIGO_TYPES => ( qw{ cloning t7_hairpin } );
+    Readonly my @OLIGO_TYPES => ( qw{ cloning_oligos t7_hairpin_oligos t7_fill-in_oligos } );
     Readonly my %OLIGO_TYPES => map { $_ => 1 } @OLIGO_TYPES;
     if( !defined $options{construction_oligos} ){
         $options{construction_oligos} = undef;

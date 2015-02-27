@@ -908,6 +908,31 @@ sub t7_hairpin_oligo {
 	
 }
 
+=method t7_fillin_oligo
+
+  Usage       : $crRNA->t7_fillin_oligo;
+  Purpose     : Getter for t7_fillin_oligo attribute
+  Returns     : String
+  Parameters  : None
+  Throws      : If sequence attribute is undef or empty
+  Comments    : 
+
+=cut
+
+sub t7_fillin_oligo {
+	my ( $self, ) = @_;
+	my $promoter_sequence = 'TAATACGACTCACTATA';
+	my $overlap_sequence = 'GTTTTAGAGCTAGAAATAGCAAG';
+	my $guide_sequence = '';
+    if( $self->sequence ){
+        $guide_sequence = 'GG' . substr( $self->sequence, 2, 18 );
+    }
+    else{
+        confess "Can't produce oligo without a crRNA sequence!\n";
+    }
+	return join(q{}, $promoter_sequence, $guide_sequence, $overlap_sequence );
+}
+
 #_build_backbone
 #
 #Usage       : $crRNA->_build_backbone;
