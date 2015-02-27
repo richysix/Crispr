@@ -7,8 +7,32 @@ package Crispr::PrimerPair;
 use Crispr::Primer;
 use namespace::autoclean;
 use Moose;
+use Moose::Util::TypeConstraints;
 
 extends 'PCR::PrimerPair';
+
+my %types = (
+	ext => 1,
+	int => 1,
+    'ext-illumina' => 1,
+    'int-illumina' => 1,
+    'int-illumina_tailed' => 1,
+	hrm => 1,
+	flag => 1,
+	flag_revcom => 1,
+	ha => 1,
+	ha_revcom => 1,
+);
+my $error_message = "PrimerPair:Type attribute must be one of " . join(q{, }, sort keys %types) . ".\n";
+
+subtype 'Crispr::PrimerPair::Type',
+	as 'Str',
+	where {
+		my $ok = 0;
+		$ok = 1 if( exists $types{ lc($_) } );
+	},
+	message { return $error_message; };
+
 
 =method new
 
@@ -64,6 +88,22 @@ extends 'PCR::PrimerPair';
 has 'primer_pair_id' => (
 	is => 'rw',
 	isa => 'Int',
+);
+
+=method type
+
+  Usage       : $primer->type;
+  Purpose     : Getter for type attribute
+  Returns     : Str
+  Parameters  : None
+  Throws      : If input is given
+  Comments    : Must be one of 	ext, int, illumina, illumina_tailed, hrm, flag, flag_revcom, ha, OR ha_revcom
+
+=cut
+
+has 'type' => (
+	is => 'rw',
+	isa => 'Crispr::PrimerPair::Type',
 );
 
 =method left_primer

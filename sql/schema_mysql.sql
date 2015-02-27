@@ -20,7 +20,7 @@ create table plate (
     plate_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     plate_name CHAR(10) UNIQUE,
     plate_type ENUM('96', '384') NOT NULL,
-    plate_category ENUM('crispr', 'construction_oligos', 't7_hairpin_oligos', 'expression_construct', 'guideRNA_prep', 'pcr_primers', 'kaspar_assays' ) NOT NULL,
+    plate_category ENUM('crispr', 'cloning_oligos', 'expression_construct', 't7_hairpin_oligos', 't7_fill-in_oligos', 'guideRNA_prep', 'pcr_primers', 'kaspar_assays' ) NOT NULL,
     ordered DATE,
     received DATE
 ) ENGINE = InnoDB;
@@ -80,7 +80,7 @@ create table plasmid_backbone (
 
 create table construction_oligos (
     crRNA_id INT UNSIGNED NOT NULL,
-    forward_oligo VARCHAR(100) NOT NULL,
+    forward_oligo VARCHAR(200) NOT NULL,
     reverse_oligo VARCHAR(30),
     plasmid_backbone_id INT UNSIGNED,
     plate_id INT UNSIGNED,
@@ -133,7 +133,7 @@ CREATE INDEX `primer_plate_id_well_id` ON primer ( `plate_id`, `well_id` );
 
 create table primer_pair (
     primer_pair_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    type ENUM('ext', 'int', 'illumina', 'illumina_tailed' ) NOT NULL,
+    type ENUM('ext','int','ext-illumina', 'int-illumina', 'int-illumina_tailed') NOT NULL,
     left_primer_id INT UNSIGNED NOT NULL,
     right_primer_id INT UNSIGNED NOT NULL,
     chr VARCHAR(30),

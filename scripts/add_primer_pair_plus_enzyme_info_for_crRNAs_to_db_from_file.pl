@@ -28,8 +28,9 @@ my $comment_regex = qr/#/;
 my %plate_suffixes = (
     ext => 'd',
     int => 'e',
-    illumina => 'f',
-    illumina_tailed => 'g',
+    'ext-illumina' => 'f',
+    'int-illumina' => 'g',
+    'int-illumina_tailed' => 'h',
 );
 
 my %options;
