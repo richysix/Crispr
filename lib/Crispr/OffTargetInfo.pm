@@ -88,7 +88,7 @@ sub info {
     
 	# scores and detail
     push @info, $self->off_target_counts;
-    my @hits = $self->off_target_hits;
+    my @hits = $self->off_target_hits_by_annotation;
     push @info, join('|',
                     join('/', @{$hits[0]} ),
                     join('/', @{$hits[1]} ),
@@ -109,14 +109,24 @@ sub off_target_counts {
     return join('/', @exo_hit_numbers );
 }
 
-sub off_target_hits {
+sub off_target_hits_by_annotation {
     my ( $self, ) = @_;
     
     my @exon_hits = map { $_->position } @{ $self->_off_targets->{ exon } };
     my @intron_hits = map { $_->position } @{ $self->_off_targets->{ intron } };
     my @nongenic_hits = map { $_->position } @{ $self->_off_targets->{ nongenic } };
     
-    return ( \@exon_hits, \@intron_hits, \@nongenic_hits, )
+    return ( \@exon_hits, \@intron_hits, \@nongenic_hits, );
+}
+
+sub all_off_target_hits {
+    my ( $self, ) = @_;
+    
+    my @exon_hits = map { $_->position } @{ $self->_off_targets->{ exon } };
+    my @intron_hits = map { $_->position } @{ $self->_off_targets->{ intron } };
+    my @nongenic_hits = map { $_->position } @{ $self->_off_targets->{ nongenic } };
+    
+    return ( [ @exon_hits, @intron_hits, @nongenic_hits ] );
 }
 
 sub number_exon_hits {
