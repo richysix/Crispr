@@ -9,8 +9,11 @@ use Moose;
 use English qw( -no_match_vars );
 use DateTime;
 use Readonly;
+use Crispr::Primer;
+use Crispr::PrimerPair;
 
 extends 'Crispr::DB::BaseAdaptor';
+
 =method new
 
   Usage       : my $primer_adaptor = Crispr::DB::PrimerPairAdaptor->new(
@@ -132,10 +135,11 @@ sub fetch_primer_pair_by_crRNA {
 sub _make_new_primer_pair_from_db {
     my ( $self, $fields, ) = @_;
     
+    my $l_p_seq = defined $fields->[6] ? $fields->[6] . $fields->[1] : $fields->[1];
     my $left_primer = Crispr::Primer->new(
         primer_id => $fields->[0],
-        sequence => $fields->[1],
-        seq_region_name => $fields->[2],
+        sequence => $l_p_seq,
+        seq_region => $fields->[2],
         seq_region_start => $fields->[3],
         seq_region_end => $fields->[4],
         seq_region_strand => $fields->[5],
@@ -143,10 +147,11 @@ sub _make_new_primer_pair_from_db {
         well => $fields->[8],
     );
     
+    my $r_p_seq = defined $fields->[15] ? $fields->[15] . $fields->[10] : $fields->[10];
     my $right_primer = Crispr::Primer->new(
         primer_id => $fields->[9],
-        sequence => $fields->[10],
-        seq_region_name => $fields->[11],
+        sequence => $r_p_seq,
+        seq_region => $fields->[11],
         seq_region_start => $fields->[12],
         seq_region_end => $fields->[13],
         seq_region_strand => $fields->[14],
@@ -154,9 +159,19 @@ sub _make_new_primer_pair_from_db {
         well => $fields->[17],
     );
     
-    my $primer_pair = Crispr::Primer_pair->new(
+    my $pair_name;
+    if( defined $fields->[22] ){
+        $pair_name .= $fields->[22] . ":";
+    }
+    $pair_name .= join("-", $fields->[23], $fields->[24], );
+    if( defined $fields->[25] ){
+        $pair_name .= ":" . $fields->[25];
+    }
+    my $primer_pair = Crispr::PrimerPair->new(
         primer_pair_id => $fields->[18],
+        pair_name => $pair_name,
         type => $fields->[19],
+        product_size => $fields->[26],
         left_primer => $left_primer,
         right_primer => $right_primer,
     );
