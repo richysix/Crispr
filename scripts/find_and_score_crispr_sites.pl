@@ -199,7 +199,7 @@ foreach my $target ( @{ $crispr_design->targets } ){
             # check pre-PAM base
             my $pre_pam_base = substr($crRNA->sequence, 19, 1);
             if( $pre_pam_base eq 'G' ){
-                push @notes, "base19 is a G";
+                push @notes, "base20 is a G";
             }
             print join(';', @notes, ), "\n";
         }
@@ -629,7 +629,7 @@ sub get_and_check_options {
     
     # Documentation
     if( $options{help} ) {
-        pod2usage(1);
+        pod2usage( -verbose => 0, exitval => 1, );
     }
     elsif( $options{man} ) {
         pod2usage( -verbose => 2 );
@@ -650,7 +650,7 @@ sub get_and_check_options {
         ;
     }
     elsif( !$options{target_genome} && !$options{species} ){
-        pod2usage( "Must specify at least one of --target_genome and --species!\n." );
+        pod2usage( "Must specify at least one of --target_genome and --species!.\n" );
     }
     
     # check annotation file and variation file exist
