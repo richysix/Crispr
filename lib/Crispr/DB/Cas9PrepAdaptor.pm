@@ -128,8 +128,8 @@ sub store_cas9_preps {
                     $params = [ $cas9_prep->cas9->db_id ];
                 }
                 else{
-                    $cas9_check_st .= 'type = ?;';
-                    $params = [ $cas9_prep->type ];
+                    $cas9_check_st .= 'name = ?;';
+                    $params = [ $cas9_prep->cas9->name ];
                 }
             }
             else{
@@ -145,7 +145,7 @@ sub store_cas9_preps {
                 # if it exists, get the db_id if we don't have it already.
                 else{
                     if( !$cas9_prep->cas9->db_id ){
-                        $cas9_prep->cas9->db_id( $self->cas9_adaptor->get_db_id_by_type( $cas9_prep->type ) )
+                        $cas9_prep->cas9->db_id( $self->cas9_adaptor->get_db_id_by_name( $cas9_prep->name ) )
                     }
                 }
             };
@@ -364,8 +364,10 @@ sub _fetch {
             date,
             notes,
             c.cas9_id,
+            name,
             type,
-            plasmid_name
+            vector,
+            species
         FROM cas9_prep cp, cas9 c
         WHERE cp.cas9_id = c.cas9_id
 END_SQL
@@ -378,18 +380,18 @@ END_SQL
     $sth->execute();
 
     my ( $cas9_prep_id, $prep_type, $made_by, $cas9_date, $notes,
-        $cas9_id, $type, $plasmid_name, );
+        $cas9_id, $name, $type, $vector, $species, );
     
     $sth->bind_columns( \( $cas9_prep_id, $prep_type, $made_by,
         $cas9_date, $notes,
-        $cas9_id, $type, $plasmid_name, ) );
+        $cas9_id, $name, $type, $vector, $species, ) );
 
     my @cas9_preps = ();
     while ( $sth->fetch ) {
         my $cas9_prep;
         if( !exists $cas9_prep_cache{ $cas9_prep_id } ){
             my $cas9 = $self->cas9_adaptor->_make_new_cas9_from_db(
-                [ $cas9_id, $type, $plasmid_name, ],
+                [ $cas9_id, $name, $type, $vector, $species, ],
             );
             $cas9_prep = Crispr::DB::Cas9Prep->new(
                 db_id => $cas9_prep_id,
@@ -420,7 +422,7 @@ END_SQL
 #Throws      : 
 #Comments    : Expects fields to be in table order
 #               ie db_id, prep_type, made_by, date,
-#                   cas9_id, cas9_type, plasmid_name, notes
+#                   cas9_id, cas9_type, name, notes
 
 sub _make_new_object_from_db {
     my ( $self, $fields ) = @_;
@@ -436,7 +438,7 @@ sub _make_new_object_from_db {
 #Throws      : 
 #Comments    : Expects fields to be in table order
 #               ie db_id, prep_type, made_by, date,
-#                   cas9_id, cas9_type, plasmid_name, notes
+#                   cas9_id, cas9_type, name, notes
 
 sub _make_new_cas9_prep_from_db {
     my ( $self, $fields ) = @_;
@@ -444,7 +446,7 @@ sub _make_new_cas9_prep_from_db {
     
     if( !exists $cas9_prep_cache{ $fields->[0] } ){
         my $cas9 = $self->cas9_adaptor->_make_new_cas9_from_db(
-            [ @{$fields}[5..7] ],
+            [ @{$fields}[5..9] ],
         );
         my %args = (
             db_id => $fields->[0],

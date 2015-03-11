@@ -88,8 +88,9 @@ foreach my $db_connection ( @db_connections ){
     my $cas9_adaptor = Crispr::DB::Cas9Adaptor->new( db_connection => $mock_db_connection, );
     
     # make mock Cas9 and Cas9Prep objects
-    my $type = 'cas9_zf_dnls_native';
-    my $plasmid_name = 'pCS2_ZfnCas9n_Chen';
+    my $type = 'ZfnCas9n';
+    my $vector ='pCS2';
+    my $name = join(q{-}, $vector, $type, );
     my $species = 's_pyogenes';
     my $target_seq = 'NNNNNNNNNNNNNNNNNN';
     my $pam = 'NGG';
@@ -101,26 +102,30 @@ foreach my $db_connection ( @db_connections ){
     $mock_cas9_object->mock( 'species', sub{ return $species } );
     $mock_cas9_object->mock( 'target_seq', sub{ return $target_seq } );
     $mock_cas9_object->mock( 'PAM', sub{ return $pam } );
-    $mock_cas9_object->mock( 'plasmid_name', sub{ return $plasmid_name } );
+    $mock_cas9_object->mock( 'name', sub{ return $name } );
+    $mock_cas9_object->mock( 'vector', sub{ return $vector } );
     $mock_cas9_object->mock( 'crispr_target_seq', sub{ return $crispr_target_seq } );
     $mock_cas9_object->mock( 'info', sub{ return ( $type, $species, $crispr_target_seq ) } );
     # add cas9 directly to db
-    my $insert_st = 'insert into cas9 values( ?, ?, ? );';
+    my $insert_st = 'insert into cas9 values( ?, ?, ?, ?, ? );';
     my $sth = $dbh->prepare( $insert_st );
     $sth->execute(  undef,
+        $mock_cas9_object->name,
         $mock_cas9_object->type,
-        $mock_cas9_object->plasmid_name,
+        $mock_cas9_object->vector,
+        $mock_cas9_object->species,
     );
     
-    my $type_2 = 'cas9_zf_dnls_nickase';
-    my $plasmid_name_2 = 'pCS2_zf_dnls_nick_Chen';
+    my $type_2 = 'ZfnCas9-D10An';
+    my $name_2 = join(q{-}, $vector, $type_2, );
     my $mock_cas9_object_2 = Test::MockObject->new();
     $mock_cas9_object_2->set_isa( 'Crispr::Cas9' );
     $mock_cas9_object_2->mock( 'db_id', sub{ return 2 } );
     $mock_cas9_object_2->mock( 'type', sub{ return $type_2 } );
     $mock_cas9_object_2->mock( 'species', sub{ return $species } );
     $mock_cas9_object_2->mock( 'target_seq', sub{ return $target_seq } );
-    $mock_cas9_object_2->mock( 'plasmid_name', sub{ return $plasmid_name_2 } );
+    $mock_cas9_object_2->mock( 'name', sub{ return $name_2 } );
+    $mock_cas9_object_2->mock( 'vector', sub{ return $vector } );
     $mock_cas9_object_2->mock( 'PAM', sub{ return $pam } );
     $mock_cas9_object_2->mock( 'crispr_target_seq', sub{ return $crispr_target_seq } );
     $mock_cas9_object_2->mock( 'info', sub{ return ( $type_2, $species, $crispr_target_seq ) } );
@@ -292,18 +297,22 @@ foreach my $db_connection ( @db_connections ){
 
     # _make_new_cas9_prep_from_db - 9 tests
     ok( $cas9_from_db_1 = $cas9_prep_adaptor->_make_new_cas9_prep_from_db(
-        [ 5, 'rna', 'cr_test2', $todays_date_obj->ymd, 'some notes', 1, 'cas9_zf_dnls_native', 'pCS2_zf_dnls_Chen', ]
+        [ 5, 'rna', 'cr_test2', $todays_date_obj->ymd, 'some notes', 1,
+            $mock_cas9_prep_object_5->cas9->name, $mock_cas9_prep_object_5->cas9->type,
+            $mock_cas9_prep_object_5->cas9->vector, $mock_cas9_prep_object_5->cas9->species, ]
     ), '_make_new_cas9_prep_from_db');
     check_attributes( $cas9_from_db_1, $mock_cas9_prep_object_5, $driver, '_make_new_cas9_prep_from_db' );
     
     # _make_new_object_from_db - 9 tests
     ok( $cas9_from_db_1 = $cas9_prep_adaptor->_make_new_object_from_db(
-        [ 6, 'protein', 'cr_test2', $todays_date_obj->ymd, 'some notes', 1, 'cas9_zf_dnls_native', 'pCS2_zf_dnls_Chen', ]
+        [ 6, 'protein', 'cr_test2', $todays_date_obj->ymd, 'some notes', 1,
+            $mock_cas9_prep_object_6->cas9->name, $mock_cas9_prep_object_6->cas9->type,
+            $mock_cas9_prep_object_6->cas9->vector, $mock_cas9_prep_object_6->cas9->species, ]
     ), '_make_new_cas9_prep_from_db');
     check_attributes( $cas9_from_db_1, $mock_cas9_prep_object_6, $driver, '_make_new_object_from_db' );
     
     # fetch_by_id - 9 tests
-    throws_ok{ $cas9_prep_adaptor->fetch_by_id( 10 ) } qr/Couldn't retrieve cas9_prep/, 'Cas9prep does not exist in db';
+    throws_ok{ $cas9_prep_adaptor->fetch_by_id( 10 ) } qr/Couldn't retrieve cas9_prep/, "$driver: Cas9prep does not exist in db";
     
     SKIP: {
         my $cas9_from_db = $cas9_prep_adaptor->fetch_by_id( 1 );
@@ -328,16 +337,16 @@ foreach my $db_connection ( @db_connections ){
     
     # check other fetch methods - 10 test
     my $cas9_preps;
-    ok( $cas9_preps = $cas9_prep_adaptor->fetch_all_by_type_and_date( 'cas9_zf_dnls_nickase', $todays_date_obj->ymd ), 'fetch_all_by_type_and_date');
-    is( scalar @{$cas9_preps}, 2, "check number returned by type and date");
-    ok( $cas9_preps = $cas9_prep_adaptor->fetch_all_by_type( 'cas9_zf_dnls_native' ), 'fetch_all_by_type');
-    is( scalar @{$cas9_preps}, 2, "check number returned by fetch_all_by_type");
-    ok( $cas9_preps = $cas9_prep_adaptor->fetch_all_by_date( $todays_date_obj->ymd ), 'fetch_all_by_date');
-    is( scalar @{$cas9_preps}, 4, "check number returned by date");
-    ok( $cas9_preps = $cas9_prep_adaptor->fetch_all_by_made_by( 'cr_test' ), 'fetch_all_by_made_by');
-    is( scalar @{$cas9_preps}, 2, "check number returned by fetch_all_by_made_by");
-    ok( $cas9_preps = $cas9_prep_adaptor->fetch_all_by_prep_type( 'rna' ), 'fetch_all_by_prep_type');
-    is( scalar @{$cas9_preps}, 2, "check number returned by fetch_all_by_prep_type");
+    ok( $cas9_preps = $cas9_prep_adaptor->fetch_all_by_type_and_date( 'ZfnCas9n', $todays_date_obj->ymd ), "$driver: fetch_all_by_type_and_date");
+    is( scalar @{$cas9_preps}, 2, "$driver: check number returned by type and date");
+    ok( $cas9_preps = $cas9_prep_adaptor->fetch_all_by_type( 'ZfnCas9-D10An' ), "$driver: fetch_all_by_type");
+    is( scalar @{$cas9_preps}, 2, "$driver: check number returned by fetch_all_by_type");
+    ok( $cas9_preps = $cas9_prep_adaptor->fetch_all_by_date( $todays_date_obj->ymd ), "$driver: fetch_all_by_date");
+    is( scalar @{$cas9_preps}, 4, "$driver: check number returned by date");
+    ok( $cas9_preps = $cas9_prep_adaptor->fetch_all_by_made_by( 'cr_test' ), "$driver: fetch_all_by_made_by");
+    is( scalar @{$cas9_preps}, 2, "$driver: check number returned by fetch_all_by_made_by");
+    ok( $cas9_preps = $cas9_prep_adaptor->fetch_all_by_prep_type( 'rna' ), "$driver: fetch_all_by_prep_type");
+    is( scalar @{$cas9_preps}, 2, "$driver: check number returned by fetch_all_by_prep_type");
     
     #TODO 1 tests
 TODO: {
@@ -358,5 +367,5 @@ sub check_attributes {
     is( $object1->notes, $object2->notes, "$driver: object from db - check notes - $method");
     is( $object1->cas9->db_id, $object2->cas9->db_id, "$driver: object from db - check db_id - $method");
     is( $object1->cas9->type, $object2->cas9->type, "$driver: object from db - check type - $method");
-    is( $object1->cas9->plasmid_name, $object2->cas9->plasmid_name, "$driver: object from db - check plasmid_name - $method");
+    is( $object1->cas9->name, $object2->cas9->name, "$driver: object from db - check name - $method");
 }
