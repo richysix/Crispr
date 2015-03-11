@@ -45,12 +45,18 @@ while(<>){
     # get well range
     my $all_wells = $primer_pair_plate->plate_type eq '96'   ?  'A1-H12'
         :                                                       'A1-P24';
-    if( !defined $options{well_range} ){
-        $options{well_range} = $all_wells;
+        
+    my @well_ids;
+    if( defined $options{well} ){
+        @well_ids = @{ $options{well} };
+    }
+    elsif( defined $options{well_range} ){
+        @well_ids = $primer_pair_plate->range_to_well_ids( $options{well_range} );
+    }
+    else {
+        @well_ids = $primer_pair_plate->range_to_well_ids( $all_wells );
     }
     
-    # check well range
-    my @well_ids = $primer_pair_plate->range_to_well_ids( $options{well_range} );
     
     print join("\t", qw{ WellPosition Name Sequence Notes } ), "\n";
     foreach my $well_id ( @well_ids ){
@@ -92,6 +98,7 @@ sub get_and_check_options {
     
     GetOptions(
         \%options,
+        'well=s@',
         'well_range=s',
         'fill_direction=s',
 		'crispr_db=s',
@@ -107,6 +114,11 @@ sub get_and_check_options {
     }
     elsif( $options{man} ) {
         pod2usage( -verbose => 2 );
+    }
+    
+    if( defined $options{well} && defined $options{well_range} ){
+        my $msg = "Options --well and --well_range cannot be specified together!";
+        pod2usage( $msg );
     }
     
     # default options    
