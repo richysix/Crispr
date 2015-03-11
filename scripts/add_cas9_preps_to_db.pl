@@ -25,9 +25,9 @@ my $db_connection = Crispr::DB::DBConnection->new( $options{crispr_db}, );
 my $cas9_prep_adaptor = $db_connection->get_adaptor( 'cas9_prep' );
 
 # parse input file/options and create Cas9Prep objects
-my @attributes = ( qw{ cas9_type species target_seq PAM plasmid_name notes prep_type made_by date } );
+my @attributes = ( qw{ db_id name species vector type notes prep_type made_by date } );
 
-my @required_attributes = qw{ cas9_type prep_type made_by date };
+my @required_attributes = qw{ name prep_type made_by date };
 
 my $comment_regex = qr/#/;
 my @columns;
@@ -67,12 +67,12 @@ while(<>){
     warn Dumper( %args ) if $options{debug} > 1;
     
     my %cas9_args = (
-        type => $args{cas9_type},
+        name => $args{name},
     );
     if( $args{species} ){ $cas9_args{species} = $args{species}; }
-    if( $args{target_seq} ){ $cas9_args{target_seq} = $args{target_seq}; }
-    if( $args{PAM} ){ $cas9_args{PAM} = $args{PAM}; }
-    if( $args{plasmid_name} ){ $cas9_args{plasmid_name} = $args{plasmid_name}; }
+    if( $args{vector} ){ $cas9_args{vector} = $args{vector}; }
+    if( $args{type} ){ $cas9_args{type} = $args{type}; }
+    if( $args{db_id} ){ $cas9_args{name} = $args{name}; }
     # make new Cas9 object
     my $cas9 = Crispr::Cas9->new( \%cas9_args );
     
@@ -83,6 +83,7 @@ while(<>){
         date => $args{date},
     );
     if( $args{notes} ){ $cas9_prep_args{notes} = $args{notes}; }
+    if( $args{db_id} ){ $cas9_prep_args{db_id} = $args{db_id}; }
     
     # make new Cas9Prep object
     my $cas9_prep = Crispr::DB::Cas9Prep->new( \%cas9_prep_args, );
@@ -165,7 +166,7 @@ target_seq does not include the PAM.
 
 =item PAM - default NGG
 
-=item plasmid_name - default cas9_zf_dnls_native
+=item name - default pCS2_ZfnCas9n_Chen
 
 =item notes - NULL
 
