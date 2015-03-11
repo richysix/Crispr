@@ -21,14 +21,16 @@ with 'Crispr::SharedMethods';
 					prep_type => rna,
 					made_by => 'crispr_test_user',
                     date => '2014-09-30',
+                    notes => 'Some interesting notes',
                 );
   Purpose     : Constructor for creating Cas9Prep objects
   Returns     : Crispr::Cas9Prep object
-  Parameters  : db_id => INT,
-                cas9 => Crispr::Cas9,
+  Parameters  : db_id => INT
+                cas9 => Crispr::Cas9
                 prep_type => Str, ('rna', 'dna' or 'protein')
-                made_by => Str,
-                date => DateTime or Str ('yyyy-mm-dd'),
+                made_by => Str
+                date => DateTime or Str ('yyyy-mm-dd')
+                notes => Str
   Throws      : If parameters are not the correct type
   Comments    : None
 
@@ -68,6 +70,7 @@ has 'cas9' => (
         cas9_db_id => 'db_id',
         type => 'type',
         species => 'species',
+        name => 'name',
         target_seq => 'target_seq',
         PAM => 'PAM',
         crispr_target_seq => 'crispr_target_seq',

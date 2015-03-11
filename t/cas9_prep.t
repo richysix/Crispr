@@ -42,7 +42,7 @@ is( $cas9prep->date, $todays_date_obj->ymd, 'check date default');
 $tests++;
 
 # make mock Cas9 object
-my $type = 'cas9_dnls_native';
+my $type = 'ZfnCas9n';
 my $species = 's_pyogenes';
 my $target_seq = 'NNNNNNNNNNNNNNNNNN';
 my $pam = 'NGG';
