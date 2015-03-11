@@ -183,10 +183,12 @@ create table restriction_enzymes (
 
 create table cas9 (
     cas9_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
     type VARCHAR(100) NOT NULL,
-    plasmid_name VARCHAR(100),
-    CONSTRAINT `cas9_type` UNIQUE ( `type` ),
-    CONSTRAINT `cas9_plasmid_name` UNIQUE ( `plasmid_name` )
+    vector VARCHAR(100) NOT NULL,
+    species VARCHAR(100) NOT NULL,
+    CONSTRAINT `cas9_name` UNIQUE ( `name` ),
+    CONSTRAINT `cas9_type_vector` UNIQUE ( `type`, `vector` )
 ) ENGINE = InnoDB;
 
 create table cas9_prep (
