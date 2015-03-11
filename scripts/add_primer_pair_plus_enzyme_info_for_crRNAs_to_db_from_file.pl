@@ -398,7 +398,7 @@ sub get_and_check_options {
     
     # Documentation
     if ($options{help}) {
-        pod2usage(1);
+        pod2usage( -verbose => 0, exitval => 1, );
     }
     elsif ($options{man}) {
         pod2usage( -verbose => 2 );
@@ -599,10 +599,17 @@ At the moment MySQL is assumed as the driver for this.
 
 File of restriction enzyme data from REBASE (rebase.neb.com/rebase/rebase.html).
 
-=item B<--plate_num integer>
+=item B<--plate_num>
 
-Plate number to put construction oligos and expression constructs in.
+Base plate number to put primers in. Integer.
+A suffix is added to the plate_name depending on the type of primers.
 
+  ext = d
+  int = e
+  ext-illumina => f
+  int-illumina => g
+  int-illumina_tailed => h
+  
 =item B<--plate_type >
 
 Type of plate (96 or 384 well) [default:96]
