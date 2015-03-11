@@ -93,15 +93,17 @@ sub store_cas9s {
         }
     }
 	
-    my $statement = "insert into cas9 values( ?, ?, ? );"; 
+    my $statement = "insert into cas9 values( ?, ?, ?, ?, ? );"; 
     
     $self->connection->txn(  fixup => sub {
 		my $sth = $dbh->prepare($statement);
 		
 		foreach my $cas9 ( @$cas9s ){
 			$sth->execute($cas9->db_id,
+				$cas9->name,
                 $cas9->type,
-				$cas9->plasmid_name,
+                $cas9->vector,
+                $cas9->species,
             );
 			
 			my $last_id;
@@ -113,23 +115,6 @@ sub store_cas9s {
     } );
     
     return $cas9s;
-}
-
-=method get_db_id_by_type
-
-  Usage       : $cas9 = $cas9_adaptor->get_db_id_by_type( $cas9_id );
-  Purpose     : Get the database id of a Cas9 given it's type.
-  Returns     : Int
-  Parameters  : Cas9 type - Str
-  Throws      : If no rows are returned from the database
-  Comments    : None
-
-=cut
-
-sub get_db_id_by_type {
-    my ( $self, $type ) = @_;
-    my $cas9 = $self->fetch_by_type( $type );
-    return $cas9->db_id;
 }
 
 =method fetch_by_id
@@ -175,31 +160,31 @@ sub fetch_by_ids {
     return \@cas9s;
 }
 
-=method fetch_by_type
+=method fetch_all_by_type
 
-  Usage       : $cas9s = $cas9_adaptor->fetch_by_type( $cas9 );
-  Purpose     : Fetch a cas9 object by type
-  Returns     : Crispr::Cas9 object
+  Usage       : $cas9s = $cas9_adaptor->fetch_all_by_type( $cas9 );
+  Purpose     : Fetch all cas9 objects by type
+  Returns     : ArrayRef of Crispr::Cas9 objects
   Parameters  : type => Str
   Throws      : If no rows are returned from the database
   Comments    : None
 
 =cut
 
-sub fetch_by_type {
+sub fetch_all_by_type {
     my ( $self, $type ) = @_;
 
-    my $cas9 = $self->_fetch( 'type = ?', [ $type, ] )->[0];
+    my $cas9s = $self->_fetch( 'type = ?', [ $type, ] );
     
-    if( !$cas9 ){
-        confess "Couldn't retrieve cas9 from database.\n";
+    if( !$cas9s ){
+        confess "Couldn't retrieve cas9s from database with type, $type.\n";
     }
-    return $cas9;
+    return $cas9s;
 }
 
-=method fetch_by_plasmid_name
+=method fetch_by_name
 
-  Usage       : $cas9s = $cas9_adaptor->fetch_by_plasmid_name( $cas9_type, $date );
+  Usage       : $cas9s = $cas9_adaptor->fetch_by_name( $cas9_type, $date );
   Purpose     : Fetch a cas9 object by plasmid name
   Returns     : Crispr::Cas9 object
   Parameters  : plasmid name => Str
@@ -208,12 +193,29 @@ sub fetch_by_type {
 
 =cut
 
-sub fetch_by_plasmid_name {
-    my ( $self, $plasmid_name ) = @_;
+sub fetch_by_name {
+    my ( $self, $name ) = @_;
     
-    my $statement = "plasmid_name = ?;";
-    my $cas9s = $self->_fetch( $statement, [ $plasmid_name, ], )->[0];
-    return $cas9s;
+    my $statement = "name = ?;";
+    my $cas9 = $self->_fetch( $statement, [ $name, ], )->[0];
+    return $cas9;
+}
+
+=method get_db_id_by_name
+
+  Usage       : $cas9 = $cas9_adaptor->get_db_id_by_name( $cas9_id );
+  Purpose     : Get the database id of a Cas9 given it's name.
+  Returns     : Int
+  Parameters  : Cas9 name - Str
+  Throws      : If no rows are returned from the database
+  Comments    : None
+
+=cut
+
+sub get_db_id_by_name {
+    my ( $self, $name ) = @_;
+    my $cas9 = $self->fetch_by_name( $name );
+    return $cas9->db_id;
 }
 
 #_fetch
@@ -234,8 +236,10 @@ sub _fetch {
     my $sql = <<'END_SQL';
         SELECT
 			cas9_id,
+            name,
 			type,
-			plasmid_name
+			vector,
+            species
         FROM cas9
 END_SQL
 
@@ -246,9 +250,9 @@ END_SQL
     my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
     $sth->execute();
 
-    my ( $cas9_id, $type, $plasmid_name, );
+    my ( $cas9_id, $name, $type, $vector, $species, );
     
-    $sth->bind_columns( \( $cas9_id, $type, $plasmid_name, ) );
+    $sth->bind_columns( \( $cas9_id, $name, $type, $vector, $species, ) );
 
     my @cas9s = ();
     while ( $sth->fetch ) {
@@ -256,8 +260,10 @@ END_SQL
         if( !exists $cas9_cache{ $cas9_id } ){
             $cas9 = Crispr::Cas9->new(
                 db_id => $cas9_id,
+                name => $name,
                 type => $type,
-                plasmid_name => $plasmid_name,
+                vector => $vector,
+                species => $species,
             );
             $cas9_cache{ $cas9_id } = $cas9;
         }
@@ -268,7 +274,7 @@ END_SQL
         push @cas9s, $cas9;
     }
 
-    return \@cas9s;    
+    return \@cas9s;
 }
 
 #_make_new_cas9_from_db
@@ -277,18 +283,32 @@ END_SQL
 #Purpose     : Create a new Crispr::DB::Cas9 object from a db entry
 #Returns     : Crispr::DB::Cas9 object
 #Parameters  : ArrayRef of Str
-#Throws      : 
-#Comments    : Expects fields to be in table order ie db_id, cas9_type, prep_type, made_by, date
+#Throws      : If no input
+#               If input is not an ArrayRef
+#               If input does not have exactly 5 entries
+#Comments    : Expects fields to be in table order ie db_id, name, type, vector, species
 
 sub _make_new_cas9_from_db {
     my ( $self, $fields ) = @_;
+    
+    if( !$fields ){
+        die "NO INPUT!";
+    }
+    elsif( ref $fields ne 'ARRAY' ){
+        die "INPUT NOT ARRAYREF!";
+    }
+    elsif( scalar @{$fields} != 5 ){
+        die "WRONG NUMBER OF COLUMNS!";
+    }
     my $cas9;
 	
     if( !exists $cas9_cache{ $fields->[0] } ){
         my %args = (
             db_id => $fields->[0],
-            type => $fields->[1],
-            pasmid_name => $fields->[2],
+            name => $fields->[1],
+            type => $fields->[2],
+            vector => $fields->[3],
+            species => $fields->[4],
         );
         
         $cas9 = Crispr::Cas9->new( %args );
@@ -493,15 +513,12 @@ __END__
     
     # retrieve a cas9 by id
     my $cas9 = $cas9_adaptor->fetch_by_id( '214' );
-  
-    # retrieve a cas9 by combination of type and date
-    my $cas9 = $cas9_adaptor->fetch_by_type_and_date( 'cas9_dnls_native', '2015-04-27' );
     
 
 =head1 DESCRIPTION
  
  A Cas9Adaptor is an object used for storing and retrieving Cas9 objects in an SQL database.
- The recommended way to use this module is through the DBAdaptor object as shown above.
+ The recommended way to use this module is through the DBConnection object as shown above.
  This allows a single open connection to the database which can be shared between multiple database adaptors.
  
 =head1 DIAGNOSTICS

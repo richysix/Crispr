@@ -14,20 +14,20 @@ use Readonly;
 
 use Crispr::DB::Cas9Adaptor;
 
-Readonly my $TESTS_IN_COMMON => 1 + 16 + 12 + 1 + 6 + 6 + 12 + 6 + 6 + 1;
+Readonly my $TESTS_IN_COMMON => 1 + 18 + 12 + 1 + 6 + 6 + 12 + 12 + 6 + 1 + 4 + 1;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
 );
 plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
 
-# check attributes and methods - 3 + 13 tests
+# check attributes and methods - 3 + 15 tests
 my @attributes = ( qw{ dbname db_connection connection } );
 
 my @methods = (
     qw{ store store_cas9 store_cas9s fetch_by_id fetch_by_ids
-        fetch_by_type fetch_by_plasmid_name _fetch delete_cas9_from_db check_entry_exists_in_db
-        fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement _db_error_handling }
+        fetch_all_by_type fetch_by_name get_db_id_by_name _fetch _make_new_cas9_from_db
+        delete_cas9_from_db check_entry_exists_in_db fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement _db_error_handling }
 );
 
 # DB tests
@@ -84,12 +84,13 @@ foreach my $db_connection ( @db_connections ){
     $mock_db_connection->mock( 'connection', sub { return $db_connection->connection } );
     
     # make mock Cas9 object
-    my $type = 'cas9_zf_dnls_native';
+    my $type = 'ZfnCas9n';
     my $species = 's_pyogenes';
     my $target_seq = 'NNNNNNNNNNNNNNNNNN';
     my $pam = 'NGG';
     my $crispr_target_seq = $target_seq . $pam;
-    my $plasmid_name = 'pCS2_zf_dnls_Chen';
+    my $vector = 'pCS2';
+    my $name = join(q{-}, $vector, $type, );
 
     my $mock_cas9_object_1 = Test::MockObject->new();
     $mock_cas9_object_1->set_isa( 'Crispr::Cas9' );
@@ -100,11 +101,12 @@ foreach my $db_connection ( @db_connections ){
     $mock_cas9_object_1->mock( 'PAM', sub{ return $pam } );
     $mock_cas9_object_1->mock( 'crispr_target_seq', sub{ return $crispr_target_seq } );
     $mock_cas9_object_1->mock( 'info', sub{ return ( $type, $species, $crispr_target_seq ) } );
-    $mock_cas9_object_1->mock( 'plasmid_name', sub{ return $plasmid_name } );
+    $mock_cas9_object_1->mock( 'name', sub{ return $name } );
+    $mock_cas9_object_1->mock( 'vector', sub{ return $vector } );
 
-    my $type_2 = 'cas9_zf_dnls_nickase';
+    my $type_2 = 'ZfnCas9-D10An';
     my $mock_cas9_object_2 = Test::MockObject->new();
-    my $plasmid_name_2 = 'pCS2_zf_dnls_nick_Chen';
+    my $name_2 = join(q{-}, $vector, $type_2, );
     $mock_cas9_object_2->set_isa( 'Crispr::Cas9' );
     $mock_cas9_object_2->mock( 'db_id', sub{ return 2 } );
     $mock_cas9_object_2->mock( 'type', sub{ return $type_2 } );
@@ -113,11 +115,13 @@ foreach my $db_connection ( @db_connections ){
     $mock_cas9_object_2->mock( 'PAM', sub{ return $pam } );
     $mock_cas9_object_2->mock( 'crispr_target_seq', sub{ return $crispr_target_seq } );
     $mock_cas9_object_2->mock( 'info', sub{ return ( $type_2, $species, $crispr_target_seq ) } );
-    $mock_cas9_object_2->mock( 'plasmid_name', sub{ return $plasmid_name_2 } );
+    $mock_cas9_object_2->mock( 'name', sub{ return $name_2 } );
+    $mock_cas9_object_2->mock( 'vector', sub{ return $vector } );
 
-    my $type_3 = 'cas9_cherry_native';
+    my $type_3 = 'ZfnCas9n';
+    my $vector_3_4 = 'pGEM';
     my $mock_cas9_object_3 = Test::MockObject->new();
-    my $plasmid_name_3 = 'pCS2_zf_dnls_cherry';
+    my $name_3 = join(q{-}, $vector_3_4, $type_3, );
     $mock_cas9_object_3->set_isa( 'Crispr::Cas9' );
     $mock_cas9_object_3->mock( 'db_id', sub{ return 3 } );
     $mock_cas9_object_3->mock( 'type', sub{ return $type_3 } );
@@ -126,11 +130,12 @@ foreach my $db_connection ( @db_connections ){
     $mock_cas9_object_3->mock( 'PAM', sub{ return $pam } );
     $mock_cas9_object_3->mock( 'crispr_target_seq', sub{ return $crispr_target_seq } );
     $mock_cas9_object_3->mock( 'info', sub{ return ( $type_3, $species, $crispr_target_seq ) } );
-    $mock_cas9_object_3->mock( 'plasmid_name', sub{ return $plasmid_name_3 } );
+    $mock_cas9_object_3->mock( 'name', sub{ return $name_3 } );
+    $mock_cas9_object_3->mock( 'vector', sub{ return $vector_3_4 } );
 
-    my $type_4 = 'cas9_nanos_native';
+    my $type_4 = 'ZfnCas9-D10An';
     my $mock_cas9_object_4 = Test::MockObject->new();
-    my $plasmid_name_4 = 'pCS2_zf_dnls_nanos';    
+    my $name_4 = join(q{-}, $vector_3_4, $type_4, );
     $mock_cas9_object_4->set_isa( 'Crispr::Cas9' );
     $mock_cas9_object_4->mock( 'db_id', sub{ return 4 } );
     $mock_cas9_object_4->mock( 'type', sub{ return $type_4 } );
@@ -139,7 +144,8 @@ foreach my $db_connection ( @db_connections ){
     $mock_cas9_object_4->mock( 'PAM', sub{ return $pam } );
     $mock_cas9_object_4->mock( 'crispr_target_seq', sub{ return $crispr_target_seq } );
     $mock_cas9_object_4->mock( 'info', sub{ return ( $type_4, $species, $crispr_target_seq ) } );
-    $mock_cas9_object_4->mock( 'plasmid_name', sub{ return $plasmid_name_4 } );
+    $mock_cas9_object_4->mock( 'name', sub{ return $name_4 } );
+    $mock_cas9_object_4->mock( 'vector', sub{ return $vector_3_4 } );
 
     # make a new real Cas9 Adaptor
     my $cas9_adaptor = Crispr::DB::Cas9Adaptor->new( db_connection => $mock_db_connection, );
@@ -163,7 +169,7 @@ foreach my $db_connection ( @db_connections ){
        tests => {
            'eq' => {
                 type => $mock_cas9_object_1->type,
-                plasmid_name => $mock_cas9_object_1->plasmid_name,
+                name => $mock_cas9_object_1->name,
            },
        },
        label => "$driver: cas9 stored",
@@ -186,7 +192,7 @@ foreach my $db_connection ( @db_connections ){
        tests => {
            'eq' => {
                 type => $mock_cas9_object_2->type,
-                plasmid_name => $mock_cas9_object_2->plasmid_name,
+                name => $mock_cas9_object_2->name,
            },
        },
        label => "$driver: cas9 2 stored",
@@ -204,7 +210,7 @@ foreach my $db_connection ( @db_connections ){
        tests => {
            'eq' => {
                 type => $mock_cas9_object_3->type,
-                plasmid_name => $mock_cas9_object_3->plasmid_name,
+                name => $mock_cas9_object_3->name,
            },
        },
        label => "$driver: cas9 3 stored",
@@ -217,7 +223,7 @@ foreach my $db_connection ( @db_connections ){
        tests => {
            'eq' => {
                 type => $mock_cas9_object_4->type,
-                plasmid_name => $mock_cas9_object_4->plasmid_name,
+                name => $mock_cas9_object_4->name,
            },
        },
        label => "$driver: cas9 4 stored",
@@ -252,30 +258,51 @@ foreach my $db_connection ( @db_connections ){
         }
     }
     
-    # fetch by type - 6 tests
+    # fetch all by type - 2 X 6 tests
     SKIP:{
-        my $cas9_object_from_db = $cas9_adaptor->fetch_by_type( 'cas9_zf_dnls_nickase' );
+        my $cas9_objects_from_db = $cas9_adaptor->fetch_all_by_type( 'ZfnCas9n' );
         
-        skip "No cas9 objects returned from db!", 7 if !defined $cas9_object_from_db;
+        skip "No cas9 objects returned from db!", 7 if !defined $cas9_objects_from_db;
         # test attributes
-        check_attributes( $cas9_object_from_db, $mock_cas9_object_2, $driver, 'fetch_by_type' );
+        my @mock_objects = ( $mock_cas9_object_1, $mock_cas9_object_3 );
+        my $i = 0;
+        foreach my $cas9_object_from_db ( @{$cas9_objects_from_db} ){
+            my $mock_obj = $mock_objects[$i];
+            check_attributes( $cas9_object_from_db, $mock_obj, $driver, 'fetch_all_by_type' );
+            $i++;
+        }
     }
     
     # fetch by plasmid name - 6 tests
     SKIP:{
-        my $cas9_object_from_db = $cas9_adaptor->fetch_by_plasmid_name( 'pCS2_zf_dnls_cherry' );
+        my $cas9_object_from_db = $cas9_adaptor->fetch_by_name( 'pCS2-ZfnCas9n' );
         
         skip "No cas9 objects returned from db!", 7 if !defined $cas9_object_from_db;
         # test attributes
-        check_attributes( $cas9_object_from_db, $mock_cas9_object_3, $driver, 'fetch_by_plasmid_name' );
+        check_attributes( $cas9_object_from_db, $mock_cas9_object_1, $driver, 'fetch_by_name' );
     }
+    
+    # get_db_id_by_name - 1 test
+    is( $cas9_adaptor->get_db_id_by_name( 'pCS2-ZfnCas9n' ), 1, "$driver: get_db_id_by_name" );
+
+    # check _make_new_cas9_from_db - 4 tests
+    throws_ok { $cas9_adaptor->_make_new_cas9_from_db() } qr/NO INPUT!/, '_make_new_cas9_from_db - throws on no input';
+    throws_ok { $cas9_adaptor->_make_new_cas9_from_db( 'STRING' ) } qr/INPUT NOT ARRAYREF!/, '_make_new_cas9_from_db - throws on non ArrayRef';
+    throws_ok { $cas9_adaptor->_make_new_cas9_from_db( [  ] ) } qr/WRONG NUMBER OF COLUMNS!/, '_make_new_cas9_from_db - throws on non ArrayRef';
+    ok( $cas9_adaptor->_make_new_cas9_from_db(
+        [ $mock_cas9_object_1->db_id,
+            $mock_cas9_object_1->name,
+            $mock_cas9_object_1->type,
+            $mock_cas9_object_1->vector,
+            $mock_cas9_object_1->species,
+        ] ), '_make_new_cas9_from_db' );
     
     #TODO 1 tests
 TODO: {
     local $TODO = 'methods not implemented yet.';
     
     
-    ok( $cas9_adaptor->delete_cas9_from_db ( 'rna' ), 'delete_cas9_from_db');
+    ok( $cas9_adaptor->delete_cas9_from_db ( 'pCS2-ZfnCas9n' ), 'delete_cas9_from_db');
 }
     $db_connection->destroy;
     
@@ -288,5 +315,5 @@ sub check_attributes {
     is( $object1->species, $object2->species, "$driver: object from db $method - check species");
     is( $object1->target_seq, $object2->target_seq, "$driver: object from db $method - check target_seq");
     is( $object1->PAM, $object2->PAM, "$driver: object from db $method - check PAM");
-    is( $object1->plasmid_name, $object2->plasmid_name, "$driver: object from db $method - check plasmid_name");
+    is( $object1->name, $object2->name, "$driver: object from db $method - check name");
 }
