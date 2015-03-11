@@ -21,19 +21,21 @@ subtype 'Crispr::Cas9::DNA',
 =method new
 
   Usage       : my $cas9 = Crispr::Cas9->new(
-					type => 'cas9_dnls_native',
+					type => 'ZfnCas9n',
 					species => 's_pyogenes',
 					target_seq => 'NNNNNNNNNNNNNNNNNN',
 					PAM => 'NGG',
-                    plasmid_name => 'pCS2_ZfnCas9n',
-                    notes => 'Some notes about prep'
+                    vector => 'pCS2'
+                    name => 'pCS2-ZfnCas9n',
                 );
   Purpose     : Constructor for creating Cas9 objects
   Returns     : Crispr::Cas9 object
-  Parameters  : type => Str,
-                species => Str,
-                target_seq => Str (Crispr::Cas9::DNA),
-                PAM => Str (Crispr::Cas9::DNA),
+  Parameters  : type => Str
+                species => Str
+                target_seq => Str (Crispr::Cas9::DNA)
+                PAM => Str (Crispr::Cas9::DNA)
+                vector => Str
+                name => Str
   Throws      : If parameters are not the correct type
   Comments    : None
 
@@ -65,7 +67,8 @@ has 'db_id' => (
   Comments    : 
 
 =cut
-Readonly my @TYPES = ( qw{ cas9_zf_dnls_native cas9_zf_dnls_nickase cas9_cherry_native cas9_nanos_native } );
+
+Readonly my @TYPES = ( qw{ ZfnCas9n ZfnCas9-D10An } );
 has 'type' => (
     is => 'ro',
     isa => enum( \@TYPES ),
@@ -127,22 +130,40 @@ has 'PAM' => (
     builder => '_build_PAM',
 );
 
-=method plasmid_name
+=method vector
 
-  Usage       : $cas9->plasmid_name;
-  Purpose     : Getter for plasmid_name attribute
-  Returns     : String  (Default = NGG)
+  Usage       : $cas9->vector;
+  Purpose     : Getter for vector attribute
+  Returns     : String
   Parameters  : None
   Throws      : If input is given
   Comments    : 
 
 =cut
 
-has 'plasmid_name' => (
+has 'vector' => (
     is => 'ro',
     isa => 'Str',
     lazy => 1,
-    builder => '_build_plasmid_name',
+    builder => '_build_vector',
+);
+
+=method name
+
+  Usage       : $cas9->name;
+  Purpose     : Getter for name attribute
+  Returns     : String
+  Parameters  : None
+  Throws      : If input is given
+  Comments    : 
+
+=cut
+
+has 'name' => (
+    is => 'ro',
+    isa => 'Str',
+    lazy => 1,
+    builder => '_build_name',
 );
 
 around BUILDARGS => sub{
@@ -297,28 +318,35 @@ sub _build_PAM {
     }
 }
 
-#_build_plasmid_name
+#_build_name
 #
-#Usage       : $cas9->_build_plasmid_name;
-#Purpose     : builder for plasmid_name attribute
+#Usage       : $cas9->_build_name;
+#Purpose     : builder for name attribute
 #Returns     : String
 #Parameters  : None
 #Throws      : 
-#Comments    : Uses species attribute to determine target_seq
-#               Default: 
+#Comments    : Default value is vector-type
 
-sub _build_plasmid_name {
+sub _build_name {
     my ( $self, ) = @_;
-    
-    my %names_for = (
-        cas9_zf_dnls_native => 'pCS2_ZfnCas9n_Chen',
-        cas9_zf_dnls_nickase => 'pCS2_zf_dnls_nick_Chen',
-        cas9_cherry_native => 'pCS2_zf_dnls_cherry',
-        cas9_nanos_native => 'pCS2_zf_dnls_nanos',
-    );
-    
-    return $names_for{ $self->type };
+    return join(q{-}, $self->vector, $self->type, );
 }
+
+#_build_vector
+#
+#Usage       : $cas9->_build_vector;
+#Purpose     : builder for vector attribute
+#Returns     : String
+#Parameters  : None
+#Throws      : 
+#Comments    : 
+#Default     : 'pCS2'
+
+sub _build_vector {
+    my ( $self, ) = @_;
+    return 'pCS2';
+}
+
 
 __PACKAGE__->meta->make_immutable;
 1;
@@ -331,10 +359,12 @@ __END__
  
     use Crispr::Cas9;
     my $cas9 = Crispr::Cas9->new(
-        type => 'cas9_dnls_native',
+        type => 'ZfnCas9n',
         species => 's_pyogenes',
         target_seq => 'NNNNNNNNNNNNNNNNNN',
         PAM => 'NGG',
+        vector => 'pCS2'
+        name => 'pCS2-ZfnCas9n',
     );
 
     # get crispr target site
