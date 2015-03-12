@@ -358,7 +358,7 @@ sub _fetch {
             i.injection_id, injection_name, cas9_concentration,
             i.date, line_injected, line_raised, sorted_by,
             cp.cas9_prep_id, cp.prep_type, cp.made_by, cp.date, cp.notes,
-            c.cas9_id, c.type, c.plasmid_name
+            c.cas9_id, c.name, c.type, c.vector, c.species
         FROM injection i, cas9_prep cp, cas9 c 
         WHERE i.cas9_prep_id = cp.cas9_prep_id AND
             cp.cas9_id = c.cas9_id 
@@ -374,20 +374,20 @@ END_SQL
     my ( $injection_id, $injection_name, $cas9_concentration,
         $inj_date, $line_injected, $line_raised, $sorted_by,
         $cas9_prep_id, $prep_type, $made_by, $date, $notes,
-        $cas9_id, $type, $plasmid_name,
+        $cas9_id, $cas9_name, $type, $vector, $species,
     );
     
     $sth->bind_columns( \( $injection_id, $injection_name, $cas9_concentration,
         $inj_date, $line_injected, $line_raised, $sorted_by,
         $cas9_prep_id, $prep_type, $made_by, $date, $notes,
-        $cas9_id, $type, $plasmid_name, ) );
+        $cas9_id, $cas9_name, $type, $vector, $species, ) );
 
     my @injection_pools = ();
     while ( $sth->fetch ) {
         
         my $cas9_prep = $self->cas9_prep_adaptor->_make_new_cas9_prep_from_db(
             [ $cas9_prep_id, $prep_type, $made_by, $date, $notes,
-                $cas9_id, $type, $plasmid_name, ],
+                $cas9_id, $cas9_name, $type, $vector, $species, ],
         );
         
         my $inj_pool;
