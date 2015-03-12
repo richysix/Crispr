@@ -92,8 +92,9 @@ foreach my $db_connection ( @db_connections ){
     #$mock_db_connection->mock( 'connection', sub { return $db_connection->connection } );
     
     # make mock Cas9 and Cas9Prep objects
-    my $type = 'cas9_zf_dnls_native';
-    my $plasmid_name = 'pCS2_zf_dnls_Chen';
+    my $type = 'ZfnCas9n';
+    my $vector = 'pCS2';
+    my $name = join(q{-}, $vector, $type, );
     my $species = 's_pyogenes';
     my $target_seq = 'NNNNNNNNNNNNNNNNNN';
     my $pam = 'NGG';
@@ -105,14 +106,20 @@ foreach my $db_connection ( @db_connections ){
     $mock_cas9_object->mock( 'species', sub{ return $species } );
     $mock_cas9_object->mock( 'target_seq', sub{ return $target_seq } );
     $mock_cas9_object->mock( 'PAM', sub{ return $pam } );
-    $mock_cas9_object->mock( 'plasmid_name', sub{ return $plasmid_name } );
+    $mock_cas9_object->mock( 'name', sub{ return $name } );
+    $mock_cas9_object->mock( 'vector', sub{ return $vector } );
+    $mock_cas9_object->mock( 'species', sub{ return $species } );
     $mock_cas9_object->mock( 'crispr_target_seq', sub{ return $crispr_target_seq } );
     $mock_cas9_object->mock( 'info', sub{ return ( $type, $species, $crispr_target_seq ) } );
     # insert directly into db
-    my $statement = "insert into cas9 values( ?, ?, ? );";
+    my $statement = "insert into cas9 values( ?, ?, ?, ?, ? );";
     my $sth = $dbh->prepare($statement);
-    $sth->execute( $mock_cas9_object->db_id, $mock_cas9_object->type,
-        $mock_cas9_object->plasmid_name );
+    $sth->execute( $mock_cas9_object->db_id,
+        $mock_cas9_object->name,
+        $mock_cas9_object->type,
+        $mock_cas9_object->vector,
+        $mock_cas9_object->species,
+        );
     
     my $prep_type = 'rna';
     my $made_by = 'cr_test';
