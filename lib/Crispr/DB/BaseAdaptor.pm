@@ -116,7 +116,7 @@ sub fetch_rows_expecting_single_row {
             die 'NO ROWS';
         }
         else{
-            die "An unexpected problem occured. $EVAL_ERROR\n";
+            die "An unexpected problem occurred. $EVAL_ERROR\n";
         }
     }
     if( scalar @$result > 1 ){
@@ -182,11 +182,14 @@ sub _prepare_sql {
 }
 
 my %reports_for = (
+    'Crispr::DB::BaseAdaptor' => {
+        'NO ROWS'   => "object does not exist in the database.",
+        'ERROR'     => "BaseAdaptor ERROR",
+    },
     'Crispr::DB::crRNAAdaptor' => {
         'NO ROWS'   => "crRNA does not exist in the database.",
         'ERROR'     => "crRNAAdaptor ERROR",
-    },
-    
+    },    
 );
 
 =method _db_error_handling
@@ -206,11 +209,17 @@ my %reports_for = (
 sub _db_error_handling{
     my ( $self, $error_msg, $statement, $params,  ) = @_;
     
-    if( exists $reports_for{ ref $self } ){
+    my $class = ref $self;
+    if( exists $reports_for{ $class } ){
         my ( $error, $message );
         if( $error_msg =~ m/\A([A-Z[:space:]]+)\sat/xms ){
             $error = $1;
-            $message = $reports_for{ ref $self }->{$error};
+            if( $reports_for{ $class }->{$error} ){
+                $message = $reports_for{ $class }->{$error};
+            }
+            else{
+                $message = $error_msg;
+            }
         }
         else{
             $message = $error_msg;
@@ -221,7 +230,7 @@ sub _db_error_handling{
             ), "\n";
     }
     else{
-        die join("\n", ref $self,
+        die join("\n", $class,
                         $statement,
                         'Params: ', join(",", @{$params} ),
             ), "\n";

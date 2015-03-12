@@ -15,7 +15,7 @@ use Readonly;
 use Crispr::DB::BaseAdaptor;
 
 # Number of tests in the loop
-Readonly my $TESTS_IN_COMMON => 1 + 6 + 4 + 2 + 3;
+Readonly my $TESTS_IN_COMMON => 1 + 6 + 5 + 2 + 4 + 4 + 3;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
@@ -106,25 +106,26 @@ foreach my $driver ( keys %test_db_connections ){
     #$sth->execute( 1, 'cas9_dnls_native', 'rna', 'cr_test', '2014-10-13', );
     #$sth->execute( 2, 'cas9_dnls_native', 'protein', 'cr_test', '2014-10-13', );
     
-    # test check_entry_exists_in_db - 4 tests
+    # test check_entry_exists_in_db - 5 tests
     my $check_statement = 'select count(*) from cas9 where cas9_id = ?;';
-    my $select_statement = 'select * from cas9;';
+    my $select_statement = 'select * from cas9 where vector = ?;';
     is( $base_adaptor->check_entry_exists_in_db( $check_statement, [ 1, ] ), 1, "$driver: check entry exists in db 1" );
     is( $base_adaptor->check_entry_exists_in_db( $check_statement, [ 3, ] ), undef, "$driver: check entry exists in db 2" );
-    throws_ok{ $base_adaptor->check_entry_exists_in_db( $select_statement, [  ] ) }
+    is( $base_adaptor->check_entry_exists_in_db( $select_statement, [ 'pGEM' ] ), undef, "$driver: check entry exists in db 3" );
+    throws_ok{ $base_adaptor->check_entry_exists_in_db( $select_statement, [ 'pCS2', ] ) }
         qr/TOO\sMANY\sROWS/xms, "$driver: check entry exists in db throws on too many rows returned";
     throws_ok{ $base_adaptor->check_entry_exists_in_db( 'select count(*) from cas9;', [  ] ) }
         qr/TOO\sMANY\sITEMS/xms, "$driver: check entry exists in db throws on too many items returned";
     
     # fetch_rows_for_generic_select_statement - 2 tests
-    $results = $base_adaptor->fetch_rows_for_generic_select_statement( $select_statement, [  ] );
+    $results = $base_adaptor->fetch_rows_for_generic_select_statement( $select_statement, [ 'pCS2', ] );
     is( scalar @{$results}, 2, "$driver: check number of rows returned by fetch_rows_for_generic_select_statement" );
     
     $select_statement = 'select * from cas9 where cas9_id = ?;';
     throws_ok{ $base_adaptor->fetch_rows_for_generic_select_statement( $select_statement, [ 3, ] ) }
         qr/NO\sROWS/xms, "$driver: check fetch_rows_for_generic_select_statement throws on no rows returned";
     
-    # fetch_rows_expecting_single_row - 3 tests
+    # fetch_rows_expecting_single_row - 4 tests
     $results = $base_adaptor->fetch_rows_expecting_single_row( $select_statement, [ 1, ] );
     is( join(":", @{$results} ), "1:$name:$type:$vector:$species", "$driver: check fields returned by fetch_rows_expecting_single_row" );
     throws_ok{ $base_adaptor->fetch_rows_expecting_single_row( $select_statement, [ 3, ] ) }
@@ -132,7 +133,30 @@ foreach my $driver ( keys %test_db_connections ){
     $select_statement = 'select * from cas9;';
     throws_ok{ $base_adaptor->fetch_rows_expecting_single_row( $select_statement, [  ] ) }
         qr/TOO\sMANY\sROWS/xms, "$driver: check fetch_rows_expecting_single_row throws on too many rows returned";
+    $select_statement = 'select * from cas;';
+    throws_ok{ $base_adaptor->fetch_rows_expecting_single_row( $select_statement, [  ] ) }
+        qr/An unexpected problem occurred/, "$driver: check fetch_rows_expecting_single_row throws on unexpected error";
     
+    # check _prepare method - 4 tests
+    $select_statement = 'select * from cas9';
+    my $where_clause = 'where vector = ?';
+    my $sql = join(q{ }, $select_statement, $where_clause, );
+    ok( $base_adaptor->_prepare_sql( $select_statement ), "$driver: prepare statement - no where clause" );
+    ok( $base_adaptor->_prepare_sql( $sql, $where_clause, [ 'pCS2' ] ), "$driver: prepare statement - where clause and parameters" );
+    throws_ok { $base_adaptor->_prepare_sql( $select_statement, $where_clause, undef ) }
+        qr/Parameters must be supplied with a where clause/, "$driver: prepare statement - where clause, no parameters";
+    throws_ok { $base_adaptor->_prepare_sql( $select_statement, $where_clause, {} ) }
+        qr/Parameters to the where clause must be supplied as an ArrayRef/, "$driver: prepare statement - where clause, parameters in HASHREF";
+    
+    # check _db_error_handling method - 1 test
+    my $mock_crRNA_adaptor = Test::MockObject->new();
+    $mock_crRNA_adaptor->set_isa('Crispr::DB::crRNAAdaptor');
+    throws_ok { $base_adaptor->_db_error_handling( 'NO ROWS at', 'select * from cas9 where cas9_id = ?;', [ 3, ] ) }
+        qr/object does not exist in the database/, "$driver: _db_error_handling";
+    throws_ok { $base_adaptor->_db_error_handling( 'TOO MANY ROWS at', 'select * from cas9 where cas9_id = ?;', [ 3, ] ) }
+        qr/TOO MANY ROWS/, "$driver: _db_error_handling - no entry in HASH";
+    throws_ok { $base_adaptor->_db_error_handling( 'too many rows at', 'select * from cas9 where cas9_id = ?;', [ 3, ] ) }
+        qr/too many rows/, "$driver: _db_error_handling - error message not in caps";
     
     # drop database
     $test_db_connections{$driver}->destroy();
