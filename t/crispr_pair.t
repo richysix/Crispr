@@ -117,15 +117,15 @@ foreach my $method ( @methods ) {
 isa_ok( $crispr_pair->crRNAs, 'ARRAY', 'check crRNAs method returns an ArrayRef' );
 $tests++;
 
-is( $crispr_pair->pair_name, 'crRNA:5:50383-50405:-1_crRNA:5:50403-50425:1', 'pair name method');
+is( $crispr_pair->pair_name, 'crRNA:5:50383-50405:-1.crRNA:5:50403-50425:1', 'pair name method');
 $tests++;
-is( $crispr_pair->name, 'crRNA:5:50383-50405:-1_crRNA:5:50403-50425:1', 'name method' );
+is( $crispr_pair->name, 'crRNA:5:50383-50405:-1.crRNA:5:50403-50425:1', 'name method' );
 $tests++;
 is( $crispr_pair->combined_single_off_target_score, 0.855, 'combined_single_off_target_score');
 $tests++;
 is( $crispr_pair->deletion_size, 31, 'deletion_size');
 $tests++;
-my @test_info = ( qw{ test_target crRNA:5:50383-50405:-1_crRNA:5:50403-50425:1 0 0.855 31
+my @test_info = ( qw{ test_target crRNA:5:50383-50405:-1.crRNA:5:50403-50425:1 0 0.855 31
 1 name Zv9 5 50000 50500 1 zebrafish n ENSDARG0100101
 gene_name crispr_test 71 2013-08-09
 crRNA:5:50383-50405:-1 5 50383 50405 -1 0.853 GGAATAGAGAGATAGAGAGTCGG
