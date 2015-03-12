@@ -16,7 +16,7 @@ use Getopt::Long;
 #chomp $count_output;
 #$count_output =~ s/\s$test_data//mxs;
 
-plan tests => 1 + 8 + 8 + 6 + 4 + 1;
+plan tests => 1 + 2 + 13 + 8 + 6 + 4 + 1;
 
 use Crispr::OffTargetInfo;
 
@@ -26,10 +26,18 @@ my $off_target = Crispr::OffTargetInfo->new();
 # 1 test
 isa_ok( $off_target, 'Crispr::OffTargetInfo' );
 
-# check method calls 8 tests
-my @methods = ( qw{ info off_target_counts off_target_hits number_exon_hits number_intron_hits
-    number_nongenic_hits add_off_target _off_targets  } );
+# check attributes and methods 2 + 13 tests
+my @attributes = (
+    qw{ crRNA_name _off_targets }
+);
 
+my @methods = ( qw{ add_off_target all_off_targets _make_and_add_off_target score info
+    off_target_counts off_target_hits_by_annotation all_off_target_hits number_exon_hits number_intron_hits
+    number_nongenic_hits number_hits _build_off_targets } );
+
+foreach my $attribute ( @attributes ) {
+    can_ok( $off_target, $attribute );
+}
 foreach my $method ( @methods ) {
     can_ok( $off_target, $method );
 }
@@ -78,7 +86,7 @@ is( $off_target->number_intron_hits, 1, 'check number of intron hits' );
 is( $off_target->number_nongenic_hits, 2, 'check number of nongenic hits' );
 
 is( $off_target->off_target_counts, '1/1/2', 'check off target counts' );
-my @hits = $off_target->off_target_hits;
+my @hits = $off_target->off_target_hits_by_annotation;
 my $hits = join('|',
                 join('/', @{$hits[0]} ),
                 join('/', @{$hits[1]} ),
