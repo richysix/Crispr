@@ -248,9 +248,20 @@ foreach my $db_connection ( @db_connections ){
         
         my $mock_primer_pair = Test::MockObject->new();
         $pair_id++;
+        my $seq_region = $mock_left_primer->seq_region;
+        my $seq_region_start = $mock_left_primer->seq_region_start < $mock_right_primer->seq_region_start ?
+                $mock_left_primer->seq_region_start
+            :   $mock_right_primer->seq_region_start;
+        my $seq_region_end = $mock_left_primer->seq_region_end > $mock_right_primer->seq_region_end ?
+                $mock_left_primer->seq_region_end
+            :   $mock_right_primer->seq_region_end;
         $mock_primer_pair->mock( 'type', sub{ return $primer_type } );
         $mock_primer_pair->mock( 'left_primer', sub{ return $mock_left_primer } );
         $mock_primer_pair->mock( 'right_primer', sub{ return $mock_right_primer } );
+        $mock_primer_pair->mock( 'seq_region', sub{ return $seq_region } );
+        $mock_primer_pair->mock( 'seq_region_start', sub{ return $seq_region_start } );
+        $mock_primer_pair->mock( 'seq_region_end', sub{ return $seq_region_end } );
+        $mock_primer_pair->mock( 'seq_region_strand', sub{ return 1 } );
         $mock_primer_pair->mock( 'product_size', sub{ return $product_size } );
         $mock_primer_pair->set_isa('Crispr::PrimerPair');
         $mock_primer_pair->mock('primer_pair_id', sub { my @args = @_; if($_[1]){ return $_[1] }else{ return $pair_id} } );
@@ -286,7 +297,7 @@ foreach my $db_connection ( @db_connections ){
             label => "primer pair stored - $id",
         );
         row_ok(
-            sql => "SELECT * FROM primer_pair_to_crRNA WHERE primer_pair_id = $count",
+            sql => "SELECT * FROM amplicon_to_crRNA WHERE primer_pair_id = $count",
             tests => {
                 '==' => {
                      crRNA_id  => 1,
