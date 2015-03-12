@@ -300,13 +300,13 @@ foreach my $db_connection ( @db_connections ){
         
         # store construction oligos - 1 test
         if( $test_warning == 1 ){
-            warning_like { $crRNA_adaptor->store_construction_oligos( $mock_well ) }
+            warning_like { $crRNA_adaptor->store_construction_oligos( $mock_well, 'cloning_oligos' ) }
                 qr/Plasmid\sbackbone\spDR274\sdoesn't\sexist\sin\sthe\sdatabase\s-\sAdding/,
                 "Warn if plasmid backbone doesn't exist in the db.";
             $test_warning = 0;
         }
         else{
-            $crRNA_adaptor->store_construction_oligos( $mock_well );
+            $crRNA_adaptor->store_construction_oligos( $mock_well, 'cloning_oligos' );
         }
         row_ok(
             sql => "SELECT * FROM construction_oligos WHERE crRNA_id = $count",
