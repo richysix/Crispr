@@ -13,6 +13,10 @@ use English qw( -no_match_vars );
 
 extends 'Crispr::DB::BaseAdaptor';
 
+# cache for targets from db
+# HashRef keyed on db_id
+my %target_cache;
+
 =method new
 
   Usage       : my $target_adaptor = Crispr::TargetAdaptor->new(
@@ -220,7 +224,7 @@ sub update_designed {
 
 sub fetch_by_id {
     my ( $self, $id ) = @_;
-    my $target = $self->_fetch( 'target_id = ?;', [ $id ] )->[0];
+    my $target = $self->_fetch( 'target_id = ?', [ $id ] )->[0];
     if( !$target ){
         confess "Couldn't retrieve target, $id, from database.\n";
     }
@@ -306,20 +310,78 @@ sub fetch_by_names_and_requestors {
 
 sub fetch_by_crRNA {
 	my ( $self, $crRNA, ) = @_;
-    my $dbh = $self->connection->dbh();
 	
-	# try to retrieve target by id first then name
+	# try to retrieve target_id by crRNA_id
     my $target;
-    if( defined $crRNA->target_id ){
-        $target = $self->fetch_by_id( $crRNA->target_id );
-        
+    if( defined $crRNA->crRNA_id ){
+        $target = $self->fetch_by_crRNA_id( $crRNA->crRNA_id );
     }
-    elsif( defined $crRNA->target_name &&
-            defined $crRNA->requestor ){
-        $target = $self->fetch_by_name_and_requestor( $crRNA->target_name, $crRNA->requestor );
+    else{
+        die "Method: fetch_by_crRNA. Cannot fetch target because crRNA_id is not defined!\n";
     }
     
     return $target;
+}
+
+sub fetch_by_crRNA_id {
+	my ( $self, $crRNA_id, ) = @_;
+    my $dbh = $self->connection->dbh();
+    
+    my $sql = <<'END_SQL';
+        SELECT
+            t.target_id, target_name, assembly,
+            t.chr, t.start, t.end, t.strand, species,
+            requires_enzyme, gene_id, gene_name,
+            requestor, ensembl_version, designed
+        FROM target t, crRNA cr
+        WHERE t.target_id = cr.target_id
+        AND cr.crRNA_id = ?
+END_SQL
+
+    my $where_clause = 'AND cr.crRNA_id = ?';
+    my $sth = $self->_prepare_sql( $sql, $where_clause, [ $crRNA_id ] );
+    $sth->execute();
+
+    my ( $target_id, $target_name, $assembly, $chr, $start, $end, $strand,
+        $species, $requires_enzyme, $gene_id, $gene_name, $requestor,
+        $ensembl_version, $designed );
+    
+    $sth->bind_columns( \( $target_id, $target_name, $assembly, $chr, $start,
+                          $end, $strand, $species, $requires_enzyme, $gene_id,
+                          $gene_name, $requestor, $ensembl_version, $designed ) );
+
+    my @targets = ();
+    while ( $sth->fetch ) {
+        
+        my $target;
+        if( !exists $target_cache{ $target_id } ){
+            $target = Crispr::Target->new(
+                target_id => $target_id,
+                target_name => $target_name,
+                assembly => $assembly,
+                chr => $chr,
+                start => $start,
+                end => $end,
+                strand => $strand,
+                species => $species,
+                requires_enzyme => $requires_enzyme,
+                gene_id => $gene_id,
+                gene_name => $gene_name,
+                requestor => $requestor,
+                ensembl_version => $ensembl_version,
+                designed => $designed,
+            );
+            $target->target_adaptor( $self );
+            $target_cache{ $target_id } = $target;
+        }
+        else{
+            $target = $target_cache{ $target_id };
+        }
+        
+        push @targets, $target;
+    }
+
+    return $targets[0];
 }
 
 #_fetch
@@ -332,18 +394,17 @@ sub fetch_by_crRNA {
 #Throws      : 
 #Comments    : 
 
-my %target_cache;
 sub _fetch {
     my ( $self, $where_clause, $where_parameters ) = @_;
     my $dbh = $self->connection->dbh();
     
     my $sql = <<'END_SQL';
         SELECT
-            target_id, target_name, assembly,
-            chr, start, end, strand, species,
+            t.target_id, target_name, assembly,
+            t.chr, t.start, t.end, t.strand, species,
             requires_enzyme, gene_id, gene_name,
             requestor, ensembl_version, designed
-        FROM target
+        FROM target t
 END_SQL
 
     if ($where_clause) {

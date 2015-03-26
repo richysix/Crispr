@@ -14,13 +14,8 @@ use Readonly;
 
 use Crispr::DB::TargetAdaptor;
 
-my $test_data = 't/data/test_data_targets.txt';
-my $count_output = qx/wc -l $test_data/;
-chomp $count_output;
-$count_output =~ s/\s$test_data//mxs;
-
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 17 + 17 + ($count_output - 1)* 2;
+Readonly my $TESTS_IN_COMMON => 1 + 20 + 2 + 14 + 14 + 15 + 13 + 1 + 13 + 13;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
@@ -108,13 +103,14 @@ foreach my $db_connection ( @db_connections ){
     # 1 test
     isa_ok( $target_adaptor, 'Crispr::DB::TargetAdaptor', "$driver: check object class is ok" );
 
-    # check attributes and methods - 3 + 14 tests
+    # check attributes and methods - 3 + 17 tests
     my @object_attributes = ( qw{ dbname db_connection connection } );
     
     my @methods = (
         qw{ store store_targets update_designed fetch_by_id fetch_by_ids
-            fetch_by_name_and_requestor fetch_by_names_and_requestors fetch_by_crRNA _fetch delete_target_from_db
-            check_entry_exists_in_db fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement _db_error_handling }
+            fetch_by_name_and_requestor fetch_by_names_and_requestors fetch_by_crRNA fetch_by_crRNA_id _fetch
+            _make_new_object_from_db _make_new_target_from_db delete_target_from_db check_entry_exists_in_db fetch_rows_expecting_single_row
+            fetch_rows_for_generic_select_statement _db_error_handling }
     );
     
     foreach my $attribute ( @object_attributes ) {
@@ -143,7 +139,7 @@ foreach my $db_connection ( @db_connections ){
 	$mock_target->mock('ensembl_version', sub { return 71 } );
 	$mock_target->mock('designed', sub { return undef } );
     
-    # store target
+    # store target - 2 tests
     my $count = 0;
     $mock_target = $target_adaptor->store($mock_target);
     $count++;
@@ -177,24 +173,54 @@ foreach my $db_connection ( @db_connections ){
        label => "$driver: Target stored",
     );
     
-    # fetch target by name from database
+    # make a mock crRNA and store it to test retrieval by crRNA
+    my $mock_crRNA = Test::MockObject->new();
+    $mock_crRNA->set_isa('Crispr::crRNA');
+    my $c_id;
+    $mock_crRNA->mock('target_id', sub { return 1 } );
+    $mock_crRNA->mock('crRNA_id', sub { my @args = @_; if( $_[1] ){ $c_id = $_[1] } return $c_id; } );
+    $mock_crRNA->mock('name', sub { return "5:18067351-18067373:1" } );
+    $mock_crRNA->mock('chr', sub { return '5' } );
+    $mock_crRNA->mock('start', sub { return 18067351 } );
+    $mock_crRNA->mock('end', sub { return 18067373 } );
+    $mock_crRNA->mock('strand', sub { return '1' } );
+    $mock_crRNA->mock('sequence', sub { return 'GGCACCTGATAGACTAGATGAGG' } );
+    $mock_crRNA->mock('five_prime_Gs', sub { return 2 } );
+    $mock_crRNA->mock('score', sub { return 0.9 } );
+    $mock_crRNA->mock('off_target_score', sub { return 1 } );
+    $mock_crRNA->mock('coding_score', sub { return 0.9 } );
+    
+    my $statement = "insert into crRNA values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );";
+    
+    my $sth = $dbh->prepare($statement);
+    $sth->execute($mock_crRNA->crRNA_id, $mock_crRNA->name,
+        $mock_crRNA->chr, $mock_crRNA->start, $mock_crRNA->end, $mock_crRNA->strand,
+        $mock_crRNA->sequence, $mock_crRNA->five_prime_Gs,
+        $mock_crRNA->score, $mock_crRNA->off_target_score, $mock_crRNA->coding_score,
+        $mock_crRNA->target_id, undef, undef,
+    );    
+    
+    # test _fetch method - 14 tests
+    my $targets;
+    ok( $targets = $target_adaptor->_fetch( 'target_id = ?', [ 1 ] ), "$driver: test _fetch method" );
+    check_object_attributes( $targets->[0], $mock_target, $driver, '_fetch' );
+    
+    #test fetch_by_crRNA_id - 14 tests
+    my $target;
+    ok( $target = $target_adaptor->fetch_by_crRNA_id( 1 ), "$driver: test fetch_by_crRNA_id method" );
+    check_object_attributes( $target, $mock_target, $driver, 'fetch_by_crRNA_id' );
+    
+    #test fetch_by_crRNA - 15 tests
+    throws_ok { $target_adaptor->fetch_by_crRNA( $mock_crRNA ) }
+        qr/Method: fetch_by_crRNA. Cannot fetch target because crRNA_id is not defined/, 
+        "$driver: test fetch_by_crRNA method";
+    $c_id = 1;
+    ok( $target = $target_adaptor->fetch_by_crRNA( $mock_crRNA ), "$driver: test fetch_by_crRNA method" );
+    check_object_attributes( $target, $mock_target, $driver, 'fetch_by_crRNA' );
+
+    # fetch target by name and requestor from database - 13 tests
     my $target_3 = $target_adaptor->fetch_by_name_and_requestor( 'SLC39A14', 'crispr_test' );
-    #print Dumper( $target_3 );
-    #exit;
-    # 13 tests
-    is( $target_3->target_id, $count, "$driver: Get id" );
-    is( $target_3->target_name, 'SLC39A14', "$driver: Get name" );
-    is( $target_3->chr, '5', "$driver: Get chr" );
-    is( $target_3->start, 18067321, "$driver: Get start" );
-    is( $target_3->end, 18083466, "$driver: Get end" );
-    is( $target_3->strand, '-1', "$driver: Get strand" );
-    is( $target_3->species, 'danio_rerio', "$driver: Get species" );
-    is( $target_3->gene_id , 'ENSDARG00000090174', "$driver: Get gene id" );
-    is( $target_3->gene_name , 'SLC39A14', "$driver: Get gene name" );
-    is( $target_3->requestor , 'crispr_test', "$driver: Get requestor" );
-    is( $target_3->ensembl_version , 71, "$driver: Get version" );
-    is( $target_3->designed, undef, "$driver: Get date" );
-    isa_ok( $target_3->target_adaptor, 'Crispr::DB::TargetAdaptor', "$driver: check target adaptor");
+    check_object_attributes( $target_3, $mock_target, $driver, 'fetch_by_name_and_requestor' );
     
     # new target without a assembly, chr, strand, species, gene_id, gene_name, ensembl_version, and designed.
     my $mock_target_2 = Test::MockObject->new();
@@ -215,99 +241,35 @@ foreach my $db_connection ( @db_connections ){
 	$mock_target_2->mock('ensembl_version', sub { return undef } );
 	$mock_target_2->mock('designed', sub { return undef } );
 
-    # store - 2 tests
+    # store - 1 test
     $target_adaptor->store($mock_target_2);
     $count++;
     is( $mock_target_2->target_id, 2, "$driver: Store target with undef attributes" );
     
-    open my $fh, '<', $test_data or die "Couldn't open file: $test_data!\n";
-    my %target_seen;
-    
-    # 2 tests per target
-	my @values;
-    while(<$fh>){
-        chomp;
-        if( m/\A $comment_regex/xms ){
-            s|$comment_regex||xms;
-            @columns = split /\t/, $_;
-            foreach my $column_name ( @columns ){
-                if( !any { $column_name eq $_ } @attributes ){
-                    die "Could not recognise column name, ", $column_name, ".\n";
-                }
-            }
-            foreach my $attribute ( @required_attributes ){
-                if( !any { $attribute eq $_ } @columns ){
-                    die "Missing required attribute: ", $attribute, ".\n";
-                    }
-            }
-            next;
-        }
-        else{
-            @values = split /\t/, $_;
-        }
-        die "Could not find header\n" if( !@columns );
-        
-        my %args;
-        for( my $i = 0; $i < scalar @columns; $i++ ){
-            if( $values[$i] eq 'NULL' ){
-                $values[$i] = undef;
-            }
-            $args{ $columns[$i] } = $values[$i];
-        }
-        
-        next if( exists $target_seen{ $args{'target_name'} } );
-        $target_seen{ $args{'target_name'} } = 1; 
-        
-        my $mock_target = Test::MockObject->new();
-        $mock_target->set_isa( 'Crispr::Target' );
-        my $t_id;
-        $mock_target->mock( 'target_id', sub{ my @args = @_; if( $_[1] ){ $t_id = $_[1] } return $t_id; } );
-        $mock_target->mock( 'target_name', sub { return $args{ 'target_name' } } );
-        $mock_target->mock( 'assembly', sub { return $args{ 'assembly' } } );
-        $mock_target->mock( 'chr', sub { return $args{ 'chr' } } );
-        $mock_target->mock( 'start', sub { return $args{ 'start' } } );
-        $mock_target->mock( 'end', sub { return $args{ 'end' } } );
-        $mock_target->mock( 'strand', sub { return $args{ 'strand' } } );
-        $mock_target->mock( 'species', sub { return $args{ 'species' } } );
-        $mock_target->mock( 'requires_enzyme', sub { return $args{ 'requires_enzyme' } } );
-        $mock_target->mock( 'gene_id', sub { return $args{ 'gene_id' } } );
-        $mock_target->mock( 'gene_name', sub { return $args{ 'gene_name' } } );
-        $mock_target->mock( 'requestor', sub { return $args{ 'requestor' } } );
-        $mock_target->mock( 'ensembl_version', sub { return $args{ 'ensembl_version' } } );
-        $mock_target->mock( 'designed', sub { return $args{ 'designed' } } );
-        
-        $target_adaptor->store($mock_target);
-        $count++;
-        is( $mock_target->target_id, $count, "$driver: Target id - $args{target_name}");
-        row_ok(
-           table => 'target',
-           where => [ target_id => $count ],
-           tests => {
-               'eq' => {
-                    target_name => $mock_target->target_name,
-                    assembly => $mock_target->assembly,
-                    chr  => $mock_target->chr,
-                    strand => $mock_target->strand,
-                    species => $mock_target->species,
-                    requires_enzyme => $mock_target->requires_enzyme,
-                    gene_id => $mock_target->gene_id,
-                    gene_name => $mock_target->gene_name,
-                    requestor => $mock_target->requestor,
-                    designed => undef,
-               },
-               '==' => {
-                    start  => $mock_target->start,
-                    end    => $mock_target->end,
-                    ensembl_version => $mock_target->ensembl_version,
-               },
-           },
-           label => "$driver: Target stored - $args{target_name}",
-        );
-    
-    }
-    close($fh);
+    # fetch from db and check - 2 x 13 tests
+    my $target_2;
+    ( $target, $target_2 ) = @{ $target_adaptor->fetch_by_ids( [ 1, 2 ] ) };
+    check_object_attributes( $target, $mock_target, $driver, 'fetch_by_ids 1' );
+    check_object_attributes( $target_2, $mock_target_2, $driver, 'fetch_by_ids 2' );
     
     # drop database
     $db_connection->destroy();
 }
 
+
+sub check_object_attributes {
+    my ( $obj_from_db, $obj, $driver, $method, ) = @_;
+    is( $obj_from_db->target_id, $obj->target_id, "$driver: $method - Get id" );
+    is( $obj_from_db->target_name, $obj->target_name, "$driver: $method - Get name" );
+    is( $obj_from_db->chr, $obj->chr, "$driver: $method - Get chr" );
+    is( $obj_from_db->start, $obj->start, "$driver: $method - Get start" );
+    is( $obj_from_db->end, $obj->end, "$driver: $method - Get end" );
+    is( $obj_from_db->strand, $obj->strand, "$driver: $method - Get strand" );
+    is( $obj_from_db->species, $obj->species, "$driver: $method - Get species" );
+    is( $obj_from_db->species, $obj->species, "$driver: $method - Get gene id" );
+    is( $obj_from_db->gene_name, $obj->gene_name, "$driver: $method - Get gene name" );
+    is( $obj_from_db->requestor, $obj_from_db->requestor, "$driver: $method - Get requestor" );
+    is( $obj_from_db->ensembl_version, $obj->ensembl_version, "$driver: $method - Get version" );
+    is( $obj_from_db->designed, $obj->designed, "$driver: $method - Get date" );
+    isa_ok( $obj_from_db->target_adaptor, 'Crispr::DB::TargetAdaptor', "$driver: $method - check target adaptor");
+}
