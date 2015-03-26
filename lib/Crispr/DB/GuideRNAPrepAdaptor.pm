@@ -144,7 +144,7 @@ sub store_guideRNA_preps {
             }
             
 			$sth->execute($guideRNA_prep->db_id, $guideRNA_prep->crRNA_id,
-				$guideRNA_prep->type, $guideRNA_prep->concentration,
+				$guideRNA_prep->type, $guideRNA_prep->stock_concentration,
 				$guideRNA_prep->made_by, $guideRNA_prep->date,
 				$plate_id, $well_id,
             );
@@ -241,7 +241,8 @@ sub fetch_all_by_crRNA_id {
     
     my $statement = "gp.crRNA_id = ?;";
     my $guideRNA_preps = $self->_fetch( $statement, [ $crRNA_id, ], );
-    return $guideRNA_preps;
+    my @guideRNA_preps = sort { $a->db_id <=> $b->db_id } @{$guideRNA_preps};
+    return \@guideRNA_preps;
 }
 
 =method fetch_all_by_injection_pool
@@ -267,15 +268,13 @@ sub fetch_all_by_injection_pool {
     my $sql = <<'END_SQL';
         SELECT
 			gp.guideRNA_prep_id, gp.guideRNA_type, gp.concentration,
-            gp.made_by, gp.date, gp.well_id,
+            gp.made_by, gp.date,
+            ip.guideRNA_concentration,
+            gp.plate_id, gp.well_id,
             cr.crRNA_id, crRNA_name, chr, start, end, strand,
-            sequence, num_five_prime_Gs, score, coding_score,
-            pl.plate_id, plate_name, plate_type,
-            plate_category, ordered, received, 
-            guideRNA_concentration
-        FROM guideRNA_prep gp, crRNA cr, plate pl, injection i, injection_pool ip
+            sequence, num_five_prime_Gs, score, coding_score
+        FROM guideRNA_prep gp, crRNA cr, injection i, injection_pool ip
         WHERE gp.crRNA_id = cr.crRNA_id AND
-        gp.plate_id = pl.plate_id AND
         gp.guideRNA_prep_id = ip.guideRNA_prep_id AND
         i.injection_id = ip.injection_id
 END_SQL
@@ -303,11 +302,35 @@ END_SQL
         }
         else{
             confess $EVAL_ERROR, "\n";
-        }
+        }   
     }
     else{
         foreach my $row ( @{$results} ){
-            push @{$guideRNA_preps}, $self->_make_new_guideRNA_prep_from_db( $row );
+            my %args = (
+                guide_rna_prep => {
+                    db_id => $row->[0],
+                    guideRNA_type => $row->[1],
+                    stock_concentration => $row->[2],
+                    made_by => $row->[3],
+                    date => $row->[4],
+                    injection_concentration => $row->[5],
+                },
+                crRNA => {
+                    crRNA_id => $row->[8],
+                    name => $row->[9],
+                    chr => $row->[10],
+                    start => $row->[11],
+                    end => $row->[12],
+                    strand => $row->[13],
+                    sequence => $row->[14],
+                    five_prime_Gs => $row->[15],
+                },
+                plate => {
+                    plate_id => $row->[6],
+                    well_id => $row->[7],
+                },
+            );
+            push @{$guideRNA_preps}, $self->_make_new_guideRNA_prep_from_db( \%args );
         }
     }
     
@@ -336,14 +359,12 @@ sub _fetch {
             concentration,
             made_by,
             date,
+            gp.plate_id,
             gp.well_id,
             cr.crRNA_id, crRNA_name, chr, start, end, strand,
-            sequence, num_five_prime_Gs, score, coding_score,
-            pl.plate_id, plate_name, plate_type,
-            plate_category, ordered, received
-        FROM guideRNA_prep gp, crRNA cr, plate pl
-        WHERE gp.crRNA_id = cr.crRNA_id AND
-        gp.plate_id = pl.plate_id 
+            sequence, num_five_prime_Gs, score, coding_score
+        FROM guideRNA_prep gp, crRNA cr
+        WHERE gp.crRNA_id = cr.crRNA_id
 END_SQL
 
     if ($where_clause) {
@@ -353,19 +374,15 @@ END_SQL
     my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
     $sth->execute();
 
-    my ( $guideRNA_prep_id, $guideRNA_type, $concentration,
-        $made_by, $date, $well_id, $crRNA_id,
+    my ( $guideRNA_prep_id, $guideRNA_type, $stock_concentration,
+        $made_by, $date, $plate_id, $well_id, $crRNA_id,
         $crRNA_name, $chr, $start, $end, $strand,
-        $sequence, $num_five_prime_Gs, $score, $coding_score,
-        $plate_id, $plate_name, $plate_type,
-        $plate_category, $ordered, $received );
+        $sequence, $num_five_prime_Gs, $score, $coding_score, );
     
-    $sth->bind_columns( \( $guideRNA_prep_id, $guideRNA_type, $concentration,
-        $made_by, $date, $well_id, $crRNA_id,
+    $sth->bind_columns( \( $guideRNA_prep_id, $guideRNA_type, $stock_concentration,
+        $made_by, $date, $plate_id, $well_id, $crRNA_id,
         $crRNA_name, $chr, $start, $end, $strand,
-        $sequence, $num_five_prime_Gs, $score, $coding_score,
-        $plate_id, $plate_name, $plate_type,
-        $plate_category, $ordered, $received ) );
+        $sequence, $num_five_prime_Gs, $score, $coding_score, ) );
 
     my @guideRNA_preps = ();
     while ( $sth->fetch ) {
@@ -376,20 +393,20 @@ END_SQL
                 $sequence, $num_five_prime_Gs, $score, $coding_score, ]
             );
             
-            my $plate = $self->plate_adaptor->_make_new_plate_from_db(
-                [ $plate_id, $plate_name, $plate_type,
-                $plate_category, $ordered, $received ]
-            );
-            my $well = Labware::Well->new(
-                position => $well_id,
-                plate => $plate,
-            );
+            my $well;
+            if( $well_id && $plate_id ){
+                my $plate = $self->plate_adaptor->fetch_empty_plate_by_id( $plate_id, );
+                $well = Labware::Well->new(
+                    position => $well_id,
+                    plate => $plate,
+                );
+            }
             
             $guideRNA_prep = Crispr::DB::GuideRNAPrep->new(
                 db_id => $guideRNA_prep_id,
                 crRNA => $crRNA,
                 guideRNA_type => $guideRNA_type,
-                concentration => $concentration,
+                stock_concentration => $stock_concentration,
                 made_by => $made_by,
                 date => $date,
                 well => $well,
@@ -411,46 +428,59 @@ END_SQL
 #Usage       : $guideRNA_prep = $self->_make_new_guideRNA_prep_from_db( \@fields );
 #Purpose     : Create a new Crispr::DB::GuideRNAPrep object from a db entry
 #Returns     : Crispr::DB::GuideRNAPrep object
-#Parameters  : ArrayRef of Str
-#Throws      : 
-#Comments    : Expects fields to be in table order ie db_id, guideRNA_type, concentration, made_by, date etc
+#Parameters  : HashRef of HashRefs
+#Throws      : If input is not a HashRef
+#Comments    : Expects a HashRef with keys crRNA, plate, guide_rna_prep
+#               the values for these keys should be HashRefs of attributes
 
 sub _make_new_guideRNA_prep_from_db {
-    my ( $self, $fields ) = @_;
+    my ( $self, $info ) = @_;
     my $guideRNA_prep;
 	
-    if( !exists $guideRNA_prep_cache{ $fields->[0] } ){
+    my $guide_rna_info = $info->{guide_rna_prep};
+    if( !exists $guideRNA_prep_cache{ $guide_rna_info->{db_id} } ){
         my ( $crRNA, $plate, $well, );
-        if( defined $fields->[6] ){
+        my $crRNA_info = $info->{crRNA};
+        if( defined $crRNA_info ){
             $crRNA = $self->crRNA_adaptor->_make_new_crRNA_from_db(
-                [ @{$fields}[6..15] ],
+                [   $crRNA_info->{crRNA_id},
+                    $crRNA_info->{name},
+                    $crRNA_info->{chr},
+                    $crRNA_info->{start},
+                    $crRNA_info->{end},
+                    $crRNA_info->{strand},
+                    $crRNA_info->{sequence},
+                    $crRNA_info->{five_prime_Gs},
+                 ],
             );
         }
-        if( defined $fields->[16] ){
-            $plate = $self->plate_adaptor->_make_new_plate_from_db(
-                [ @{$fields}[16..21] ]
-            );
+        my $plate_info = $info->{plate};
+        if( defined $plate_info && defined $plate_info->{plate_id} ){
+            $plate = $self->plate_adaptor->fetch_empty_plate_by_id( $plate_info->{plate_id} );
         }
-        if( $fields->[5] ){
+        if( defined $plate_info->{well_id} && defined $plate ){
             $well = Labware::Well->new(
-                position => $fields->[5],
+                position => $plate_info->{well_id},
                 plate => $plate,
             );
         }
         
         $guideRNA_prep = Crispr::DB::GuideRNAPrep->new(
-            db_id => $fields->[0],
+            db_id => $guide_rna_info->{db_id},
             crRNA => $crRNA,
-            guideRNA_type => $fields->[1],
-            concentration => $fields->[2],
-            made_by => $fields->[3],
-            date => $fields->[4],
+            guideRNA_type => $guide_rna_info->{type},
+            stock_concentration => $guide_rna_info->{stock_concentration},
+            made_by => $guide_rna_info->{made_by},
+            date => $guide_rna_info->{date},
             well => $well,
+            injection_concentration => $guide_rna_info->{injection_concentration},
         );
-        $guideRNA_prep_cache{ $fields->[0] } = $guideRNA_prep;
+        $guideRNA_prep_cache{ $guide_rna_info->{db_id} } =
+            $guideRNA_prep;
     }
     else{
-        $guideRNA_prep = $guideRNA_prep_cache{ $fields->[0] };
+        $guideRNA_prep =
+            $guideRNA_prep_cache{ $guide_rna_info->{db_id} };
     }
 	
     return $guideRNA_prep;

@@ -17,16 +17,22 @@ with 'Crispr::SharedMethods';
 
   Usage       : my $gRNA_prep = Crispr::DB::GuideRNAPrep->new(
                     crRNA => $crRNA_object,
-                    concentration => $concentration,
+                    type => 'sgRNA',
+                    stock_concentration => $concentration,
+                    injection_concentration => $inj_conc,
                     made_by => $made_by,
                     date => $date,
+                    well => $well,
                 );
-  Purpose     : Constructor for creating Sample objects
+  Purpose     : Constructor for creating GuideRNAPrep objects
   Returns     : Crispr::DB::GuideRNAPrep object
   Parameters  : crRNA => Crispr::crRNA,
-                concentration => Num,
+                type => Str,
+                stock_concentration => Num,
+                injection_concentration => Num,
                 made_by => Str,
                 date => DateTime OR Str ('yyyy-mm-dd'),
+                well => Labware::Well
   Throws      : If parameters are not the correct type
   Comments    : None
 
@@ -35,7 +41,7 @@ with 'Crispr::SharedMethods';
 =method db_id
 
   Usage       : $gRNA_prep->db_id;
-  Purpose     : Getter/Setter for Sample db_id attribute
+  Purpose     : Getter/Setter for GuideRNAPrep db_id attribute
   Returns     : Crispr::db_id object
   Parameters  : None
   Throws      : 
@@ -51,7 +57,7 @@ has 'db_id' => (
 =method crRNA
 
   Usage       : $gRNA_prep->crRNA;
-  Purpose     : Getter/Setter for Sample crRNA attribute
+  Purpose     : Getter/Setter for GuideRNAPrep crRNA attribute
   Returns     : Crispr::crRNA object
   Parameters  : None
   Throws      : 
@@ -71,7 +77,7 @@ has 'crRNA' => (
 =method type
 
   Usage       : $gRNA_prep->type;
-  Purpose     : Getter for Sample type attribute
+  Purpose     : Getter for GuideRNAPrep type attribute
   Returns     : Num
   Parameters  : None
   Throws      : If input is given
@@ -86,10 +92,10 @@ has 'type' => (
     default => 'sgRNA',
 );
 
-=method concentration
+=method stock_concentration
 
-  Usage       : $gRNA_prep->concentration;
-  Purpose     : Getter for Sample concentration attribute
+  Usage       : $gRNA_prep->stock_concentration;
+  Purpose     : Getter for GuideRNAPrep stock_concentration attribute
   Returns     : Num
   Parameters  : None
   Throws      : If input is given
@@ -97,10 +103,26 @@ has 'type' => (
 
 =cut
 
-has 'concentration' => (
+has 'stock_concentration' => (
     is => 'ro',
     isa => 'Num',
     required => 1,
+);
+
+=method injection_concentration
+
+  Usage       : $gRNA_prep->injection_concentration;
+  Purpose     : Getter for GuideRNAPrep injection_concentration attribute
+  Returns     : Num
+  Parameters  : None
+  Throws      : If input is given
+  Comments    : 
+
+=cut
+
+has 'injection_concentration' => (
+    is => 'rw',
+    isa => 'Maybe[Num]',
 );
 
 =method made_by
@@ -227,10 +249,13 @@ __END__
  
     use Crispr::DB::GuideRNAPrep;
     my $gRNA_prep = Crispr::DB::GuideRNAPrep->new(
-        crRNA => $crRNA,
-        concentration => 10,
-        made_by => 'crispr_test',
-        date => '2014-10-13',
+        crRNA => $crRNA_object,
+        type => 'sgRNA',
+        stock_concentration => 50.7,
+        injection_concentration => 10,
+        made_by => $made_by,
+        date => $date,
+        well => $well,
     );
     
 =head1 DESCRIPTION

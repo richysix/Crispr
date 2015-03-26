@@ -16,7 +16,7 @@ use Crispr::DB::GuideRNAPrepAdaptor;
 use Crispr::DB::DBConnection;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 16 + 7 + 2 + 3 + 7 + 8 + 14 + 8 + 32 + 1;
+Readonly my $TESTS_IN_COMMON => 1 + 16 + 7 + 2 + 3 + 2 + 7 + 9 + 14 + 15 + 32 + 1;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
@@ -156,7 +156,7 @@ foreach my $db_connection ( @db_connections ){
     my $g_id;
     $mock_gRNA_1->mock( 'db_id', sub{ my @args = @_; if( $_[1] ){ $g_id = $_[1] } return $g_id; } );
     $mock_gRNA_1->mock( 'type', sub{ return 'sgRNA' } );
-    $mock_gRNA_1->mock( 'concentration', sub{ return 50 } );
+    $mock_gRNA_1->mock( 'stock_concentration', sub{ return 50 } );
     $mock_gRNA_1->mock( 'made_by', sub{ return 'cr1' } );
     $mock_gRNA_1->mock( 'date', sub{ return '2014-10-02' } );
     $mock_gRNA_1->mock( 'crRNA', sub{ return $mock_crRNA_object_1 } );
@@ -170,13 +170,24 @@ foreach my $db_connection ( @db_connections ){
     $mock_gRNA_2->set_isa( 'Crispr::DB::GuideRNAPrep' );
     $mock_gRNA_2->mock( 'db_id', sub{ my @args = @_; if( $_[1] ){ $g2_id = $_[1] } return $g2_id; } );
     $mock_gRNA_2->mock( 'type', sub{ return 'sgRNA' } );
-    $mock_gRNA_2->mock( 'concentration', sub{ return 60 } );
+    $mock_gRNA_2->mock( 'stock_concentration', sub{ return 60 } );
     $mock_gRNA_2->mock( 'made_by', sub{ return 'cr1' } );
     $mock_gRNA_2->mock( 'date', sub{ return '2014-10-02' } );
     $mock_gRNA_2->mock( 'crRNA', sub{ return $mock_crRNA_object_2 } );
     $mock_gRNA_2->mock( 'crRNA_id', sub{ return $mock_crRNA_object_2->crRNA_id } );
     $mock_gRNA_2->mock( 'well', sub{ return $mock_well_2 } );
     
+    my $mock_gRNA_3 = Test::MockObject->new();
+    my $g3_id;
+    $mock_gRNA_3->set_isa( 'Crispr::DB::GuideRNAPrep' );
+    $mock_gRNA_3->mock( 'db_id', sub{ my @args = @_; if( $_[1] ){ $g3_id = $_[1] } return $g3_id; } );
+    $mock_gRNA_3->mock( 'type', sub{ return 'sgRNA' } );
+    $mock_gRNA_3->mock( 'stock_concentration', sub{ return 60 } );
+    $mock_gRNA_3->mock( 'made_by', sub{ return 'cr1' } );
+    $mock_gRNA_3->mock( 'date', sub{ return '2014-10-02' } );
+    $mock_gRNA_3->mock( 'crRNA', sub{ return $mock_crRNA_object_2 } );
+    $mock_gRNA_3->mock( 'crRNA_id', sub{ return $mock_crRNA_object_2->crRNA_id } );
+    $mock_gRNA_3->mock( 'well', sub{ return undef } );
 
     # make a new real GuideRNAPrep Adaptor
     my $guideRNA_prep_adaptor = Crispr::DB::GuideRNAPrepAdaptor->new( db_connection => $db_connection, );
@@ -205,7 +216,7 @@ foreach my $db_connection ( @db_connections ){
            },
            '==' => {
                 crRNA_id => 1,
-                concentration => $mock_gRNA_1->concentration,
+                concentration => $mock_gRNA_1->stock_concentration,
                 plate_id => $mock_gRNA_1->well->plate->plate_id,
            },
        },
@@ -240,7 +251,7 @@ foreach my $db_connection ( @db_connections ){
            },
            '==' => {
                 crRNA_id => 1,
-                concentration => $mock_gRNA_1->concentration,
+                concentration => $mock_gRNA_1->stock_concentration,
                 plate_id => $mock_gRNA_1->well->plate->plate_id,
            },
        },
@@ -271,7 +282,7 @@ foreach my $db_connection ( @db_connections ){
            },
            '==' => {
                 crRNA_id => 1,
-                concentration => $mock_gRNA_1->concentration,
+                concentration => $mock_gRNA_1->stock_concentration,
                 plate_id => $mock_gRNA_1->well->plate->plate_id,
            },
        },
@@ -289,11 +300,36 @@ foreach my $db_connection ( @db_connections ){
            },
            '==' => {
                 crRNA_id => 2,
-                concentration => $mock_gRNA_2->concentration,
+                concentration => $mock_gRNA_2->stock_concentration,
                 plate_id => $mock_gRNA_2->well->plate->plate_id,
            },
        },
        label => "$driver: guideRNA_preps stored",
+    );
+    
+    # check store works with no well/plate - 2 tests
+    #$g_id = 2;
+    ok( $guideRNA_prep_adaptor->store_guideRNA_prep( $mock_gRNA_3 ), "$driver: store_guideRNA_prep without well/plate" );
+    row_ok(
+       table => 'guideRNA_prep',
+       where => [ guideRNA_prep_id => 5 ],
+       tests => {
+           'eq' => {
+                guideRNA_type => $mock_gRNA_3->type,
+                made_by  => $mock_gRNA_3->made_by,
+                date  => $mock_gRNA_3->date,
+                #well_id => $mock_gRNA_3->well->position,
+           },
+           '==' => {
+                crRNA_id => 2,
+                concentration => $mock_gRNA_3->stock_concentration,
+           },
+           '=~' => {
+                well_id => undef,
+                plate_id => undef,
+           }
+       },
+       label => "$driver: guideRNA_prep pool stored without well/plate",
     );
     
     
@@ -301,10 +337,11 @@ foreach my $db_connection ( @db_connections ){
     my $gRNA_prep_from_db = @{ $guideRNA_prep_adaptor->_fetch( 'guideRNA_prep_id = ?', [ 3, ] ) }[0];
     check_attributes( $gRNA_prep_from_db, $mock_gRNA_1, $driver, '_fetch', );
     
-    # fetch_by_id - 8 tests
+    # fetch_by_id - 9 tests
     $gRNA_prep_from_db = $guideRNA_prep_adaptor->fetch_by_id( 4 );
     check_attributes( $gRNA_prep_from_db, $mock_gRNA_2, $driver, 'fetch_by_id', );
     throws_ok{ $guideRNA_prep_adaptor->fetch_by_id( 10 ) } qr/Couldn't retrieve guideRNA_prep/, 'guideRNA_prep does not exist in db';
+    ok( $gRNA_prep_from_db = $guideRNA_prep_adaptor->fetch_by_id( 5 ) );
     
     # fetch_by_ids - 14 tests
     my @ids = ( 3, 4 );
@@ -317,9 +354,14 @@ foreach my $db_connection ( @db_connections ){
         check_attributes( $gRNA_prep_from_db, $mock_gRNA, $driver, 'fetch_by_ids', );
     }
 
-    # fetch by crRNA_id - 8 tests
+    # fetch by crRNA_id - 15 tests
     ok( $gRNA_preps_from_db = $guideRNA_prep_adaptor->fetch_all_by_crRNA_id( $mock_crRNA_object_2->crRNA_id ), 'fetch_all_by_crRNA_id');
-    check_attributes( $gRNA_preps_from_db->[0], $mock_gRNA_2, $driver, 'fetch_all_by_crRNA_id', );
+    @guideRNA_preps = ( $mock_gRNA_2, $mock_gRNA_3 );
+    foreach my $i ( 0..1 ){
+        my $gRNA_prep_from_db = $gRNA_preps_from_db->[$i];
+        my $mock_gRNA = $guideRNA_preps[$i];
+        check_attributes( $gRNA_prep_from_db, $mock_gRNA, $driver, 'fetch_all_by_crRNA_id', );
+    }
 
 TODO: {
     local $TODO = 'methods not implemented yet.';
@@ -359,7 +401,7 @@ TODO: {
     ok( $guideRNA_prep_adaptor->delete_guideRNA_prep_from_db ( 1 ), 'delete_guideRNA_prep_from_db');
 
 }
-    $test_db_connections{$driver}->destroy();
+    #$test_db_connections{$driver}->destroy();
 }
 
 # 7 tests per call
@@ -367,12 +409,16 @@ sub check_attributes {
     my ( $object1, $object2, $driver, $method ) = @_;
     is( $object1->db_id, $object2->db_id, "$driver: object from db $method - check db_id");
     is( $object1->type, $object2->type, "$driver: object from db $method - check type");
-    is( abs( $object1->concentration - $object2->concentration ) < 0.1, 1, "$driver: object from db $method - check concentration");
+    is( abs( $object1->stock_concentration - $object2->stock_concentration ) < 0.1, 1, "$driver: object from db $method - check stock_concentration");
     is( $object1->made_by, $object2->made_by, "$driver: object from db $method - check made_by");
     is( $object1->date, $object2->date, "$driver: object from db $method - check date");
 
     is( $object1->crRNA->crRNA_id, $object2->crRNA->crRNA_id, "$driver: object from db $method - check crRNA_id");
-    is( $object1->well->position, $object2->well->position, "$driver: object from db $method - check crRNA_id");
+    
+    SKIP: {
+        skip "Well attribute undefined.", 1 if( !defined $object1->well || !defined $object2->well );
+        is( $object1->well->position, $object2->well->position, "$driver: object from db $method - check crRNA_id");
+    }
     
 }
 
