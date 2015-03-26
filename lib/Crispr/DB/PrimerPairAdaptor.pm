@@ -46,6 +46,24 @@ has 'plate_adaptor' => (
     builder => '_build_plate_adaptor',
 );
 
+=method primer_adaptor
+
+  Usage       : $primer_adaptor->primer_adaptor;
+  Purpose     : Getter for a primer_adaptor
+  Returns     : Crispr::DB::PlateAdaptor
+  Parameters  : None
+  Throws      : If input is given
+  Comments    : 
+
+=cut
+
+has 'primer_adaptor' => (
+    is => 'ro',
+    isa => 'Crispr::DB::PrimerAdaptor',
+    lazy => 1,
+    builder => '_build_primer_adaptor',
+);
+
 my $date_obj = DateTime->now();
 Readonly my $PLATE_TYPE => '96';
 
@@ -126,10 +144,141 @@ sub store {
     return 1;
 }
 
-sub fetch_primer_pair_by_crRNA {
+=method fetch_all_by_crRNA
+
+  Usage       : $primer_pair_adaptor->fetch_all_by_crRNA( $crRNA );
+  Purpose     : method to retrieve primer pairs for a crRNA using it's db id.
+  Returns     : Crispr::PrimerPair
+  Parameters  : Crispr::crRNA
+  Throws      : If input is not correct type
+  Comments    : 
+
+=cut
+
+sub fetch_all_by_crRNA {
     my ( $self, $crRNA, ) = @_;
+    my $where_clause = 'amp.crRNA_id = ?';
+    my $primer_pairs = $self->_fetch( $where_clause, [ $crRNA->crRNA_id ], );
+    return $primer_pairs;
+}
+
+=method fetch_all_by_crRNA_id
+
+  Usage       : $primer_pair_adaptor->fetch_all_by_crRNA_id( '1' );
+  Purpose     : method to retrieve primer pairs for a crRNA using it's db id.
+  Returns     : Crispr::PrimerPair
+  Parameters  : Str (crRNA db id)
+  Throws      : If input is not correct type
+  Comments    : 
+
+=cut
+
+sub fetch_all_by_crRNA_id {
+    my ( $self, $crRNA_id, ) = @_;
+    my $where_clause = 'amp.crRNA_id = ?';
+    my $primer_pairs = $self->_fetch( $where_clause, [ $crRNA_id ], );
+    return $primer_pairs;
+}
+
+=method _fetch
+
+  Usage       : $primer_pair_adaptor->_fetch( $where_clause, $where_params_array );
+  Purpose     : internal method for fetching primer_pair from the database.
+  Returns     : Crispr::PrimerPair
+  Parameters  : Str - Where statement e.g. 'primer_pair_id = ?'
+                ArrayRef - Where Parameters. One for each ? in where statement
+  Throws      : 
+  Comments    : 
+
+=cut
+
+# Cache for primer_pairs. HashRef keyed on db_id
+my %primer_pair_cache;
+sub _fetch {
+    my ( $self, $where_clause, $where_parameters ) = @_;
+    my $dbh = $self->connection->dbh();
     
-    my $results = $self->fetch_rows_expecting_single_row;
+    # need to change query depending on whether drive is MySQL or SQLite
+    my ( $left_p_concat_statement, $right_p_concat_statement );
+    if( ref $self->connection->driver eq 'DBIx::Connector::Driver::mysql' ){
+        $left_p_concat_statement = 'concat( p1.primer_tail, p1.primer_sequence )';
+        $right_p_concat_statement = 'concat( p2.primer_tail, p2.primer_sequence )';
+    }else{
+        $left_p_concat_statement = 'p1.primer_tail || p1.primer_sequence';
+        $right_p_concat_statement = 'p2.primer_tail || p2.primer_sequence';
+    }
+    
+    my $sql = <<"END_SQL";
+        SELECT
+			pp.primer_pair_id, pp.type, pp.chr,
+            pp.start, pp.end, pp.strand, pp.product_size,
+            p1.primer_id, $left_p_concat_statement as left_sequence,
+            p1.primer_chr, p1.primer_start, p1.primer_end, p1.primer_strand,
+            p1.plate_id, p1.well_id,
+            p2.primer_id, $right_p_concat_statement as right_sequence,
+            p2.primer_chr, p2.primer_start, p2.primer_end, p2.primer_strand,
+            p2.plate_id, p2.well_id
+        FROM primer_pair pp, primer p1, primer p2, amplicon_to_crRNA amp
+        WHERE left_primer_id = p1.primer_id AND right_primer_id = p2.primer_id
+        AND pp.primer_pair_id = amp.primer_pair_id
+END_SQL
+
+    if ($where_clause) {
+        $sql .= 'AND ' . $where_clause;
+    }
+
+    my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
+    $sth->execute();
+
+    my ( $primer_pair_id, $type, $chr, $start, $end, $strand, $product_size,
+            $left_primer_id, $left_sequence, $left_primer_chr,
+            $left_primer_start, $left_primer_end, $left_primer_strand,
+            $left_primer_plate_id, $left_primer_well_id,
+            $right_primer_id, $right_sequence, $right_primer_chr,
+            $right_primer_start, $right_primer_end, $right_primer_strand,
+            $right_primer_plate_id, $right_primer_well_id, );
+    
+    $sth->bind_columns( \( $primer_pair_id, $type, $chr, $start, $end, $strand, $product_size,
+            $left_primer_id, $left_sequence, $left_primer_chr,
+            $left_primer_start, $left_primer_end, $left_primer_strand,
+            $left_primer_plate_id, $left_primer_well_id,
+            $right_primer_id, $right_sequence, $right_primer_chr,
+            $right_primer_start, $right_primer_end, $right_primer_strand,
+            $right_primer_plate_id, $right_primer_well_id, ) );
+
+    my @primer_pairs = ();
+    while ( $sth->fetch ) {
+        my $primer_pair;
+        if( !exists $primer_pair_cache{ $primer_pair_id } ){
+            my $left_primer = $self->primer_adaptor->_make_new_primer_from_db(
+                [ $left_primer_id, $left_sequence, $left_primer_chr,
+                    $left_primer_start, $left_primer_end, $left_primer_strand,
+                    $left_primer_plate_id, $left_primer_well_id, ]
+            );
+            my $right_primer = $self->primer_adaptor->_make_new_primer_from_db(
+                [ $right_primer_id, $right_sequence, $right_primer_chr,
+                    $right_primer_start, $right_primer_end, $right_primer_strand,
+                    $right_primer_plate_id, $right_primer_well_id, ]
+            );
+            
+            my $pair_name = join(":", $chr, join("-", $start, $end, ), $strand, );
+            $primer_pair = Crispr::PrimerPair->new(
+                primer_pair_id => $primer_pair_id,
+                type => $type,
+                pair_name => $pair_name,
+                left_primer => $left_primer,
+                right_primer => $right_primer,
+            );
+            $primer_pair_cache{ $primer_pair_id } = $primer_pair;
+        }
+        else{
+            $primer_pair = $primer_pair_cache{ $primer_pair_id };
+        }
+        
+        push @primer_pairs, $primer_pair;
+    }
+
+    return \@primer_pairs;    
 }
 
 sub _make_new_primer_pair_from_db {
@@ -193,6 +342,19 @@ sub _build_plate_adaptor {
     return $self->db_connection->get_adaptor( 'plate' );
 }
 
+#_build_primer_adaptor
+
+  #Usage       : $crRNAs = $crRNA_adaptor->_build_primer_adaptor();
+  #Purpose     : Internal method to create a new Crispr::DB::PlateAdaptor
+  #Returns     : Crispr::DB::PlatePrepAdaptor
+  #Parameters  : None
+  #Throws      : 
+  #Comments    : 
+
+sub _build_primer_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'primer' );
+}
 
 1;
 
