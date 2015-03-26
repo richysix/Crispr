@@ -53,4 +53,16 @@ is( $plex->analysis_started, '2014-09-30', 'check analysis_started');
 is( $plex->analysis_finished, '2014-10-01', 'check analysis_finished');
 $tests += 5;
 
+$plex = Crispr::DB::Plex->new(
+    db_id => 1,
+    plex_name => 'MPX20',
+    run_id => 56,
+    analysis_started => '2014-09-30',
+    analysis_finished => '2014-10-01',
+);
+
+is( $plex->plex_name, 'mpx20', 'check plex_name is returned lowercase');
+$tests += 1;
+
+
 done_testing( $tests );

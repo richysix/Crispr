@@ -10,8 +10,6 @@ use DateTime;
 use Carp qw( cluck confess );
 use English qw( -no_match_vars );
 use List::MoreUtils qw( any );
-use Crispr::Cas9;
-use Crispr::DB::Cas9Prep;
 use Crispr::DB::Plex;
 
 extends 'Crispr::DB::BaseAdaptor';
@@ -172,7 +170,7 @@ sub fetch_by_ids {
 
 sub fetch_by_name {
     my ( $self, $name ) = @_;
-    my $plex = $self->_fetch( 'plex_name = ?;', [ $name ] )->[0];
+    my $plex = $self->_fetch( 'plex_name = ?;', [ lc($name) ] )->[0];
     if( !$plex ){
         confess "Couldn't retrieve plex, $name, from database.\n";
     }
@@ -189,7 +187,7 @@ sub fetch_by_name {
 #Throws      : 
 #Comments    : 
 
-my %plex_cache;
+my %plex_cache; # Cache for Plex objects. HashRef keyed on plex_id (db_id)
 sub _fetch {
     my ( $self, $where_clause, $where_parameters ) = @_;
     my $dbh = $self->connection->dbh();

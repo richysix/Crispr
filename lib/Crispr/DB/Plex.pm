@@ -161,6 +161,22 @@ around BUILDARGS => sub{
     }	
 };
 
+# around plex_name to return lowercase
+around 'plex_name' => sub {
+    my ( $method, $self, $input ) = @_;
+    if( $input ){
+        return $self->$method( $input );
+    }
+    else{
+        if( defined $self->$method ){
+            return lc( $self->$method );
+        }
+        else{
+            return $self->$method;
+        }
+    }
+};
+
 # around analysis_started and analysis_finished
 # This is to accept either a DateTime object or a string in form yyyy-mm-dd
 #   and also to return a string instead of the DateTime object

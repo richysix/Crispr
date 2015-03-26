@@ -89,10 +89,11 @@ foreach my $db_connection ( @db_connections ){
     $mock_cas9_object->set_isa( 'Crispr::Cas9' );
     
     my $mock_plex = Test::MockObject->new();
+    my $plex_name_1 = 'MPX14';
     $mock_plex->set_isa( 'Crispr::DB::Plex' );
     my $p_id;
     $mock_plex->mock( 'db_id', sub{ my @args = @_; if( $_[1] ){ $p_id = $_[1] } return $p_id; } );
-    $mock_plex->mock( 'plex_name', sub{ return 'MPX14' } );
+    $mock_plex->mock( 'plex_name', sub{ return lc( $plex_name_1 ) } );
     $mock_plex->mock( 'run_id', sub{ return 13831 } );
     $mock_plex->mock( 'analysis_started', sub{ return '2014-09-27' } );
     $mock_plex->mock( 'analysis_finished', sub{ return '2014-10-03' } );
@@ -141,7 +142,7 @@ foreach my $db_connection ( @db_connections ){
     throws_ok { $plex_adaptor->store_plex( $mock_plex) } $regex, "$driver: store_plex throws because of duplicate entry";
     
     $p_id = 2;
-    $mock_plex->mock( 'plex_name', sub{ return 'MPX15' } );
+    $plex_name_1 = 'MPX15';
     ok( $plex_adaptor->store_plex( $mock_plex ), "$driver: store_plex" );
     row_ok(
        table => 'plex',
@@ -169,12 +170,13 @@ foreach my $db_connection ( @db_connections ){
     
     # increment mock object 1's id
     $p_id = 3;
-    $mock_plex->mock( 'plex_name', sub{ return 'MPX16' } );
+    $plex_name_1 = 'MPX16';
     # make new mock object for store plexs
     my $mock_plex_2 = Test::MockObject->new();
+    my $plex_name_2 = 'MPX17';
     $mock_plex_2->set_isa( 'Crispr::DB::Plex' );
     $mock_plex_2->mock( 'db_id', sub{ return 4; } );
-    $mock_plex_2->mock( 'plex_name', sub{ return 'MPX17' } );
+    $mock_plex_2->mock( 'plex_name', sub{ return lc( $plex_name_2 ) } );
     $mock_plex_2->mock( 'run_id', sub{ return 13841 } );
     $mock_plex_2->mock( 'analysis_started', sub{ return '2014-10-03' } );
     $mock_plex_2->mock( 'analysis_finished', sub{ return '2014-10-07' } );
