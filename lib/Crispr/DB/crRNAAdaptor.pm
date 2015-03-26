@@ -798,10 +798,11 @@ sub fetch_all_by_target {
 sub fetch_by_plate_num_and_well {
     my ( $self, $plate_num, $well_id ) = @_;
     
+    my $crRNA;
     # check that plate is a number
     my $plate_name;
     if( looks_like_number( $plate_num ) ){
-        $plate_name = sprintf("CR_%06da", $plate_num);
+        $plate_name = sprintf("CR_%06d-", $plate_num);
     }
     elsif( $plate_num =~ /\A
           CR_0{0,5} # start with CR_ and then 0-5 zeros
@@ -815,18 +816,24 @@ sub fetch_by_plate_num_and_well {
     }
     
     my $db_statement = <<END_ST;
-select * from crRNA c, construction_oligos con, plate pl, plasmid_backbone pb
-where plate_name = ? and con.plate_id = pl.plate_id and
-well_id = ? and con.crRNA_id = c.crRNA_id and
-pb.plasmid_backbone_id = con.plasmid_backbone_id;
+select * from crRNA cr, plate pl where plate_name = ? and
+cr.plate_id = pl.plate_id and well_id = ?;
 END_ST
     
-    my $results = $self->fetch_rows_expecting_single_row(
-        $db_statement,
-        [ $plate_name, $well_id ],
-    );
-    
-    my $crRNA = $self->_make_new_crRNA_from_db( [ @{$results->[0]}[ 0..9 ] ] );
+    my $params = [ $plate_name, $well_id ];
+    my $results;
+    eval {
+        $results = $self->fetch_rows_expecting_single_row(
+            $db_statement,
+            $params,
+        );
+    };
+    if( $EVAL_ERROR ){
+        $self->_db_error_handling( $EVAL_ERROR, $db_statement, $params, );
+    }
+    else{
+        $crRNA = $self->_make_new_crRNA_from_db( [ @{$results}[ 0..9 ] ] );
+    }
     
     return $crRNA;
 }

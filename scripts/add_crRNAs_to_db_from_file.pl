@@ -264,14 +264,13 @@ foreach my $well ( @{$wells} ){
         $crRNA_adaptor->store( $well );
     };
     if( $EVAL_ERROR ){
-        die "There was a problem storing one of the crRNAs in the database.\n",
+        die join(q{ }, "There was a problem storing crRNA",
+                 $well->contents->name, "in the database.\n", ),
                 "ERROR MSG:", $EVAL_ERROR, "\n";
     }
     else{
-        print join(q{ }, $well->contents->name,
-            'was stored correctly in the database with id:',
-            $well->contents->crRNA_id,
-        ), "\n";
+        print join(q{ }, 'crRNA', $well->contents->name,
+                'was stored correctly in the database.'), "\n";
     }
 }
 
