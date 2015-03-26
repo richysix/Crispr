@@ -181,8 +181,9 @@ sub store_injection_pools {
     }
 	
     # need to check that cas9 prep and guide RNAs exist in the db.
-    my $check_cas9_statement = "select count(*) from cas9 where cas9_id = ?;";
-    my $check_guideRNA_statement = "select count(*) from crRNA where crRNA_id = ?;";
+    my $check_cas9_statement = "select count(*) from cas9_prep where cas9_prep_id = ?;";
+    my $check_guideRNA_statement = "select count(*) from guideRNA_prep where guideRNA_prep_id = ?;";
+    my $check_crRNA_statement = "select count(*) from crRNA where crRNA_id = ?;";
     
     my $add_inj_statement = "insert into injection values( ?, ?, ?, ?, ?, ?, ?, ? );"; 
     my $add_gRNA_statement = "insert into injection_pool values( ?, ?, ?, ? );"; 
@@ -208,21 +209,12 @@ sub store_injection_pools {
                 }
             }
             # check guide RNAs exist
-            foreach my $crRNA ( @{$injection_pool->guideRNAs } ){
-                eval{
-                    if( !$self->check_entry_exists_in_db( $check_guideRNA_statement, [ $crRNA->crRNA_id, ] ) ){
-                        #try and store it
-                        $self->crRNA_adaptor->store( $crRNA );
-                    }
-                };
-                if( $EVAL_ERROR ){
-                    if( $EVAL_ERROR =~ m/TOO\sMANY\sITEMS/xms ){
-                        confess "Found more than one Cas9 prep with the same database id!\n",
-                            $EVAL_ERROR, "\n";
-                    }
-                    else{
-                        confess $EVAL_ERROR, "\n";
-                    }
+            foreach my $guide_RNA ( @{$injection_pool->guideRNAs } ){
+                if( !$self->check_entry_exists_in_db( $check_guideRNA_statement, [ $guide_RNA->db_id, ] ) ){
+                    confess "Couldn't find guideRNA prep in database";
+                }
+                if( !$self->check_entry_exists_in_db( $check_crRNA_statement, [ $guide_RNA->crRNA_id, ] ) ){
+                    confess "Couldn't find crRNA in database";
                 }
             }
             
@@ -245,7 +237,7 @@ sub store_injection_pools {
                     $injection_pool->db_id,
                     $guide_RNA->crRNA_id,
                     $guide_RNA->db_id,
-                    $guide_RNA->concentration,
+                    $guide_RNA->injection_concentration,
                 );
             }
         }
@@ -320,7 +312,7 @@ sub fetch_by_name {
 
 =method fetch_all_by_date
 
-  Usage       : $injection_pools = $injection_pool_adaptor->fetch_all_by_date( $crRNA );
+  Usage       : $injection_pools = $injection_pool_adaptor->fetch_all_by_date( $date );
   Purpose     : Fetch a list of injection_pools given a date
   Returns     : ArrayRef of Crispr::DB::InjectionPool objects
   Parameters  : date => Str ('yyyy-mm-dd')

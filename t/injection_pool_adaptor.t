@@ -158,7 +158,8 @@ foreach my $db_connection ( @db_connections ){
     $mock_gRNA_1->set_isa( 'Crispr::guideRNA_prep' );
     $mock_gRNA_1->mock( 'db_id', sub{ return 1 } );
     $mock_gRNA_1->mock( 'type', sub{ return 'sgRNA' } );
-    $mock_gRNA_1->mock( 'concentration', sub{ return 50 } );
+    $mock_gRNA_1->mock( 'stock_concentration', sub{ return 50 } );
+    $mock_gRNA_1->mock( 'injection_concentration', sub{ return 10 } );
     $mock_gRNA_1->mock( 'made_by', sub{ return 'cr1' } );
     $mock_gRNA_1->mock( 'date', sub{ return '2014-10-02' } );
     $mock_gRNA_1->mock( 'crRNA', sub{ return $mock_crRNA_object_1 } );
@@ -175,7 +176,8 @@ foreach my $db_connection ( @db_connections ){
     $mock_gRNA_2->set_isa( 'Crispr::guideRNA_prep' );
     $mock_gRNA_2->mock( 'db_id', sub{ return 2 } );
     $mock_gRNA_2->mock( 'type', sub{ return 'sgRNA' } );
-    $mock_gRNA_2->mock( 'concentration', sub{ return 60 } );
+    $mock_gRNA_2->mock( 'stock_concentration', sub{ return 60 } );
+    $mock_gRNA_2->mock( 'injection_concentration', sub{ return 10 } );
     $mock_gRNA_2->mock( 'made_by', sub{ return 'cr1' } );
     $mock_gRNA_2->mock( 'date', sub{ return '2014-10-02' } );
     $mock_gRNA_2->mock( 'crRNA', sub{ return $mock_crRNA_object_2 } );
@@ -439,7 +441,7 @@ sub check_attributes {
         my $g2 = $object2->guideRNAs->[$i];
         is( $g1->db_id, $g2->db_id, "$driver: object from db $method - check guideRNA db_id");
         is( $g1->type, $g2->type, "$driver: object from db $method - check guideRNA type");
-        is( abs( $g1->concentration - $g2->concentration) < 0.1, 1, "$driver: object from db $method - check guideRNA concentration");
+        is( abs( $g1->injection_concentration - $g2->injection_concentration) < 0.1, 1, "$driver: object from db $method - check guideRNA concentration");
         is( $g1->made_by, $g2->made_by, "$driver: object from db $method - check guideRNA made_by");
         is( $g1->date, $g2->date, "$driver: object from db $method - check guideRNA date");
         is( $g1->well->position, $g2->well->position, "$driver: object from db $method - check guideRNA well");
