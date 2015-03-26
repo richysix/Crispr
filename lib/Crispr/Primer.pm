@@ -100,7 +100,7 @@ has 'plate_id' => (
 
 has 'well_id' => (
 	is => 'ro',
-	isa => 'Str',
+	isa => 'Maybe[Str]',
 );
 
 =method sequence
