@@ -15,7 +15,7 @@ has 'plate_category' => (
     is => 'rw',
     isa => enum( [qw{ crispr cloning_oligos expression_construct
         t7_hairpin_oligos t7_fill-in_oligos guideRNA_prep pcr_primers
-        kaspar_assays }] ),
+        kaspar_assays samples }] ),
 );
 
 has [ 'ordered', 'received' ] => (
