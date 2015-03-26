@@ -14,6 +14,9 @@ use Crispr::DB::Cas9Prep;
 
 extends 'Crispr::DB::BaseAdaptor';
 
+# Cache - HASHREF of Cas9Prep objects keyed on cas9_prep_id
+my %cas9_prep_cache; 
+
 =method new
 
   Usage       : my $cas9_prep_adaptor = Crispr::DB::Cas9PrepAdaptor->new(
@@ -188,9 +191,15 @@ sub store_cas9_preps {
 
 sub fetch_by_id {
     my ( $self, $id ) = @_;
-
-    my $cas9_prep = $self->_fetch( 'cas9_prep_id = ?', [ $id ] )->[0];
     
+    my $cas9_prep;
+    # check cache
+    if( exists $cas9_prep_cache{ $id } ){
+        $cas9_prep = $cas9_prep_cache{ $id }
+    }
+    else{
+        $cas9_prep = $self->_fetch( 'cas9_prep_id = ?', [ $id ] )->[0];    
+    }
     if( !$cas9_prep ){
         confess "Couldn't retrieve cas9_prep, $id, from database.\n";
     }
@@ -351,7 +360,6 @@ sub fetch_all_by_prep_type {
 #Throws      : 
 #Comments    :
 
-my %cas9_prep_cache;
 sub _fetch {
     my ( $self, $where_clause, $where_parameters ) = @_;
     my $dbh = $self->connection->dbh();
