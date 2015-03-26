@@ -213,18 +213,48 @@ foreach my $db_connection ( @db_connections ){
     isa_ok( $guideRNA_prep_adaptor, 'Crispr::DB::GuideRNAPrepAdaptor', "$driver: get guideRNA_prep adaptor 3" );
     is( $guideRNA_prep_adaptor->connection, $db_connection->connection, "$driver: guideRNA_prep - check connections are the same 3" );
     
+    my $injection_pool_adaptor = $db_connection->get_adaptor( 'injection_pool' );
+    isa_ok( $injection_pool_adaptor, 'Crispr::DB::InjectionPoolAdaptor', "$driver: get injection_pool adaptor" );
+    is( $injection_pool_adaptor->connection, $db_connection->connection, "$driver: injection_pool - check connections are the same" );
+    $injection_pool_adaptor = $db_connection->get_adaptor( 'injection_pooladaptor' );
+    isa_ok( $injection_pool_adaptor, 'Crispr::DB::InjectionPoolAdaptor', "$driver: get injection_pool adaptor 2" );
+    is( $injection_pool_adaptor->connection, $db_connection->connection, "$driver: injection_pool - check connections are the same 2" );
+    $injection_pool_adaptor = $db_connection->get_adaptor( 'injection_pool_adaptor' );
+    isa_ok( $injection_pool_adaptor, 'Crispr::DB::InjectionPoolAdaptor', "$driver: get injection_pool adaptor 3" );
+    is( $injection_pool_adaptor->connection, $db_connection->connection, "$driver: injection_pool - check connections are the same 3" );
+    
+    my $plex_adaptor = $db_connection->get_adaptor( 'plex' );
+    isa_ok( $plex_adaptor, 'Crispr::DB::PlexAdaptor', "$driver: get plex adaptor" );
+    is( $plex_adaptor->connection, $db_connection->connection, "$driver: plex - check connections are the same" );
+    $plex_adaptor = $db_connection->get_adaptor( 'plexadaptor' );
+    isa_ok( $plex_adaptor, 'Crispr::DB::PlexAdaptor', "$driver: get plex adaptor 2" );
+    is( $plex_adaptor->connection, $db_connection->connection, "$driver: plex - check connections are the same 2" );
+    $plex_adaptor = $db_connection->get_adaptor( 'plex_adaptor' );
+    isa_ok( $plex_adaptor, 'Crispr::DB::PlexAdaptor', "$driver: get plex adaptor 3" );
+    is( $plex_adaptor->connection, $db_connection->connection, "$driver: plex - check connections are the same 3" );
+    
+    my $subplex_adaptor = $db_connection->get_adaptor( 'subplex' );
+    isa_ok( $subplex_adaptor, 'Crispr::DB::SubplexAdaptor', "$driver: get subplex adaptor" );
+    is( $subplex_adaptor->connection, $db_connection->connection, "$driver: subplex - check connections are the same" );
+    $subplex_adaptor = $db_connection->get_adaptor( 'subplexadaptor' );
+    isa_ok( $subplex_adaptor, 'Crispr::DB::SubplexAdaptor', "$driver: get subplex adaptor 2" );
+    is( $subplex_adaptor->connection, $db_connection->connection, "$driver: subplex - check connections are the same 2" );
+    $subplex_adaptor = $db_connection->get_adaptor( 'subplex_adaptor' );
+    isa_ok( $subplex_adaptor, 'Crispr::DB::SubplexAdaptor', "$driver: get subplex adaptor 3" );
+    is( $subplex_adaptor->connection, $db_connection->connection, "$driver: subplex - check connections are the same 3" );
+    
+    my $sample_adaptor = $db_connection->get_adaptor( 'sample' );
+    isa_ok( $sample_adaptor, 'Crispr::DB::SampleAdaptor', "$driver: get sample adaptor" );
+    is( $sample_adaptor->connection, $db_connection->connection, "$driver: sample - check connections are the same" );
+    $sample_adaptor = $db_connection->get_adaptor( 'sampleadaptor' );
+    isa_ok( $sample_adaptor, 'Crispr::DB::SampleAdaptor', "$driver: get sample adaptor 2" );
+    is( $sample_adaptor->connection, $db_connection->connection, "$driver: sample - check connections are the same 2" );
+    $sample_adaptor = $db_connection->get_adaptor( 'sample_adaptor' );
+    isa_ok( $sample_adaptor, 'Crispr::DB::SampleAdaptor', "$driver: get sample adaptor 3" );
+    is( $sample_adaptor->connection, $db_connection->connection, "$driver: sample - check connections are the same 3" );
+    
     SKIP: {
-        skip "methods not implemented yet!", 30;
-        
-        my $injection_pool_adaptor = $db_connection->get_adaptor( 'injection_pool' );
-        isa_ok( $injection_pool_adaptor, 'Crispr::DB::InjectionPoolAdaptor', "$driver: get injection_pool adaptor" );
-        is( $injection_pool_adaptor->connection, $db_connection->connection, "$driver: injection_pool - check connections are the same" );
-        $injection_pool_adaptor = $db_connection->get_adaptor( 'injection_pooladaptor' );
-        isa_ok( $injection_pool_adaptor, 'Crispr::DB::InjectionPoolAdaptor', "$driver: get injection_pool adaptor 2" );
-        is( $injection_pool_adaptor->connection, $db_connection->connection, "$driver: injection_pool - check connections are the same 2" );
-        $injection_pool_adaptor = $db_connection->get_adaptor( 'injection_pool_adaptor' );
-        isa_ok( $injection_pool_adaptor, 'Crispr::DB::InjectionPoolAdaptor', "$driver: get injection_pool adaptor 3" );
-        is( $injection_pool_adaptor->connection, $db_connection->connection, "$driver: injection_pool - check connections are the same 3" );
+        skip "methods not implemented yet!", 6;
         
         my $kasp_adaptor = $db_connection->get_adaptor( 'kasp' );
         isa_ok( $kasp_adaptor, 'Crispr::DB::KaspAdaptor', "$driver: get kasp adaptor" );
@@ -236,35 +266,6 @@ foreach my $db_connection ( @db_connections ){
         isa_ok( $kasp_adaptor, 'Crispr::DB::KaspAdaptor', "$driver: get kasp adaptor 3" );
         is( $kasp_adaptor->connection, $db_connection->connection, "$driver: kasp - check connections are the same 3" );
         
-        my $plex_adaptor = $db_connection->get_adaptor( 'plex' );
-        isa_ok( $plex_adaptor, 'Crispr::DB::PlexAdaptor', "$driver: get plex adaptor" );
-        is( $plex_adaptor->connection, $db_connection->connection, "$driver: plex - check connections are the same" );
-        $plex_adaptor = $db_connection->get_adaptor( 'plexadaptor' );
-        isa_ok( $plex_adaptor, 'Crispr::DB::PlexAdaptor', "$driver: get plex adaptor 2" );
-        is( $plex_adaptor->connection, $db_connection->connection, "$driver: plex - check connections are the same 2" );
-        $plex_adaptor = $db_connection->get_adaptor( 'plex_adaptor' );
-        isa_ok( $plex_adaptor, 'Crispr::DB::PlexAdaptor', "$driver: get plex adaptor 3" );
-        is( $plex_adaptor->connection, $db_connection->connection, "$driver: plex - check connections are the same 3" );
-        
-        my $subplex_adaptor = $db_connection->get_adaptor( 'subplex' );
-        isa_ok( $subplex_adaptor, 'Crispr::DB::SubplexAdaptor', "$driver: get subplex adaptor" );
-        is( $subplex_adaptor->connection, $db_connection->connection, "$driver: subplex - check connections are the same" );
-        $subplex_adaptor = $db_connection->get_adaptor( 'subplexadaptor' );
-        isa_ok( $subplex_adaptor, 'Crispr::DB::SubplexAdaptor', "$driver: get subplex adaptor 2" );
-        is( $subplex_adaptor->connection, $db_connection->connection, "$driver: subplex - check connections are the same 2" );
-        $subplex_adaptor = $db_connection->get_adaptor( 'subplex_adaptor' );
-        isa_ok( $subplex_adaptor, 'Crispr::DB::SubplexAdaptor', "$driver: get subplex adaptor 3" );
-        is( $subplex_adaptor->connection, $db_connection->connection, "$driver: subplex - check connections are the same 3" );
-        
-        my $sample_adaptor = $db_connection->get_adaptor( 'sample' );
-        isa_ok( $sample_adaptor, 'Crispr::DB::SampleAdaptor', "$driver: get sample adaptor" );
-        is( $sample_adaptor->connection, $db_connection->connection, "$driver: sample - check connections are the same" );
-        $sample_adaptor = $db_connection->get_adaptor( 'sampleadaptor' );
-        isa_ok( $sample_adaptor, 'Crispr::DB::SampleAdaptor', "$driver: get sample adaptor 2" );
-        is( $sample_adaptor->connection, $db_connection->connection, "$driver: sample - check connections are the same 2" );
-        $sample_adaptor = $db_connection->get_adaptor( 'sample_adaptor' );
-        isa_ok( $sample_adaptor, 'Crispr::DB::SampleAdaptor', "$driver: get sample adaptor 3" );
-        is( $sample_adaptor->connection, $db_connection->connection, "$driver: sample - check connections are the same 3" );
     }
     
     throws_ok { $db_connection->get_adaptor( 'cheese' ) } qr/is\snot\sa\srecognised\sadaptor\stype/, "$driver: Throws on unrecognised adaptor type";
