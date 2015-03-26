@@ -15,7 +15,7 @@ with 'Crispr::SharedMethods';
 
 =method new
 
-  Usage       : my $inj = Crispr::DB::Sample->new(
+  Usage       : my $sample = Crispr::DB::Sample->new(
 					db_id => undef,
                     injection_pool => $inj_pool,
 					subplex => $subplex,
@@ -166,9 +166,26 @@ has 'alleles' => (
     isa => 'Maybe[ArrayRef[ Crispr::Allele ]]',
 );
 
+=method species
+
+  Usage       : $target->species;
+  Purpose     : Getter for species attribute
+  Returns     : Str
+  Parameters  : None
+  Throws      : If input is given
+  Comments    : 
+
+=cut
+
+has 'species' => (
+    is => 'ro',
+    isa => 'Str',
+    default => 'zebrafish',
+);
+
 sub sample_name {
     my ( $self, ) = @_;
-    return join("-", $self->subplex->plex_name, $self->subplex->db_id, $self->well_id, );
+    return join("_", $self->subplex->db_id, $self->well_id, );
 }
 
 __PACKAGE__->meta->make_immutable;

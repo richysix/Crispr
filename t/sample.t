@@ -17,10 +17,10 @@ my $sample = Crispr::DB::Sample->new();
 isa_ok( $sample, 'Crispr::DB::Sample');
 $tests++;
 
-# check attributes and methods - 12 tests
+# check attributes and methods - 9 tests
 my @attributes = (
     qw{ db_id injection_pool subplex barcode_id generation
-        sample_type alleles }
+        sample_type alleles species }
 );
 
 my @methods = ( qw{ sample_name } );
@@ -132,7 +132,7 @@ is( $sample->sample_type, 'sperm', 'check sample_type');
 $tests += 4;
 
 # check sample_name
-is( $sample->sample_name, '8-1-A01', 'check sample name' );
+is( $sample->sample_name, '1_A01', 'check sample name' );
 $tests++;
 
 # check alleles attribute
