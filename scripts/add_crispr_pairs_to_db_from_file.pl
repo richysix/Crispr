@@ -76,12 +76,20 @@ my $crRNA_adaptor = $db_connection->get_adaptor( 'crRNA' );
 my $crispr_pair_adaptor = $db_connection->get_adaptor( 'crispr_pair' );
 my $plate_adaptor = $db_connection->get_adaptor( 'plate' );
 
-my @crispr_pair_attributes = ( qw{ pair_name species number_paired_off_target_hits
-    target_1_name target_1_requestor target_2_name target_2_requestor 
-    crRNA_1_name crRNA_1_chr crRNA_1_start crRNA_1_end crRNA_1_strand crRNA_1_target_sequence
-    crRNA_1_hits crRNA_1_coding_scores_by_transcript crRNA_1_num_Gs crRNA_1_plasmid_backbone
-    crRNA_2_name crRNA_2_chr crRNA_2_start crRNA_2_end crRNA_2_strand crRNA_2_target_sequence
-    crRNA_2_hits crRNA_2_coding_scores_by_transcript crRNA_2_num_Gs crRNA_2_plasmid_backbone }
+my @crispr_pair_attributes = ( qw{ pair_name number_paired_off_target_hits
+    combined_score deletion_size 
+    target_1_name target_1_species target_1_requestor 
+    crRNA_1_name crRNA_1_chr crRNA_1_start crRNA_1_end crRNA_1_strand
+    crRNA_1_score crRNA_1_sequence crRNA_1_oligo1 crRNA_1_oligo2
+    crRNA_1_off_target_score crRNA_1_off_target_counts crRNA_1_off_target_hits
+    crRNA_1_coding_score crRNA_1_coding_scores_by_transcript
+    crRNA_1_five_prime_Gs crRNA_1_plasmid_backbone crRNA_1_GC_content
+    target_2_name target_2_species target_2_requestor 
+    crRNA_2_name crRNA_2_chr crRNA_2_start crRNA_2_end crRNA_2_strand
+    crRNA_2_score crRNA_2_sequence crRNA_2_oligo1 crRNA_2_oligo2
+    crRNA_2_off_target_score crRNA_2_off_target_counts crRNA_2_off_target_hits
+    crRNA_2_coding_score crRNA_2_coding_scores_by_transcript
+    crRNA_2_five_prime_Gs crRNA_2_plasmid_backbone crRNA_2_GC_content }
 );
 
 my @required_attributes1 = ( qw{ pair_name number_paired_off_target_hits
@@ -90,8 +98,8 @@ my @required_attributes1 = ( qw{ pair_name number_paired_off_target_hits
 
 my @required_attributes2 = ( qw{ pair_name number_paired_off_target_hits
     target_1_name target_1_requestor
-    crRNA_1_start crRNA_1_end crRNA_1_target_sequence
-    crRNA_2_start crRNA_2_end crRNA_2_target_sequence } );
+    crRNA_1_start crRNA_1_end crRNA_1_sequence
+    crRNA_2_start crRNA_2_end crRNA_2_sequence } );
 
 my @columns;
 my @crispr_pairs;
@@ -99,48 +107,48 @@ my %crRNA_already_exists_in_db;
 my $all_in_db = 1;
 
 while(<>){
-	my @values;
-	
-	chomp;
+    my @values;
+    
+    chomp;
     if( $INPUT_LINE_NUMBER == 1 ){
         if( !m/\A $comment_regex/xms ){
             die "Input needs a header line starting with a #";
         }
         s|$comment_regex||xms;
-		@columns = split /\t/, $_;
-		foreach my $column_name ( @columns ){
-			if( none { $column_name eq $_ } @crispr_pair_attributes ){
-				die "Could not recognise column name, ", $column_name, ".\n";
-			}
-		}
+        @columns = split /\t/, $_;
+        foreach my $column_name ( @columns ){
+            if( none { $column_name eq $_ } @crispr_pair_attributes ){
+                die "Could not recognise column name, ", $column_name, ".\n";
+            }
+        }
         # check for required attributes. 2 different sets so can use either name or start/end
-		foreach my $attribute ( @required_attributes1 ){
-			if( none { $attribute eq $_ } @columns ){
+        foreach my $attribute ( @required_attributes1 ){
+            if( none { $attribute eq $_ } @columns ){
                 # check whether required_attributes2 list is present
                 foreach my $attribute2 ( @required_attributes2 ){
                     if( none { $attribute2 eq $_ } @columns ){
-        				die "Missing required attribute: ", $attribute, ".\n";
+                        die "Missing required attribute: ", $attribute, ".\n";
                     }
                 }
-			}
-		}
-		next;
-	}
-	else{
-		@values = split /\t/, $_;
-	}
-	
-	my %args;
-	for( my $i = 0; $i < scalar @columns; $i++ ){
-		if( $values[$i] eq 'NULL' ){
-			$values[$i] = undef;
-		}
-		$args{ $columns[$i] } = $values[$i];
-	}
-	
-	if( $options{debug} == 2 ){
-		warn Dumper( %args );
-	}
+            }
+        }
+        next;
+    }
+    else{
+        @values = split /\t/, $_;
+    }
+    
+    my %args;
+    for( my $i = 0; $i < scalar @columns; $i++ ){
+        if( $values[$i] eq 'NULL' ){
+            $values[$i] = undef;
+        }
+        $args{ $columns[$i] } = $values[$i];
+    }
+    
+    if( $options{debug} == 2 ){
+        warn Dumper( %args );
+    }
     
     if( !$args{'target_1_name'} || !$args{'target_1_requestor'} ){
         die "Must have a target name and a requestor for each crRNA to add to database.\n",
@@ -218,9 +226,9 @@ while(<>){
         $crRNAs[2] = build_crRNA( $targets[2], \%args, 2, );
     }
     
-	if( $options{debug} == 2 ){
-		warn Dumper( @crRNAs );
-	}
+    if( $options{debug} == 2 ){
+        warn Dumper( @crRNAs );
+    }
     
     my $crispr_pair = Crispr::CrisprPair->new(
         target_1 => $targets[1],
@@ -229,8 +237,8 @@ while(<>){
         crRNA_2 => $crRNAs[2],
         paired_off_targets => $args{number_paired_off_target_hits},
     );
-	
-	push @crispr_pairs, $crispr_pair;
+    
+    push @crispr_pairs, $crispr_pair;
 }
 
 if( $options{debug} == 2 ){
@@ -240,11 +248,11 @@ if( $options{debug} == 2 ){
 
 # store crRNA pairs in database
 eval{
-	$crispr_pair_adaptor->store_crispr_pairs( \@crispr_pairs );
+    $crispr_pair_adaptor->store_crispr_pairs( \@crispr_pairs );
 };
 if( $EVAL_ERROR ){
-	die "There was a problem storing one of the crispr pairs in the database.\n",
-			"ERROR MSG:", $EVAL_ERROR, "\n";
+    die "There was a problem storing one of the crispr pairs in the database.\n",
+            "ERROR MSG:", $EVAL_ERROR, "\n";
 }
 else{
     foreach my $pair ( @crispr_pairs ){
@@ -396,11 +404,11 @@ sub build_crRNA {
         start => $args->{'crRNA_' . $num . '_start'},
         end => $args->{'crRNA_' . $num . '_end'},
         strand => $args->{'crRNA_' . $num . '_strand'},
-        sequence => $args->{'crRNA_' . $num . '_target_sequence'},
-		species => $args->{species} || $target->species,
+        sequence => $args->{'crRNA_' . $num . '_sequence'},
+        species => $args->{species} || $target->species,
     );
     
-	# off target info
+    # off target info
     my $off_target_info;
     if( $args->{'crRNA_' . $num . '_off_target_hits'} ){
         $crRNA->off_target_hits(
@@ -431,7 +439,7 @@ sub build_crRNA {
             }
         }
     }
-	
+    
     # add coding scores
     if( exists $args->{'crRNA_' . $num . '_coding_scores_by_transcript'} &&
         defined $args->{'crRNA_' . $num . '_coding_scores_by_transcript'} &&
@@ -441,33 +449,33 @@ sub build_crRNA {
         }
     }
     
-	if( exists $args->{'crRNA_' . $num . '_num_Gs'} &&
-        defined $args->{'crRNA_' . $num . '_num_Gs'} ){
-		$crRNA->five_prime_Gs( $args->{'crRNA_' . $num . '_num_Gs'} );
-	}
+    if( exists $args->{'crRNA_' . $num . '_five_prime_Gs'} &&
+        defined $args->{'crRNA_' . $num . '_five_prime_Gs'} ){
+        $crRNA->five_prime_Gs( $args->{'crRNA_' . $num . '_five_prime_Gs'} );
+    }
     
     return $crRNA;
 }
 
 sub get_and_check_options {
-	
-	GetOptions(
+    
+    GetOptions(
         \%options,
-		'crispr_db=s',
-		'plate_num=i',
-		'plate_type=s',
-		'fill_direction=s',
+        'crispr_db=s',
+        'plate_num=i',
+        'plate_type=s',
+        'fill_direction=s',
         'species=s',
         'target_genome=s',
-		'registry_file=s',
+        'registry_file=s',
         'designed=s',
-		'ordered=s',
-		'received=s',
-		'debug+',
+        'ordered=s',
+        'received=s',
+        'debug+',
         'help',
         'man',
-	) or pod2usage(2);
-	
+    ) or pod2usage(2);
+    
     # Documentation
     if ($options{help}) {
         pod2usage(1);
@@ -477,15 +485,15 @@ sub get_and_check_options {
     }
 
     # Check options
-	if( !$options{designed} ){
-		$options{designed} = DateTime->now();
-	}
-	elsif( $options{designed} !~ m/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/xms ){
-		pod2usage( "The date supplied for option --designed is not a valid format\n" );
-	}
-	else{
-		$options{designed} = _parse_date_to_date_object( $options{designed} );
-	}
+    if( !$options{designed} ){
+        $options{designed} = DateTime->now();
+    }
+    elsif( $options{designed} !~ m/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/xms ){
+        pod2usage( "The date supplied for option --designed is not a valid format\n" );
+    }
+    else{
+        $options{designed} = _parse_date_to_date_object( $options{designed} );
+    }
     
     if( $options{ordered} ){
         if( $options{ordered} !~ m/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/xms ){
@@ -496,14 +504,14 @@ sub get_and_check_options {
         }
     }
     
-	if( $options{received} ){
-		if( $options{received} !~ m/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/xms ){
-			pod2usage( "The date supplied for option --received is not a valid format\n" );
-		}
-		else{
-			$options{received} = _parse_date_to_date_object( $options{received} );
-		}
-	}
+    if( $options{received} ){
+        if( $options{received} !~ m/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/xms ){
+            pod2usage( "The date supplied for option --received is not a valid format\n" );
+        }
+        else{
+            $options{received} = _parse_date_to_date_object( $options{received} );
+        }
+    }
     
     #defaults
     $options{debug} = $options{debug}   ?   $options{debug} :   0;
@@ -516,15 +524,15 @@ sub get_and_check_options {
 }
 
 sub _parse_date_to_date_object {
-	my ( $date ) = @_;
-	
-	$date =~ m/\A([0-9]{4})-([0-9]{2})-([0-9]{2})\z/xms;
-	my $date_obj = DateTime->new(
-		year       => $1,
-		month      => $2,
-		day        => $3,
-	);
-	return $date_obj;
+    my ( $date ) = @_;
+    
+    $date =~ m/\A([0-9]{4})-([0-9]{2})-([0-9]{2})\z/xms;
+    my $date_obj = DateTime->new(
+        year       => $1,
+        month      => $2,
+        day        => $3,
+    );
+    return $date_obj;
 }
 
 __END__
@@ -569,17 +577,28 @@ Should contain the following columns:
 
 =over
 
-=item Either: name pair_name crRNA_1_name crRNA_2_name 
+=item Either: pair_name number_paired_off_target_hits target_1_name target_1_requestor crRNA_1_name crRNA_2_name
 
-=item Or: name pair_name crRNA_1_start crRNA_1_end crRNA_1_target_sequence crRNA_2_start crRNA_2_end crRNA_2_target_sequence
+=item Or: pair_name number_paired_off_target_hits
+    target_1_name target_1_requestor
+    crRNA_1_start crRNA_1_end crRNA_1_sequence
+    crRNA_2_start crRNA_2_end crRNA_2_sequence
 
 =back
 
 Optional columns:
-species number_paired_off_target_hits crRNA_1_chr crRNA_1_strand crRNA_1_hits
-crRNA_1_coding_scores_by_transcript crRNA_1_num_Gs crRNA_1_plasmid_backbone
-crRNA_2_chr crRNA_2_strand crRNA_2_target_sequence crRNA_2_hits
-crRNA_2_coding_scores_by_transcript crRNA_2_num_Gs crRNA_2_plasmid_backbone
+    combined_score deletion_size 
+    target_1_species crRNA_1_chr crRNA_1_strand
+    crRNA_1_score crRNA_1_oligo1 crRNA_1_oligo2
+    crRNA_1_off_target_score crRNA_1_off_target_counts crRNA_1_off_target_hits
+    crRNA_1_coding_score crRNA_1_coding_scores_by_transcript
+    crRNA_1_five_prime_Gs crRNA_1_plasmid_backbone crRNA_1_GC_content
+    target_2_name target_2_species target_2_requestor 
+    crRNA_2_chr crRNA_2_strand
+    crRNA_2_score crRNA_2_oligo1 crRNA_2_oligo2
+    crRNA_2_off_target_score crRNA_2_off_target_counts crRNA_2_off_target_hits
+    crRNA_2_coding_score crRNA_2_coding_scores_by_transcript
+    crRNA_2_five_prime_Gs crRNA_2_plasmid_backbone crRNA_2_GC_content
 
 =back
 
