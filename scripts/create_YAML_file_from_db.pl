@@ -23,89 +23,77 @@ if( $options{debug} ){
 # connect to db
 my $db_connection = Crispr::DB::DBConnection->new( $options{crispr_db}, );
 
+# get adaptors
+my $plex_adaptor = $db_connection->get_adaptor( 'plex' );
+my $injection_pool_adaptor = $db_connection->get_adaptor( 'injection_pool' );
+my $subplex_adaptor = $db_connection->get_adaptor( 'subplex' );
+my $sample_adaptor = $db_connection->get_adaptor( 'sample' );
+my $primer_pair_adaptor = $db_connection->get_adaptor( 'primer_pair' );
+my $target_adaptor = $db_connection->get_adaptor( 'target' );
+
 my $yaml = YAML::Tiny->new;
 $yaml->[0]->{lane} = $options{lane};
 $yaml->[0]->{name} = $options{plex};
 $yaml->[0]->{plates} = [];
 
-# get info from db
-my $dbh = $db_connection->connection->dbh();
-
-my $sql = <<'END_SQL';
-SELECT run_id
-FROM plex
-WHERE plex_name = ?;
-END_SQL
-
-my $sth = $dbh->prepare( $sql );
-$sth->execute( $options{plex}, );
-while( my @fields = $sth->fetchrow_array ){
-    $yaml->[0]->{run} = $fields[0];
-}
-if( !$yaml->[0]->{run} ){
+my $plex = $plex_adaptor->fetch_by_name( $options{plex} );
+if( !$plex ){
     die "Could not find plex $options{plex} in the database!\n";
 }
+$yaml->[0]->{run_id} = $plex->run_id;
 
-$sql = <<'END_SQL';
-SELECT subplex_id, plate_num,
-    concat_ws(":", pp.chr, concat_ws("-", pp.start, pp.end ), pp.strand ) as amplicon,
-    crRNA_name
-FROM plex, subplex sub, injection i, injection_pool ip,
-    crRNA cr, amplicon_to_crRNA amp, primer_pair pp
-WHERE plex.plex_id = sub.plex_id AND
-    i.injection_id = sub.injection_id AND
-    i.injection_id = ip.injection_id AND
-    ip.crRNA_id = cr.crRNA_id AND
-    cr.crRNA_id = amp.crRNA_id AND
-    amp.primer_pair_id = pp.primer_pair_id AND
-    pp.type = 'illumina_tailed' AND
-    plex.plex_name = ?;
-END_SQL
+my $subplexes = $subplex_adaptor->fetch_all_by_plex( $plex );
 
-$sth = $dbh->prepare( $sql );
-$sth->execute( $options{plex}, );
-
+# get sample info for each subplex
 my %subplex_info;
-my %crisprs_for_amplicon;
-my %crisprs_for_amplicon_seen;
-my %amplicon_for_subplex_seen;
-while( my @fields = $sth->fetchrow_array ){
-    my ( $subplex_id, $plate_num, $amplicon, $crRNA_name, ) = @fields;
-    $subplex_info{ $subplex_id }{plate_num} = $plate_num;
-    if( !exists $amplicon_for_subplex_seen{ $subplex_id }{ $amplicon } ){
-        $amplicon_for_subplex_seen{ $subplex_id }{ $amplicon } = 1;
-        push @{ $subplex_info{ $subplex_id }{ amplicons } }, $amplicon;
-    }
-    if( !exists $crisprs_for_amplicon_seen{$amplicon}{$crRNA_name} ){
-        $crisprs_for_amplicon_seen{$amplicon}{$crRNA_name} = 1;
-        push @{ $crisprs_for_amplicon{$amplicon} }, $crRNA_name;
-    }
-}
-
-# get sample info
-$sql = <<'END_SQL';
-SELECT well, barcode_number, sample_name
-FROM sample
-WHERE subplex_id = ?;
-END_SQL
-
-$sth = $dbh->prepare( $sql );
-
-my %subplexes_for_wells;
+my %crisprs_for_primer_pair;
 my %info_for_well_block;
-foreach my $subplex_id ( keys %subplex_info ){
-    $sth->execute( $subplex_id );
-    while( my @fields = $sth->fetchrow_array ){
-        push @{ $subplex_info{ $subplex_id }{ well_ids } }, $fields[0];
-        push @{ $subplex_info{ $subplex_id }{ indices } }, $fields[1];
-        push @{ $subplex_info{ $subplex_id }{ sample_names } }, $fields[2];
+my %subplexes_for_wells;
+my %gene_name_for_primer_pair;
+foreach my $subplex ( @{$subplexes} ){
+    my $subplex_id = $subplex->db_id;
+    my $samples = $sample_adaptor->fetch_all_by_subplex( $subplex );
+    # got through samples and add barcodes, well_ids and sample_names to yaml
+    foreach my $sample ( @{$samples} ){
+        push @{ $subplex_info{ $subplex_id }{ well_ids } }, $sample->well_id;
+        push @{ $subplex_info{ $subplex_id }{ indices } }, $sample->barcode_id;
+        push @{ $subplex_info{ $subplex_id }{ sample_names } }, $sample->sample_name;
     }
     
-    my $plate_num = $subplex_info{ $subplex_id }{plate_num};
+    my %pairs_seen;
+    foreach my $guide_rna ( @{ $subplex->injection_pool->guideRNAs } ){
+        my $crRNA_id = $guide_rna->crRNA->crRNA_id;
+        # get illumina amplicon
+        my @primer_pairs = grep { $_->type eq 'int-illumina_tailed' } @{ $primer_pair_adaptor->fetch_all_by_crRNA_id( $crRNA_id ) };
+        if( scalar @primer_pairs > 1 ){
+            die "Got more than one pair of int-illumina_tailed primers for ",
+                $guide_rna->crRNA->name, "\n";
+        }
+        elsif( !@primer_pairs  ){
+            die "Got no int-illumina_tailed primers for ",
+                $guide_rna->crRNA->name, "\n";
+        }
+        else{
+            my $pair_name = $primer_pairs[0]->pair_name;
+            next if( exists $pairs_seen{$pair_name} );
+            push @{ $subplex_info{ $subplex_id }{primer_pairs} }, $primer_pairs[0];
+            push @{ $crisprs_for_primer_pair{ $pair_name } }, $guide_rna->crRNA;
+            my $target = $target_adaptor->fetch_by_crRNA( $guide_rna->crRNA );
+            $gene_name_for_primer_pair{$pair_name} = $target->gene_name;
+            $pairs_seen{$pair_name} = 1;
+        }
+    }
+    
+    my $plate_num = $subplex->plate_num;
     my $well_ids = join(",", @{ $subplex_info{ $subplex_id }{ well_ids } } );
     push @{ $subplexes_for_wells{$plate_num}{ $well_ids } }, $subplex_id;
     $info_for_well_block{$plate_num}{ $well_ids }{ indices } = join(",", @{ $subplex_info{ $subplex_id }{ indices } } );
     $info_for_well_block{$plate_num}{ $well_ids }{ sample_names } = join(",", @{ $subplex_info{ $subplex_id }{ sample_names } } );
+}
+
+if( $options{debug} > 2 ){
+    warn Dumper( %subplex_info, %crisprs_for_primer_pair, %info_for_well_block, %gene_name_for_primer_pair, );
+    exit;
 }
 
 foreach my $plate_num ( sort { $a <=> $b } keys %subplexes_for_wells ){
@@ -125,39 +113,12 @@ foreach my $plate_num ( sort { $a <=> $b } keys %subplexes_for_wells ){
                 name => $subplex_id,
                 region_info => [  ],
             };
-            foreach my $amplicon ( @{ $subplex_info{ $subplex_id }{amplicons} } ){
-                # fetch gene_name from id
-                $sql = <<'END_SQL';
-    SELECT gene_name
-    FROM target t, crRNA cr
-    WHERE t.target_id = cr.target_id AND
-        cr.crRNA_name = ?;
-END_SQL
-                # prepare query
-                $sth = $dbh->prepare( $sql );
-                my %gene_names;
-                foreach my $crRNA_name ( @{ $crisprs_for_amplicon{$amplicon} } ){
-                    $sth->execute( $crRNA_name );
-                    while( my @fields = $sth->fetchrow_array ){
-                        if( defined $fields[0] ){
-                            $gene_names{ $fields[0] } = 1;
-                        }
-                        else{
-                            $gene_names{ 'unknown' } = 1;
-                        }
-                    }
-                }
-                if( scalar keys %gene_names > 1 ){
-                    die "Got more than 1 gene name for a single amplicon!\n",
-                        join("\t", $plate_num, $well_ids, $subplex_id,
-                                $amplicon,
-                                join(",", @{ $crisprs_for_amplicon{$amplicon} }),
-                            ), "\n";
-                }
+            foreach my $primer_pair ( @{ $subplex_info{ $subplex_id }{primer_pairs} } ){
+                my $pair_name = $primer_pair->pair_name;
                 my $region_info = {
-                    gene_name => ( keys %gene_names )[0],
-                    region => $amplicon,
-                    crisprs => [ @{$crisprs_for_amplicon{$amplicon}} ],
+                    gene_name => $gene_name_for_primer_pair{$pair_name},
+                    region => $primer_pair->pair_name,
+                    crisprs => [ map { $_->name } @{$crisprs_for_primer_pair{$pair_name}} ],
                 };
                 push @{ $subplex->{region_info} }, $region_info;
             }
@@ -205,6 +166,7 @@ sub get_and_check_options {
     $options{lane} = $options{lane}    ?   $options{lane}  :   1;
     $options{plex} = lc( $options{plex} );
     $options{output_file} = $options{output_file}    ?   $options{output_file}  :   uc($options{plex}) . '.yml';
+    $options{debug} = $options{debug}    ?   $options{debug}  :   0;
     
     print "Settings:\n", map { join(' - ', $_, defined $options{$_} ? $options{$_} : 'off'),"\n" } sort keys %options if $options{verbose};
 }
