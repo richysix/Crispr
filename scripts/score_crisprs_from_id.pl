@@ -414,7 +414,7 @@ A list of filenames or input on STDIN containing target info.
 
 =item CRISPR_NAME is the position of the crispr site in the form crRNA:CHR:START-END:STRAND e.g. crRNA:10:1001-1023:-1
 
-=item CRISPR_PAIR_NAME is the two CRISPR_NAMES joined by an '_'. e.g. crRNA:10:1001-1023:-1_crRNA:10:1030-1052:1
+=item CRISPR_PAIR_NAME is the two CRISPR_NAMES joined by an '.' e.g. crRNA:10:1001-1023:-1.crRNA:10:1030-1052:1
 
 =back
 
