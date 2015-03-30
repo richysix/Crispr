@@ -1,4 +1,12 @@
+## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::crRNAAdaptor;
+## use critic
+
+# ABSTRACT: crRNAAdaptor - object for storing crRNA objects in and
+# retrieving them from an SQL database.
+
+use warnings;
+use strict;
 use namespace::autoclean;
 use Moose;
 use Crispr::Target;

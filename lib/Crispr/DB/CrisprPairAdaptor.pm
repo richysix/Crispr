@@ -1,4 +1,12 @@
+## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::CrisprPairAdaptor;
+## use critic
+
+# ABSTRACT: CrisprPairAdaptor - object for storing CrisprPair objects in and
+# retrieving them from an SQL database.
+
+use warnings;
+use strict;
 use namespace::autoclean;
 use Moose;
 use Crispr::Target;

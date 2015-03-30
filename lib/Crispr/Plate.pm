@@ -1,4 +1,11 @@
+## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::Plate;
+## use critic
+
+# ABSTRACT: Plate - Representation of a 96/384 well plate
+
+use warnings;
+use strict;
 use namespace::autoclean;
 use Moose;
 use Moose::Util::TypeConstraints;
