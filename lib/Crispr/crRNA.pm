@@ -989,7 +989,7 @@ sub coding_score {
     my $coding_scores_for = $self->coding_scores;
     
     if( !keys %{$coding_scores_for} ){
-        return undef;
+        return;
     }
     else{
         my ( $num_transcripts, $sum );
