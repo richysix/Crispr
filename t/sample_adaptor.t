@@ -346,10 +346,17 @@ foreach my $db_connection ( @db_connections ){
     throws_ok { $sample_adaptor->store_sample($mock_cas9_object) }
         qr/Argument\smust\sbe\sCrispr::DB::Sample\sobject/,
         "$driver: store_sample throws if object is not Crispr::DB::Sample";
+    
+    # check throws ok on attempted duplicate entry
+    # for this we need to suppress the warning that is generated as well, hence the nested warning_like test
+    # This does not affect the apparent number of tests run
     my $regex = $driver eq 'mysql' ?   qr/Duplicate\sentry/xms
         :                           qr/PRIMARY\sKEY\smust\sbe\sunique/xms;
     
-    throws_ok { $sample_adaptor->store_sample( $mock_sample ) }
+    throws_ok {
+        warning_like { $sample_adaptor->store_sample( $mock_sample ) }
+            $regex;
+    }
         $regex,
         "$driver: store_sample throws because of duplicate entry";
     
@@ -477,7 +484,7 @@ foreach my $db_connection ( @db_connections ){
 #    ok( $sample_adaptor->delete_sample_from_db ( 'rna' ), 'delete_sample_from_db');
 #
 #}
-#    $test_db_connections{$driver}->destroy();
+    $test_db_connections{$driver}->destroy();
 }
 
 ## 12 + 6 * number of guideRNAs per call

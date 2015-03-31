@@ -134,7 +134,18 @@ foreach my $driver ( keys %test_db_connections ){
     throws_ok{ $base_adaptor->fetch_rows_expecting_single_row( $select_statement, [  ] ) }
         qr/TOO\sMANY\sROWS/xms, "$driver: check fetch_rows_expecting_single_row throws on too many rows returned";
     $select_statement = 'select * from cas;';
-    throws_ok{ $base_adaptor->fetch_rows_expecting_single_row( $select_statement, [  ] ) }
+    #throws_ok{ $base_adaptor->fetch_rows_expecting_single_row( $select_statement, [  ] ) }
+    #    qr/An unexpected problem occurred/, "$driver: check fetch_rows_expecting_single_row throws on unexpected error";
+    
+    # check throws ok on unexpected warning as well
+    # for this we need to suppress the warning that is generated as well, hence the nested warning_like test
+    # This does not affect the apparent number of tests run
+    my $warning = $driver eq 'mysql'    ?   'DBD::mysql::st execute failed'
+                                        :   'DBD::SQLite::db prepare failed';
+    throws_ok{
+        warning_like { $base_adaptor->fetch_rows_expecting_single_row( $select_statement, [  ] ) }
+            qr/$warning/;
+        }
         qr/An unexpected problem occurred/, "$driver: check fetch_rows_expecting_single_row throws on unexpected error";
     
     # check _prepare method - 4 tests

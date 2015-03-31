@@ -230,10 +230,17 @@ foreach my $db_connection ( @db_connections ){
     throws_ok { $guideRNA_prep_adaptor->store_guideRNA_prep($mock_plate) }
         qr/Argument\smust\sbe\sCrispr::DB::GuideRNAPrep\sobject/,
         "$driver: store_guideRNA_prep throws if object is not Crispr::DB::GuideRNAPrep";
+    
+    # check throws ok on attempted duplicate entry
+    # for this we need to suppress the warning that is generated as well, hence the nested warning_like test
+    # This does not affect the apparent number of tests run
     my $regex = $driver eq 'mysql' ?   qr/Duplicate\sentry/xms
         :                           qr/PRIMARY\sKEY\smust\sbe\sunique/xms;
     
-    throws_ok { $guideRNA_prep_adaptor->store_guideRNA_prep( $mock_gRNA_1 ) }
+    throws_ok {
+        warning_like { $guideRNA_prep_adaptor->store_guideRNA_prep( $mock_gRNA_1 ) }
+            $regex;
+    }
         $regex, "$driver: store_guideRNA_prep throws because of duplicate entry";
 
     $mock_well->mock( 'position', sub{ return 'A02' } );
@@ -341,7 +348,7 @@ foreach my $db_connection ( @db_connections ){
     $gRNA_prep_from_db = $guideRNA_prep_adaptor->fetch_by_id( 4 );
     check_attributes( $gRNA_prep_from_db, $mock_gRNA_2, $driver, 'fetch_by_id', );
     throws_ok{ $guideRNA_prep_adaptor->fetch_by_id( 10 ) } qr/Couldn't retrieve guideRNA_prep/, 'guideRNA_prep does not exist in db';
-    ok( $gRNA_prep_from_db = $guideRNA_prep_adaptor->fetch_by_id( 5 ) );
+    ok( $gRNA_prep_from_db = $guideRNA_prep_adaptor->fetch_by_id( 5 ), 'fetch_by_id - 5' );
     
     # fetch_by_ids - 14 tests
     my @ids = ( 3, 4 );
@@ -401,7 +408,7 @@ TODO: {
     ok( $guideRNA_prep_adaptor->delete_guideRNA_prep_from_db ( 1 ), 'delete_guideRNA_prep_from_db');
 
 }
-    #$test_db_connections{$driver}->destroy();
+    $test_db_connections{$driver}->destroy();
 }
 
 # 7 tests per call

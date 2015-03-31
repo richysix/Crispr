@@ -178,11 +178,20 @@ foreach my $db_connection ( @db_connections ){
 
     throws_ok { $cas9_adaptor->store_cas9('Cas9Object') }
         qr/Argument\smust\sbe\sCrispr::Cas9\sobject/, "$driver: store_cas9 throws on string input";
+    
+    # check throws ok on attempted duplicate entry
+    # for this we need to suppress the warning that is generated as well, hence the nested warning_like test
+    # This does not affect the apparent number of tests run
     my $regex = $driver eq 'mysql' ?   qr/Duplicate\sentry/xms
         :                           qr/PRIMARY\sKEY\smust\sbe\sunique/xms;
     
-    throws_ok { $cas9_adaptor->store_cas9( $mock_cas9_object_1) }
-        $regex, "$driver: store_cas9 throws because of duplicate entry";
+    throws_ok {
+        warning_like { $cas9_adaptor->store_cas9( $mock_cas9_object_1) }
+        $regex;
+    }
+    $regex, "$driver: store_cas9 throws because of duplicate entry";
+
+
     ok( $cas9_adaptor->store_cas9( $mock_cas9_object_2 ), "$driver: store_cas9" );
     my $cas9_id = $driver eq 'mysql'    ?   3
         :                                   2;

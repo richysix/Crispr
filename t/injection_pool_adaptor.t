@@ -278,10 +278,17 @@ foreach my $db_connection ( @db_connections ){
     throws_ok { $injection_pool_adaptor->store_injection_pool($mock_cas9_object) }
         qr/Argument\smust\sbe\sCrispr::DB::InjectionPool\sobject/,
         "$driver: store_injection_pool throws if object is not Crispr::DB::InjectionPool";
+    
+    # check throws ok on attempted duplicate entry
+    # for this we need to suppress the warning that is generated as well, hence the nested warning_like test
+    # This does not affect the apparent number of tests run
     my $regex = $driver eq 'mysql' ?   qr/Duplicate\sentry/xms
         :                           qr/PRIMARY\sKEY\smust\sbe\sunique/xms;
     
-    throws_ok { $injection_pool_adaptor->store_injection_pool( $mock_injection_pool) }
+    throws_ok {
+        warning_like { $injection_pool_adaptor->store_injection_pool( $mock_injection_pool) }
+            $regex;
+    }
         $regex,
         "$driver: store_injection_pool throws because of duplicate entry";
     

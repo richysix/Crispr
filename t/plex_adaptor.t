@@ -136,10 +136,18 @@ foreach my $db_connection ( @db_connections ){
     throws_ok { $plex_adaptor->store_plex($mock_cas9_object) }
         qr/Argument\smust\sbe\sCrispr::DB::Plex\sobject/,
         "$driver: store_plex throws if object is not Crispr::DB::Plex";
+    
+    # check throws ok on attempted duplicate entry
+    # for this we need to suppress the warning that is generated as well, hence the nested warning_like test
+    # This does not affect the apparent number of tests run
     my $regex = $driver eq 'mysql' ?   qr/Duplicate\sentry/xms
         :                           qr/PRIMARY\sKEY\smust\sbe\sunique/xms;
     
-    throws_ok { $plex_adaptor->store_plex( $mock_plex) } $regex, "$driver: store_plex throws because of duplicate entry";
+    throws_ok {
+        warning_like { $plex_adaptor->store_plex( $mock_plex) }
+            $regex;
+    }
+        $regex, "$driver: store_plex throws because of duplicate entry";
     
     $p_id = 2;
     $plex_name_1 = 'MPX15';
@@ -215,7 +223,7 @@ foreach my $db_connection ( @db_connections ){
     );
     
     # _fetch - 8 tests
-    ok( $plex_adaptor->_fetch() );
+    ok( $plex_adaptor->_fetch(), '_fetch');
     my $plex_from_db = @{ $plex_adaptor->_fetch( 'plex_id = ?', [ 3, ] ) }[0];
     check_attributes( $plex_from_db, $mock_plex, $driver, 'fetch_by_id', );
     throws_ok { $plex_adaptor->_fetch( 'plex_id = ?' ) }
