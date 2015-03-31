@@ -270,7 +270,7 @@ sub fetch_by_name {
     return $sample;
 }
 
-=method fetch_all_by_plex_id
+=method fetch_all_by_subplex_id
 
   Usage       : $samples = $sample_adaptor->fetch_all_by_plex_id( $plex_id );
   Purpose     : Fetch an sample given a plex database id
@@ -411,6 +411,17 @@ END_SQL
 
     return \@samples;    
 }
+
+=method delete_sample_from_db
+
+  Usage       : $sample_adaptor->delete_sample_from_db( $sample );
+  Purpose     : Delete a sample from the database
+  Returns     : Crispr::DB::Sample object
+  Parameters  : Crispr::DB::Sample object
+  Throws      : 
+  Comments    : Not inmplemented yet.
+
+=cut
 
 sub delete_sample_from_db {
 	#my ( $self, $sample ) = @_;

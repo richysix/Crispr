@@ -486,6 +486,17 @@ sub _make_new_guideRNA_prep_from_db {
     return $guideRNA_prep;
 }
 
+=method delete_guideRNA_prep_from_db
+
+  Usage       : $guide_rna_prep_adaptor->delete_guideRNA_prep_from_db( $guide_rna_prep );
+  Purpose     : Delete a guide_rna_prep from the database
+  Returns     : Crispr::DB::GuideRNAPrep object
+  Parameters  : Crispr::DB::GuideRNAPrep object
+  Throws      : 
+  Comments    : Not inmplemented yet.
+
+=cut
+
 sub delete_guideRNA_prep_from_db {
 	#my ( $self, $guideRNA_prep ) = @_;
 	

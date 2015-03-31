@@ -409,6 +409,17 @@ END_SQL
     return \@injection_pools;    
 }
 
+=method delete_injection_pool_from_db
+
+  Usage       : $injection_pool_adaptor->delete_injection_pool_from_db( $injection_pool );
+  Purpose     : Delete a injection_pool from the database
+  Returns     : Crispr::DB::InjectionPool object
+  Parameters  : Crispr::DB::InjectionPool object
+  Throws      : 
+  Comments    : Not implemented yet.
+
+=cut
+
 sub delete_injection_pool_from_db {
 	#my ( $self, $injection_pool ) = @_;
 	

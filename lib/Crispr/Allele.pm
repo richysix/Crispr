@@ -53,7 +53,7 @@ subtype 'Crispr::Allele::DNA',
 
 =method db_id
 
-  Usage       : $inj->db_id;
+  Usage       : $allele->db_id;
   Purpose     : Getter/Setter for Sample db_id attribute
   Returns     : Int (can be undef)
   Parameters  : None
@@ -69,7 +69,7 @@ has 'db_id' => (
 
 =method chr
 
-  Usage       : $inj->chr;
+  Usage       : $allele->chr;
   Purpose     : Getter for Sample chr attribute
   Returns     : Str
   Parameters  : None
@@ -86,7 +86,7 @@ has 'chr' => (
 
 =method pos
 
-  Usage       : $inj->pos;
+  Usage       : $allele->pos;
   Purpose     : Getter for pos attribute
   Returns     : Int
   Parameters  : None
@@ -103,7 +103,7 @@ has 'pos' => (
 
 =method ref_allele
 
-  Usage       : $inj->ref_allele;
+  Usage       : $allele->ref_allele;
   Purpose     : Getter for ref_allele attribute
   Returns     : Str (must be valid DNA sequence)
   Parameters  : None
@@ -121,7 +121,7 @@ has 'ref_allele' => (
 
 =method alt_allele
 
-  Usage       : $inj->alt_allele;
+  Usage       : $allele->alt_allele;
   Purpose     : Getter for alt_allele attribute
   Returns     : Str (must be valid DNA sequence)
   Parameters  : None
@@ -139,7 +139,7 @@ has 'alt_allele' => (
 
 =method sa_number
 
-  Usage       : $inj->sa_number;
+  Usage       : $allele->sa_number;
   Purpose     : Getter for Sample sa_number attribute
   Returns     : Str
   Parameters  : None
@@ -155,7 +155,7 @@ has 'sa_number' => (
 
 =method percent_of_reads
 
-  Usage       : $inj->percent_of_reads;
+  Usage       : $allele->percent_of_reads;
   Purpose     : Getter for Sample percent_of_reads attribute
   Returns     : Num
   Parameters  : None
@@ -171,7 +171,7 @@ has 'percent_of_reads' => (
 
 =method kaspar_assay
 
-  Usage       : $inj->kaspar_assay;
+  Usage       : $allele->kaspar_assay;
   Purpose     : Getter for Sample kaspar_assay attribute
   Returns     : Crispr::Kasp object
   Parameters  : None
@@ -190,6 +190,17 @@ has 'kaspar_assay' => (
         kaspar_col_id => 'col_id',
     },
 );
+
+=method allele_name
+
+  Usage       : $allele->allele_name;
+  Purpose     : Getter for Allele name attribute
+  Returns     : Str  (CHR:POS:REF:ALT)
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
 
 sub allele_name {
     my ( $self, ) = @_;

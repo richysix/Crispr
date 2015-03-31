@@ -475,6 +475,17 @@ sub _make_new_cas9_prep_from_db {
     return $cas9_prep;
 }
 
+=method delete_cas9_prep_from_db
+
+  Usage       : $cas9_prep_adaptor->delete_cas9_prep_from_db( $cas9_prep );
+  Purpose     : Delete a cas9_prep from the database
+  Returns     : Crispr::DB::Cas9Prep object
+  Parameters  : Crispr::DB::Cas9Prep object
+  Throws      : 
+  Comments    : Not implemented yet.
+
+=cut
+
 sub delete_cas9_prep_from_db {
     #my ( $self, $cas9_prep ) = @_;
     

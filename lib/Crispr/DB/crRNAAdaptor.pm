@@ -756,9 +756,9 @@ sub fetch_by_names_and_targets {
     return \@crRNAs;
 }
 
-=method fetch_by_target
+=method fetch_all_by_target
 
-    Usage       : $crRNAs = $crRNA_adaptor->fetch_by_target( $target );
+    Usage       : $crRNAs = $crRNA_adaptor->fetch_all_by_target( $target );
     Purpose     : Fetch a list of crRNAs given a Crispr::Target objects
     Returns     : Arrayref of Crispr::crRNA objects
     Parameters  : Crispr::Target
@@ -909,7 +909,17 @@ sub _make_new_crRNA_from_db {
 #}
 #
 
-## NOT IMPLEMENTED YET
+=method delete_crRNA_from_db
+
+  Usage       : $crRNA_adaptor->delete_crRNA_from_db( $crRNA );
+  Purpose     : Delete a crRNA from the database
+  Returns     : Crispr::DB::crRNA object
+  Parameters  : Crispr::DB::crRNA object
+  Throws      : 
+  Comments    : Not implemented yet.
+
+=cut
+
 sub delete_crRNA_from_db {
 #	my ( $self, $crRNA ) = @_;
 #	
@@ -924,6 +934,17 @@ sub delete_crRNA_from_db {
 #	
 #	
 }
+
+=method exists_in_db
+
+  Usage       : $crRNA_adaptor->exists_in_db( $crRNA_name );
+  Purpose     : Check whether a crRNA exists in the database
+  Returns     : Crispr::DB::crRNA object
+  Parameters  : Str (crRNA_name)
+  Throws      : 
+  Comments    : 
+
+=cut
 
 sub exists_in_db {
     my ( $self, $cr_name ) = @_;

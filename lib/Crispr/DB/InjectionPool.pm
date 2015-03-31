@@ -290,6 +290,8 @@ The new method accepts as arguments either a Hash or HashRef. Calling it in any 
 
 The date attribute must be supplied either as a DateTime object or a string of the format 'yyyy-mm-dd'.
 
+=back
+
 =head1 DEPENDENCIES
  
  Moose

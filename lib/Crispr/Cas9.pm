@@ -387,6 +387,8 @@ The supplied sequence must only contain the characters ACGTNRYSWMKBDHV.
 
 The new method accepts as arguments either a Hash or HashRef. Calling it in any other way will give this error message.
 
+=back
+
 =head1 DEPENDENCIES
  
  Moose

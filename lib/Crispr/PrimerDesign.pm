@@ -26,10 +26,50 @@ use Bio::Restriction::Analysis;
 use List::MoreUtils qw{ any };
 use Carp qw{ cluck confess };
 
+=method new
+
+  Usage       : my $primer_design = Crispr::PrimerDesign->new(
+                    config_file => 'config_file.txt',
+                    rebase_file => 'withrefm.405',
+                );
+  Purpose     : Constructor for creating Crispr objects
+  Returns     : Crispr object
+  Parameters  : config_file         => Str
+                cfg                 => Crispr::Config,
+                primer3adptor       => PCR::Primer3,
+                rebase_file         => Str
+                enzyme_collection   => Bio::Restriction::EnzymeCollection,
+  Throws      : If parameters are not the correct type
+  Comments    : None
+
+=cut
+
+=method config_file
+
+  Usage       : $crispr_design->config_file;
+  Purpose     : Getter/Setter for config_file attribute
+  Returns     : Str
+  Parameters  : Str
+  Throws      : 
+  Comments    : 
+
+=cut
+
 has 'config_file' => (
     is => 'rw',
     isa => 'Str',
 );
+
+=method cfg
+
+  Usage       : $crispr_design->cfg;
+  Purpose     : Getter/Setter for cfg attribute
+  Returns     : Str
+  Parameters  : Str
+  Throws      : 
+  Comments    : 
+
+=cut
 
 has 'cfg' => (
     is => 'rw',
@@ -38,17 +78,50 @@ has 'cfg' => (
     lazy => 1,
 );
 
+=method primer3adaptor
+
+  Usage       : $crispr_design->primer3adaptor;
+  Purpose     : Getter for primer3adaptor attribute
+  Returns     : Str
+  Parameters  : Str
+  Throws      : 
+  Comments    : 
+
+=cut
+
 has 'primer3adaptor' => (
-    is => 'rw',
+    is => 'ro',
     isa => 'PCR::Primer3',
     builder => '_build_adaptor',
     lazy => 1,
 );
 
+=method rebase_file
+
+  Usage       : $crispr_design->rebase_file;
+  Purpose     : Getter for rebase_file attribute
+  Returns     : Str
+  Parameters  : Str
+  Throws      : 
+  Comments    : 
+
+=cut
+
 has 'rebase_file' => (
     is => 'ro',
     isa => 'Maybe[Str]',
 );
+
+=method enzyme_collection
+
+  Usage       : $crispr_design->enzyme_collection;
+  Purpose     : Getter for enzyme_collection attribute
+  Returns     : Str
+  Parameters  : Str
+  Throws      : 
+  Comments    : 
+
+=cut
 
 has 'enzyme_collection' => (
     is => 'ro',
@@ -56,6 +129,17 @@ has 'enzyme_collection' => (
     builder => '_build_enzyme_collection',
     lazy => 1,
 );
+
+=method _build_config
+
+  Usage       : $crispr_design->_build_config;
+  Purpose     : Internal method to create Crispr::Config object from config file
+  Returns     : Crispr::Config
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
 
 sub _build_config {
     my ( $self, ) = @_;
@@ -69,11 +153,33 @@ sub _build_config {
     return $cfg;
 };
 
+=method _build_adaptor
+
+  Usage       : $crispr_design->_build_adaptor;
+  Purpose     : Internal method to make new PCR::Primer3 object from config file
+  Returns     : PCR::Primer3
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
 sub _build_adaptor {
     my ( $self ) = @_;
     my $primer3adaptor = PCR::Primer3->new( cfg => $self->cfg );
     return $primer3adaptor;
 }
+
+=method _build_enzyme_collection
+
+  Usage       : $crispr_design->_build_enzyme_collection;
+  Purpose     : Internal method to create a new Bio::Restriction::EnzymeCollection object from a REBASE file
+  Returns     : Bio::Restriction::EnzymeCollection
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
 
 sub _build_enzyme_collection {
     my ( $self, ) = @_;
@@ -169,7 +275,7 @@ sub design_primers {
     return $targets;
 }
 
-=func design_primers_multiple_rounds_nested
+=method design_primers_multiple_rounds_nested
 
   Usage       : $targets = design_primers_multiple_rounds_nested($targets, \@size_ranges, \%adaptors_for, );
   Purpose     : wrapper function to do several rounds of nested primer design
@@ -417,6 +523,22 @@ sub design_primers_multiple_rounds_nested {
     return $targets;
 }
 
+=method design_primers_multiple_rounds
+
+  Usage       : $crispr_design->design_primers_multiple_rounds( \%targets, $type, \@size_ranges, \%adaptors_for );
+  Purpose     : Designs PCR primers using multiple rounds
+  Returns     : Hashref of primers and settings
+  Parameters  : HashRef of target info and settings
+                Str (primer type)
+                ArrayRef of Str (product size ranges)
+                HashRef of Bio::EnsEMBL::DBSQL::SliceAdaptor and
+                Bio::EnsEMBL::DBSQL::VariationFeatureAdaptor adaptors for
+                particular species (e.g. $hashref->{species}->{sa || vfa})
+  Throws      : 
+  Comments    : 
+
+=cut
+
 sub design_primers_multiple_rounds {
     my ( $self, $targets, $type, $size_ranges, $adaptors_for ) = @_;
     
@@ -485,6 +607,25 @@ sub design_primers_multiple_rounds {
     
     return $targets;
 }
+
+=method sort_and_select_primers
+
+  Usage       : $crispr_design->sort_and_select_primers( \@primers, $type, $round, \%targets, \%adaptors_for, $restriction_digest);
+  Purpose     : Selects primers by pair_penalty (then product size)
+  Returns     : Hashref of primers and settings
+  Parameters  : Primers to sort (ArrayRef of PrimerPair objects)
+                Primer type (Str)
+                Product size ranges (ArrayRef of Str)
+                Primer Design round (Int)
+                HashRef of target info and settings
+                HashRef of Bio::EnsEMBL::DBSQL::SliceAdaptor and
+                Bio::EnsEMBL::DBSQL::VariationFeatureAdaptor adaptors for
+                particular species (e.g. $hashref->{species}->{sa || vfa})
+                Restriction digest flag (Int)
+  Throws      : 
+  Comments    : 
+
+=cut
 
 sub sort_and_select_primers {
     my ( $self, $primers_to_sort, $type, $round, $targets, $adaptors_for, $re ) = @_;
@@ -593,6 +734,18 @@ sub sort_and_select_primers {
     return $targets;
 }
 
+=method fasta_for_repeatmask
+
+  Usage       : $crispr_design->fasta_for_repeatmask( \%targets, $type );
+  Purpose     : Produces a fasta file of sequences for repeat masking
+  Returns     : Target sequences (ArrayRef of Str)
+  Parameters  : HashRef of target info and settings
+                Primer type (Str)
+  Throws      : 
+  Comments    : 
+
+=cut
+
 sub fasta_for_repeatmask {
     my ( $self, $targets, $type ) = @_;
     
@@ -611,6 +764,17 @@ sub fasta_for_repeatmask {
     return $amp_array;
 }
 
+=method repeatmask
+
+  Usage       : $crispr_design->repeatmask( \%targets, $type );
+  Purpose     : Runs repeat masking
+  Returns     : Targets HashRef
+  Parameters  : Hashref of target info and settings
+                Primer type (Str)
+  Throws      : 
+  Comments    : 
+
+=cut
 
 sub repeatmask {
     my ($self, $targets, $type ) = @_;
@@ -644,6 +808,21 @@ sub repeatmask {
     unlink @rmfile;
     return $targets;
 }
+
+=method variationmask
+
+  Usage       : $crispr_design->variationmask( \%targets, $type, \%adaptors_for, );
+  Purpose     : Searches Ensembl databases for variation to avoid
+  Returns     : Targets HashRef
+  Parameters  : Hashref of target info and settings
+                Primer type (Str)
+                HashRef of Bio::EnsEMBL::DBSQL::SliceAdaptor and
+                Bio::EnsEMBL::DBSQL::VariationFeatureAdaptor adaptors for
+                particular species (e.g. $hashref->{species}->{sa || vfa})
+  Throws      : 
+  Comments    : 
+
+=cut
 
 sub variationmask {
     my ( $self, $targets, $type, $adaptors_for, ) = @_;
@@ -701,7 +880,7 @@ sub variationmask {
 
 =func get_design_slice_for_target
 
-  Usage       : $design_slice = get_design_slice_for_target( $target, $slice_adaptor );
+  Usage       : $design_slice = get_design_slice_for_target( $target, $slice_adaptor, $slice_extender );
   Purpose     : get a slice for designing PCR primers for a target 
   Returns     : Bio::EnsEMBL::Slice
   Parameters  : Crispr::Target
@@ -770,12 +949,44 @@ sub get_design_slice_for_target {
     return $design_slice;
 }
 
+=method check_slice
+
+  Usage       : $crispr_design->check_slice( $slice, $spacer_target_length, $slice_extender );
+  Purpose     : Check that slice is the right size
+  Returns     : None
+  Parameters  : Slice object (Bio::EnsEMBL::Slice)
+                target length (Int)
+                A number of bases to extend the slice by (Int)
+  Throws      : 
+  Comments    : 
+
+=cut
+
 sub check_slice {
-    my ( $slice, $spacer_target_length, $slice_extender ) = @_;
+    my ( $self, $slice, $target_length, $slice_extender ) = @_;
     my $seq = $slice->seq();
     print STDERR 'Slice for ', $slice->name(), " is truncated.\n"
-        if length($seq) != $spacer_target_length + 2*$slice_extender;
+        if length($seq) != $target_length + 2*$slice_extender;
 }
+
+=method check_for_unique_re_in_amplicon_and_crRNAs
+
+  Usage       : $crispr_design->check_for_unique_re_in_amplicon_and_crRNAs( $primer_pair, $type, \%target_info, $id, \%adaptors_for );
+  Purpose     : Checks whether there are restriction enzyme cut sites that are
+                in the crispr target site and unique in the PCR amplicon
+  Returns     : OK flag (0 or 1)
+                Target info (HashRef of target info and settings)
+  Parameters  : Primer pair (Crispr::PrimerPair)
+                Primer type (Str)
+                Target info (HashRef of targets info and settings)
+                Id (Str)
+                HashRef of Bio::EnsEMBL::DBSQL::SliceAdaptor and
+                Bio::EnsEMBL::DBSQL::VariationFeatureAdaptor adaptors for
+                particular species (e.g. $hashref->{species}->{sa || vfa})
+  Throws      : 
+  Comments    : 
+
+=cut
 
 sub check_for_unique_re_in_amplicon_and_crRNAs {
     my ( $self, $primer_pair, $type, $target_info, $id, $adaptors_for ) = @_;
@@ -813,6 +1024,25 @@ sub check_for_unique_re_in_amplicon_and_crRNAs {
     
     return ( $ok, $target_info );
 }
+
+=method compare_amplicon_to_crRNA
+
+  Usage       : $crispr_design->compare_amplicon_to_crRNA( \%target_info, $id, $amplicon_re_analysis, $crRNA, \%adaptors_for );
+  Purpose     : Compares to Restriction::Analysis objects to check for unique
+                restriction enzyme sites
+  Returns     : OK flag (0 or 1)
+                Crispr::crRNA object
+  Parameters  : Target info (HashRef of targets info and settings)
+                Id (Str)
+                Amplicon Restriction Analysis (Bio::Restriction::Analysis)
+                Crispr (Crispr::crRNA)
+                HashRef of Bio::EnsEMBL::DBSQL::SliceAdaptor and
+                Bio::EnsEMBL::DBSQL::VariationFeatureAdaptor adaptors for
+                particular species (e.g. $hashref->{species}->{sa || vfa})
+  Throws      : 
+  Comments    : 
+
+=cut
 
 sub compare_amplicon_to_crRNA {
     my ( $self, $target_info, $id, $amplicon_re_analysis, $crRNA, $adaptors_for ) = @_;
@@ -865,6 +1095,17 @@ sub compare_amplicon_to_crRNA {
     return ( $ok, $crRNA );
 }
 
+=method primers_header
+
+  Usage       : $crispr_design->primers_header;
+  Purpose     : Returns a list of column names for primers
+  Returns     : Array
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
 sub primers_header {
     my ( $self, ) = @_;
     my @info = ( qw{ chromosome target_position strand amp_size round
@@ -872,6 +1113,19 @@ sub primers_header {
         length1 tm1 length2 tm2 } );
     return @info;
 }
+
+=method print_primers_to_file
+
+  Usage       : $crispr_design->print_primers_to_file( \%targets, $type, $primer_fh );
+  Purpose     : Prints primer info to a file_handle
+  Returns     : 1 on Success
+  Parameters  : Target info (HashRef)
+                Primer type (Str)
+                File Handle
+  Throws      : 
+  Comments    : 
+
+=cut
 
 sub print_primers_to_file {
     my ( $self, $targets, $type, $primer_fh ) = @_;
@@ -910,6 +1164,17 @@ sub print_primers_to_file {
     return 1;
 }
 
+=method nested_primers_header
+
+  Usage       : $crispr_design->nested_primers_header;
+  Purpose     : Returns a list of column names for nested primers
+  Returns     : Array
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
 sub nested_primers_header {
     my ( $self, ) = @_;
     return join("\t",
@@ -927,6 +1192,18 @@ sub nested_primers_header {
     'length4', 'tm4',
     ), "\n";
 }
+
+=method print_nested_primers_to_file
+
+  Usage       : $crispr_design->print_nested_primers_to_file( \%targets, $primer_fh );
+  Purpose     : Prints info about nested primers to a file handle
+  Returns     : None
+  Parameters  : Target info (HashRef)
+                File Handle
+  Throws      : 
+  Comments    : 
+
+=cut
 
 sub print_nested_primers_to_file {
     my ( $self, $targets, $primer_fh ) = @_;
@@ -989,6 +1266,19 @@ sub print_nested_primers_to_file {
         }
     }
 }
+
+=method print_nested_primers_to_file_and_plates
+
+  Usage       : $crispr_design->print_nested_primers_to_file_and_plates( \%targets, $primer_fh, $plate_fh );
+  Purpose     : Prints primer info for nested primers to both a file and a plate file
+  Returns     : None
+  Parameters  : Target info (HashRef)
+                File Handle
+                File Handle
+  Throws      : 
+  Comments    : 
+
+=cut
 
 sub print_nested_primers_to_file_and_plates {
     my ( $self, $targets, $primer_fh, $plate_fh ) = @_;
@@ -1107,6 +1397,17 @@ sub print_nested_primers_to_file_and_plates {
     }
 }
 
+=method print_hrm_primers_header
+
+  Usage       : $crispr_design->print_hrm_primers_header;
+  Purpose     : Returns a list of column names for High-Res melting primers
+  Returns     : Array
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
 sub print_hrm_primers_header {
     my ( $self, ) = @_;
     return join("\t",
@@ -1121,6 +1422,17 @@ sub print_hrm_primers_header {
     'variants_in_product_all', 'variants_in_product_founder',
     ), "\n";
 }
+
+=method print_hrm_primers_to_file
+
+  Usage       : $crispr_design->print_hrm_primers_to_file( \%targets, $primer_fh, $plate_fh, $rowi, $coli, $plate );
+  Purpose     : Prints info about HRM primers to a file handle
+  Returns     : 
+  Parameters  : 
+  Throws      : 
+  Comments    : 
+
+=cut
 
 sub print_hrm_primers_to_file {
     my ( $self, $targets, $primer_fh, $plate_fh, $rowi, $coli, $plate ) = @_;
@@ -1256,6 +1568,17 @@ sub print_hrm_primers_to_file {
     return ( $rowi, $coli, $plate );
 }
 
+=method _increment_rows_columns
+
+  Usage       : $crispr_design->_increment_rows_columns;
+  Purpose     : Internal method to increment row and column indices
+  Returns     : 
+  Parameters  : 
+  Throws      : 
+  Comments    : Needs replacing with using a Plate object
+
+=cut
+
 sub _increment_rows_columns {
     my ( $self, $rowi, $coli, $plate ) = @_;
     $rowi++;
@@ -1265,6 +1588,17 @@ sub _increment_rows_columns {
     $coli = 1 if $coli > 12;
     return ( $rowi, $coli, $plate );
 }
+
+=method print_nested_primers_to_file_and_mixed_plates
+
+  Usage       : $crispr_design->print_nested_primers_to_file_and_mixed_plates( \%targets, $platei, $primer_fh, $plate_fh );
+  Purpose     : Prints info about nested primers to a file and a plate file for ordering mixed plates
+  Returns     : 
+  Parameters  : 
+  Throws      : 
+  Comments    : 
+
+=cut
 
 sub print_nested_primers_to_file_and_mixed_plates {
 	my ( $self, $targets, $platei, $primer_fh, $plate_fh ) = @_;

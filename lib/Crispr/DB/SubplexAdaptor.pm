@@ -392,6 +392,17 @@ END_SQL
     return \@subplexes;    
 }
 
+=method delete_subplex_from_db
+
+  Usage       : $subplex_adaptor->delete_subplex_from_db( $subplex );
+  Purpose     : Delete a subplex from the database
+  Returns     : Crispr::DB::Subplex object
+  Parameters  : Crispr::DB::Subplex object
+  Throws      : 
+  Comments    : Not implemented yet.
+
+=cut
+
 sub delete_subplex_from_db {
 	#my ( $self, $subplex ) = @_;
 	

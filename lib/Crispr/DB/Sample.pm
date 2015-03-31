@@ -40,7 +40,7 @@ with 'Crispr::SharedMethods';
 
 =method db_id
 
-  Usage       : $inj->db_id;
+  Usage       : $sample->db_id;
   Purpose     : Getter/Setter for Sample db_id attribute
   Returns     : Int (can be undef)
   Parameters  : None
@@ -56,7 +56,7 @@ has 'db_id' => (
 
 =method injection_pool
 
-  Usage       : $inj->injection_pool;
+  Usage       : $sample->injection_pool;
   Purpose     : Getter for Sample injection_pool attribute
   Returns     : Crispr::DB::InjectionPool
   Parameters  : None
@@ -72,7 +72,7 @@ has 'injection_pool' => (
 
 =method subplex
 
-  Usage       : $inj->subplex;
+  Usage       : $sample->subplex;
   Purpose     : Getter for subplex attribute
   Returns     : Crispr::DB::Subplex object
   Parameters  : None
@@ -88,7 +88,7 @@ has 'subplex' => (
 
 =method barcode_id
 
-  Usage       : $inj->barcode_id;
+  Usage       : $sample->barcode_id;
   Purpose     : Getter for barcode_id attribute
   Returns     : Int
   Parameters  : None
@@ -104,7 +104,7 @@ has 'barcode_id' => (
 
 =method generation
 
-  Usage       : $inj->generation;
+  Usage       : $sample->generation;
   Purpose     : Getter for generation attribute
   Returns     : Str ('G0', 'F1', OR 'F2' )
   Parameters  : None
@@ -120,7 +120,7 @@ has 'generation' => (
 
 =method sample_type
 
-  Usage       : $target->sample_type;
+  Usage       : $sample->sample_type;
   Purpose     : Getter for sample_type attribute
   Returns     : Str ('sperm', 'embryo' OR 'fin_clip')
   Parameters  : None
@@ -136,7 +136,7 @@ has 'sample_type' => (
 
 =method well_id
 
-  Usage       : $target->well_id;
+  Usage       : $sample->well_id;
   Purpose     : Getter for well_id attribute
   Returns     : Str
   Parameters  : None
@@ -152,7 +152,7 @@ has 'well_id' => (
 
 =method alleles
 
-  Usage       : $target->alleles;
+  Usage       : $sample->alleles;
   Purpose     : Getter/Setter for alleles attribute
   Returns     : ArrayRef[ Crispr::Allele ]
   Parameters  : ArrayRef[ Crispr::Allele ]
@@ -168,7 +168,7 @@ has 'alleles' => (
 
 =method species
 
-  Usage       : $target->species;
+  Usage       : $sample->species;
   Purpose     : Getter for species attribute
   Returns     : Str
   Parameters  : None
@@ -182,6 +182,17 @@ has 'species' => (
     isa => 'Str',
     default => 'zebrafish',
 );
+
+=method sample_name
+
+  Usage       : $sample->sample_name;
+  Purpose     : Getter for sample_name attribute
+  Returns     : Str
+  Parameters  : None
+  Throws      : If input is given
+  Comments    : 
+
+=cut
 
 sub sample_name {
     my ( $self, ) = @_;
@@ -198,7 +209,7 @@ __END__
 =head1 SYNOPSIS
  
     use Crispr::DB::Sample;
-    my $inj = Crispr::DB::Sample->new(
+    my $sample = Crispr::DB::Sample->new(
         db_id => undef,
         injection_pool => $inj,
         subplex => $subplex,

@@ -136,6 +136,16 @@ sub store {
     return $primer;
 }
 
+#_split_primer_into_seq_and_tail
+
+  #Usage       : ( $primer_sequence, $primer_tail, ) = $primer_adaptor->_split_primer_into_seq_and_tail( $p_sequence );
+  #Purpose     : Internal method to split primer sequences into adaptor tail and main primer sequence
+  #Returns     : Primer Sequence    => Str
+  #              Adaptor Sequence   => Str
+  #Parameters  : None
+  #Throws      : 
+  #Comments    : 
+
 sub _split_primer_into_seq_and_tail {
     my ( $self, $primer_sequence, ) = @_;
     my @tail_sequences = ( qw{ ACACTCTTTCCCTACACGACGCTCTTCCGATCT TCGGCATTCCTGCTGAACCGCTCTTCCGATCT } );
@@ -155,6 +165,18 @@ sub _split_primer_into_seq_and_tail {
     return ( $primer_sequence, $primer_tail, );
 }
 
+=method fetch_by_id
+
+  Usage       : $primer_adaptor->fetch_by_id( '1' );
+  Purpose     : Fetch a Primer from the database by its db_id.
+  Returns     : Crispr::Primer
+  Parameters  : Int
+  Throws      : If No rows are returned
+                If Too Many rows are returned
+  Comments    : 
+
+=cut
+
 sub fetch_by_id {
     my ( $self, $primer_id ) = @_;
     my $dbh = $self->connection->dbh();
@@ -171,6 +193,18 @@ sub fetch_by_id {
         return $primers->[0];
     }
 }
+
+=method fetch_by_name
+
+  Usage       : $primer_adaptor->fetch_by_name( '24:103-130:1' );
+  Purpose     : Fetch a Primer from the database by its name.
+  Returns     : Crispr::Primer
+  Parameters  : Str
+  Throws      : If No rows are returned
+                If Too Many rows are returned
+  Comments    : 
+
+=cut
 
 sub fetch_by_name {
     my ( $self, $primer_name ) = @_;
@@ -196,6 +230,15 @@ sub fetch_by_name {
     }
 }
 
+#_fetch_primers_by_attributes
+
+  #Usage       : $primers = $primer_adaptor->_fetch_primers_by_attributes( $fetch_statement, $attributes  );
+  #Purpose     : Internal method to fetch Crispr::Primers
+  #Returns     : Crispr::Primers
+  #Parameters  : None
+  #Throws      : 
+  #Comments    : 
+
 sub _fetch_primers_by_attributes {
     my ( $self, $fetch_statement, $attributes ) = @_;
     my $dbh = $self->connection->dbh();
@@ -216,6 +259,15 @@ sub _fetch_primers_by_attributes {
     return ( $primers, $num_rows );
 }
 
+#_make_new_primer_from_db
+
+  #Usage       : $crRNAs = $primer_adaptor->_make_new_primer_from_db( \@fields );
+  #Purpose     : Internal method to create a new Crispr::Primer object from fields returned for the database
+  #Returns     : Crispr::Primer
+  #Parameters  : None
+  #Throws      : 
+  #Comments    : 
+
 sub _make_new_primer_from_db {
     my ( $self, $fields, ) = @_;
     
@@ -235,7 +287,7 @@ sub _make_new_primer_from_db {
 
 #_build_plate_adaptor
 
-  #Usage       : $crRNAs = $crRNA_adaptor->_build_plate_adaptor();
+  #Usage       : $crRNAs = $primer_adaptor->_build_plate_adaptor();
   #Purpose     : Internal method to create a new Crispr::DB::PlateAdaptor
   #Returns     : Crispr::DB::PlatePrepAdaptor
   #Parameters  : None

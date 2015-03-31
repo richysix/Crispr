@@ -453,6 +453,15 @@ sub find_crRNAs_by_region {
 	return \@crRNAs;
 }
 
+#_construct_regex_from_target_seq
+#
+#Usage       : $crRNA->_construct_regex_from_target_seq( 'NNNNNNNNNNNNNNNNNNNNNGG' );
+#Purpose     : Internal method to construct a regex for the target sequence
+#Returns     : Stringified version of a regex for the target sequence
+#Parameters  : Target sequence
+#Throws      : 
+#Comments    : 
+
 sub _construct_regex_from_target_seq {
 	my ( $self, $target_str ) = @_;
 	my %regex_for = (
@@ -1218,6 +1227,19 @@ sub score_off_targets_from_sam_output {
 	return $crRNAs;
 }
 
+=method make_and_add_off_target_from_position
+
+  Usage       : $crispr->make_and_add_off_target_from_position( $crRNA, $pos, $annotation, );
+  Purpose     : Takes a position and an annotation and creates an off-target object and adds it to the supplied crRNA object
+  Returns     : crRNA
+  Parameters  : crRNA       Crispr::crRNA
+                position    String
+                annotation  String
+  Throws      : 
+  Comments    : 
+
+=cut
+
 sub make_and_add_off_target_from_position {
     my ( $self, $crRNA, $pos, $annotation ) = @_;
     
@@ -1329,13 +1351,13 @@ sub calculate_all_pc_coding_scores {
 	return $crRNA;
 }
 
-=method calculate_all_pc_coding_scores
+=method calculate_pc_coding_score
 
-  Usage       : $crispr->calculate_all_pc_coding_scores( $crRNA, $transcripts );
+  Usage       : $crispr->calculate_pc_coding_score( $crRNA, $transcript );
   Purpose     : Calculates the position of a crRNA relative to the start of a transcript and produces a score
-  Returns     : HashRef of Crispr::crRNA objects
+  Returns     : Float (coding score)
   Parameters  : Crispr::crRNA object
-                ArrayRef of Bio::EnsEMBL::Transcript objects
+                Bio::EnsEMBL::Transcript object
   Throws      : 
   Comments    : The score is the percentage of the protein removed by a premature stop at the crRNA cut-site
                 i.e. 1 is the start of the transcript and 0 is the end

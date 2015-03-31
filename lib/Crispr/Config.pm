@@ -15,6 +15,17 @@ package Crispr::Config;
 use warnings;
 use strict;
 
+=method new
+
+  Usage       : my $crispr = Crispr::crRNA->new( $config_file );
+  Purpose     : Constructor for creating a config object
+  Returns     : Crispr::Config object
+  Parameters  : $config_file => Str
+  Throws      : If no config file name is supplied
+  Comments    : None
+
+=cut
+
 sub new {
 	my ($class, $conf_file) = @_;
 	my $self;
@@ -31,6 +42,17 @@ sub new {
 	return $self;
 	
 }
+
+=method load_cfg
+
+  Usage       : $config->load_cfg;
+  Purpose     : Internal method to open and parse file config file contents
+  Returns     : Crispr::Config object
+  Parameters  : None
+  Throws      : 
+  Comments    : None
+
+=cut
 
 sub load_cfg {
 	my $self = shift;

@@ -236,6 +236,17 @@ END_SQL
     return \@plexes;    
 }
 
+=method delete_plex_from_db
+
+  Usage       : $plex_adaptor->delete_plex_from_db( $plex );
+  Purpose     : Delete a plex from the database
+  Returns     : Crispr::DB::Plex object
+  Parameters  : Crispr::DB::Plex object
+  Throws      : 
+  Comments    : Not implemented yet.
+
+=cut
+
 sub delete_plex_from_db {
 	#my ( $self, $plex ) = @_;
 	

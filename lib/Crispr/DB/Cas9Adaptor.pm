@@ -321,6 +321,17 @@ sub _make_new_cas9_from_db {
     return $cas9;
 }
 
+=method delete_cas9_from_db
+
+  Usage       : $cas9_adaptor->delete_cas9_from_db( $cas9 );
+  Purpose     : Delete a cas9 from the database
+  Returns     : Crispr::DB::Cas9 object
+  Parameters  : Crispr::DB::Cas9 object
+  Throws      : 
+  Comments    : Not implemented yet.
+
+=cut
+
 sub delete_cas9_from_db {
 	#my ( $self, $cas9 ) = @_;
 	
