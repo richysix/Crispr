@@ -409,27 +409,10 @@ sub get_and_check_options {
     }
     
     # Check options
-    if( !$options{plate_num} ){
-        my $continue;
-        while( !$continue ){
-            print <<END_ST;
-Option --plate_num has not been specified.
-Enter 0 if you want to continue without a plate.
-Enter a number if not...
-END_ST
-            my $response = <STDIN>;
-            chomp $response;
-            if( $response =~ m/\d+/ ){
-                $options{plate_num} = $response == 0 ?   undef
-                    :                           $response;
-                $continue = 1;
-            }
-            else{
-                print <<END_RESPONSE
-That isn't a number. Please enter a number.
-END_RESPONSE
-            }
-        }
+    if( !defined $options{plate_num} ){
+        my $msg = "Option --plate_num is required." .
+            "If you don't want to add primers to a plate, set it to 0.\n";
+        pod2usage( $msg );
     }
     
     # first check type is one of required ones
@@ -535,6 +518,18 @@ Optional columns are:
     and the crispr target site uniquely
     each item should consist of Enzyme_name:Site:Distance_to_crispr_cut_site
 
+=item B<--plate_num>
+
+Base plate number to put primers in. Integer.
+If no plate is required, set it to 0.
+A suffix is added to the plate_name depending on the type of primers.
+
+  ext = d
+  int = e
+  ext-illumina => f
+  int-illumina => g
+  int-illumina_tailed => h
+  
 =item B<--type>
 
 Type of primers. One of ext, int, illumina, illumina_tailed.
@@ -603,17 +598,6 @@ At the moment MySQL is assumed as the driver for this.
 
 File of restriction enzyme data from REBASE (rebase.neb.com/rebase/rebase.html).
 
-=item B<--plate_num>
-
-Base plate number to put primers in. Integer.
-A suffix is added to the plate_name depending on the type of primers.
-
-  ext = d
-  int = e
-  ext-illumina => f
-  int-illumina => g
-  int-illumina_tailed => h
-  
 =item B<--plate_type >
 
 Type of plate (96 or 384 well) [default:96]
