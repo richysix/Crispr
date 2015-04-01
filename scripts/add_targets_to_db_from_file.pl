@@ -41,7 +41,10 @@ while(<>){
     my @values;
     
     chomp;
-    if( m/\A $comment_regex/xms ){
+    if( $INPUT_LINE_NUMBER == 1 ){
+        if( !m/\A $comment_regex/xms ){
+            die "Input needs a header line starting with a #\n";
+        }
         s|$comment_regex||xms;
         @columns = split /\t/, $_;
         foreach my $column_name ( @columns ){

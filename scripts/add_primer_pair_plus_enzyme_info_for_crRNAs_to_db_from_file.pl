@@ -111,9 +111,12 @@ while(<>){
     my @values;
     
     chomp;
-    if( m/\A $comment_regex/xms ){
+    if( $INPUT_LINE_NUMBER == 1 ){
+        if( !m/\A $comment_regex/xms ){
+            die "Input needs a header line starting with a #\n";
+        }
+        s|$comment_regex||xms;
         @columns = split /\t/, $_;
-        $columns[0] =~ s/$comment_regex//xms;
         foreach my $column_name ( @columns ){
             if( none { $column_name eq $_ } @attributes ){
                 die "Could not recognise column name, ", $column_name, ".\n";
@@ -126,6 +129,7 @@ while(<>){
         }
         if( any { $_ eq 'well_id' } @columns ){
             $has_well_ids = 1;
+            warn "Input has well ids. Option --fill_direction will be ignored even if specified.\n";
         }
         if( any { $_ eq 'enzyme_info' } @columns  ){
             $has_enzyme_info = 1;

@@ -88,7 +88,7 @@ while(<>){
     chomp;
     if( $INPUT_LINE_NUMBER == 1 ){
         if( !m/\A $comment_regex/xms ){
-            die "Input needs a header line starting with a #";
+            die "Input needs a header line starting with a #\n";
         }
         s|$comment_regex||xms;
         @columns = split /\t/, $_;
