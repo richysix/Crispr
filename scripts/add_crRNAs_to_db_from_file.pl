@@ -228,7 +228,7 @@ if( scalar @crisprs <= $crispr_plate->plate_type ){
     };
     if( $EVAL_ERROR ){
         if( $EVAL_ERROR =~ m/PLATE\sALREADY\sEXISTS/xms ){
-            warn join(q{ }, 'Construction Plate', $crispr_plate->plate_name,
+            warn join(q{ }, 'Crispr Plate', $crispr_plate->plate_name,
                       'already exists in the database. Using this plate to add oligos to...'
                      ), "\n";
         }
