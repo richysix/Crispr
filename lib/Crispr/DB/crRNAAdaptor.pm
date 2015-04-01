@@ -218,7 +218,8 @@ sub store_crRNAs {
 			$sth->execute($crRNA->crRNA_id, $crRNA->name,
 				$crRNA->chr, $crRNA->start, $crRNA->end, $crRNA->strand,
 				$crRNA->sequence, $crRNA->five_prime_Gs,
-                $crRNA->score, $crRNA->off_target_score, $crRNA->coding_score,
+                $crRNA->score, $crRNA->off_target_score,
+                $crRNA->coding_score || undef,
 				$crRNA->target_id, $plate_id, $well_id,
 			);
 			
