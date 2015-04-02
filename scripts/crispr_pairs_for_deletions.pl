@@ -107,7 +107,7 @@ die "Something went wrong. There aren't any targets!\n" if !$targets_for;
 
 # check that at least one of the target pairs for a given gene has some crRNAs
 foreach my $target_id ( keys %{$targets_for} ){
-    if( !exists $targets_for->{ $target_id } ){
+    if( !@{$targets_for->{ $target_id }} ){
         warn "## No crRNAs for any of the targets for $target_id\n";
     }
 }
@@ -390,6 +390,7 @@ sub no_match {
 
 sub targets_from_gene {
     my ( $targets_for, $columns, ) = @_;
+    $targets_for->{ $columns->[0] } = [];
     $check_five_prime_score = 1;
     my $gene =  $columns->[0] =~ m/\AENS[A-Z]*G[0-9]{11}# gene id/xms       ?   $gene_adaptor->fetch_by_stable_id( $columns->[0] )
         :       $columns->[0] =~ m/\ARNASEQG[0-9]{11}# rnaseq gene id/xms   ?   $rnaseq_gene_adaptor->fetch_by_stable_id( $columns->[0] )
@@ -464,6 +465,7 @@ sub targets_from_gene {
 
 sub targets_from_transcript {
     my ( $targets_for, $columns, ) = @_;
+    $targets_for->{ $columns->[0] } = [];
     $check_five_prime_score = 1;
     
     my $transcript =    $columns->[0] =~ m/\AENS[A-Z]*T[0-9]{11}# transcript id/xms   ?   $transcript_adaptor->fetch_by_stable_id( $columns->[0] )
@@ -514,6 +516,7 @@ sub targets_from_transcript {
 
 sub targets_from_exon {
     my ( $targets_for, $columns, ) = @_;
+    $targets_for->{ $columns->[0] } = [];
     
     my $exon = $exon_adaptor->fetch_by_stable_id( $columns->[0] );
     my $gene = $gene_adaptor->fetch_by_exon_stable_id( $columns->[0] );
@@ -556,6 +559,8 @@ sub targets_from_exon {
 
 sub targets_from_posn {
     my ( $targets_for, $columns, ) = @_;
+    $targets_for->{ $columns->[0] } = [];
+    
     # split posn information
     my ( $chr, $region, $strand ) = split /:/, $columns->[0];
     if( !$chr || !$region ){
