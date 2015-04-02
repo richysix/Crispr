@@ -809,10 +809,7 @@ The path of the annotation file for the appropriate species. Must be in gff form
 =item B<--variation_file >
 
 A file of known background variation for filtering crispr target sites.
-all_var format at the moment.
-
-## TO DO:
-Change to vcf.
+Accepts tabixed vcf and all_var format.
 
 =item B<--target_sequence >
 
