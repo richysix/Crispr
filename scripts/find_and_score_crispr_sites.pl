@@ -261,6 +261,7 @@ sub get_exon {
             if( $EVAL_ERROR && $EVAL_ERROR =~ m/seen/xms ){
                 $success = 1;
                 warn join(q{ }, $EVAL_ERROR, "Skipping...\n", );
+                next;
             }
             elsif( $EVAL_ERROR ){
                 die $EVAL_ERROR;
@@ -358,10 +359,12 @@ sub get_gene {
                     };
                     if( $EVAL_ERROR && $EVAL_ERROR =~ m/seen/xms ){
                         warn join(q{ }, $EVAL_ERROR, "Skipping...\n", );
+                        next;
                     }
                     elsif( $EVAL_ERROR ){
                         die $EVAL_ERROR;
                     }
+                    
                     if( scalar @{$crRNAs} ){
                         $success = 1;
                     }
@@ -441,6 +444,7 @@ sub get_transcript {
                 };
                 if( $EVAL_ERROR && $EVAL_ERROR =~ m/seen/xms ){
                     warn join(q{ }, $EVAL_ERROR, "Skipping...\n", );
+                    next;
                 }
                 elsif( $EVAL_ERROR ){
                     die $EVAL_ERROR;
@@ -549,6 +553,7 @@ sub get_posn {
             };
             if( $EVAL_ERROR && $EVAL_ERROR =~ m/seen/xms ){
                 warn join(q{ }, $EVAL_ERROR, "Skipping...\n", );
+                next;
             }
             elsif( $EVAL_ERROR ){
                 die $EVAL_ERROR;
