@@ -520,7 +520,7 @@ sub find_crRNAs_by_target {
             "not a ", ref $target, ".\n";
     }
 	if( $self->_seen_target_name( $target->target_name ) ){
-		croak "This target, ", $target->target_name,", has been seen before.\n";
+		die "This target, ", $target->target_name,", has been seen before.\n";
 	}
 	my $crRNAs;
     eval {
@@ -675,6 +675,13 @@ sub filter_crRNAs_from_target_by_snps_and_indels {
 
 sub count_var_for_crRNA {
     my ( $self, $crRNA, $common_var_file, ) = @_;
+    my $file_type = $common_var_file =~ m/\.vcf\.gz \z/xms ? 'vcf'
+        :           $common_var_file =~ m/\.var\.gz \z/xms ? 'var'
+        :                                                    undef;
+    if( !$file_type ){
+        die "Do not understand the format of variation file, $common_var_file.\n";
+    }
+    
     # get coords of crRNA and construct tabix command
     my $region = join(":", $crRNA->chr, join("-", $crRNA->start, $crRNA->end ) );
     
@@ -695,8 +702,14 @@ sub count_var_for_crRNA {
             next;
         }
         else{
-            my ( $type, $chr, $pos, $ref, $alt, undef, ) = split /\t/xms, $line;
-            next if $type ne '-';
+            my ( $type, $chr, $id, $pos, $ref, $alt, undef, );
+            if( $file_type eq 'var' ){
+                ( $type, $chr, $pos, $ref, $alt, undef, ) = split /\t/xms, $line;
+                next if $type ne '-';
+            }
+            elsif( $file_type eq 'vcf' ){
+                ( $chr, $pos, $id, $ref, $alt, undef, ) = split /\t/xms, $line;
+            }
             $var_count++;
         }
     }
