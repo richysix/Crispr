@@ -807,8 +807,9 @@ Design PCR primers for screening by Illumina Sequencing.
         --right_adaptor             option to change the default right primer adaptor
         --ext_product_size          external product size range [default: 300-600]
         --int_product_size          internal product size range [default: 250-300]
-        --target_offset             comma separated list of distances away from the
-                                    crispr cut site that the primers must end [default: 60,40]
+        --target_offset             distance away from the crispr cut site that the primers must end
+                                    can be specified multiple times
+                                    offsets are tried in the order specified [default: 60,40]
         --file_prefix               a common prefix for primer output files
         --restriction_enzymes       output unique restriction enzyme info for each crRNA
         --norestriction_enzymes     turn off restriction enzyme output
@@ -888,7 +889,7 @@ Default: 250-300.
 =item B<--target_offset>
 
 Distances away from the crispr cut site that the primers must end.
-Comma-separated list of integers. These are used sequentially.
+Can be specified multiple times in which case they are used sequentially in the order that they are specified on the command line.
 If primers for some of the targets cannot be designed using the first offset the remainder will be designed using the next offset and so on.
 Therefore it makes sense for the offsets to get smaller.
 Default: 60,40.
