@@ -52,6 +52,7 @@ with 'Crispr::SharedMethods';
 has 'db_id' => (
     is => 'rw',
     isa => 'Maybe[Int]',
+    default => undef,
 );
 
 =method injection_pool
@@ -68,38 +69,6 @@ has 'db_id' => (
 has 'injection_pool' => (
     is => 'ro',
     isa => 'Crispr::DB::InjectionPool',
-);
-
-=method subplex
-
-  Usage       : $sample->subplex;
-  Purpose     : Getter for subplex attribute
-  Returns     : Crispr::DB::Subplex object
-  Parameters  : None
-  Throws      : If input is given
-  Comments    : 
-
-=cut
-
-has 'subplex' => (
-    is => 'ro',
-    isa => 'Crispr::DB::Subplex',
-);
-
-=method barcode_id
-
-  Usage       : $sample->barcode_id;
-  Purpose     : Getter for barcode_id attribute
-  Returns     : Int
-  Parameters  : None
-  Throws      : If input is given
-  Comments    : 
-
-=cut
-
-has 'barcode_id' => (
-    is => 'ro',
-	isa =>  'Int',
 );
 
 =method generation
@@ -122,7 +91,7 @@ has 'generation' => (
 
   Usage       : $sample->sample_type;
   Purpose     : Getter for sample_type attribute
-  Returns     : Str ('sperm', 'embryo' OR 'fin_clip')
+  Returns     : Str ('sperm', 'embryo' OR 'finclip')
   Parameters  : None
   Throws      : If input is given
   Comments    : 
@@ -131,13 +100,13 @@ has 'generation' => (
 
 has 'sample_type' => (
     is => 'ro',
-    isa => enum( [ qw{ sperm embryo fin_clip } ] ),
+    isa => enum( [ qw{ sperm embryo finclip } ] ),
 );
 
-=method well_id
+=method sample_number
 
-  Usage       : $sample->well_id;
-  Purpose     : Getter for well_id attribute
+  Usage       : $sample->sample_number;
+  Purpose     : Getter for sample_number attribute
   Returns     : Str
   Parameters  : None
   Throws      : If input is given
@@ -145,9 +114,9 @@ has 'sample_type' => (
 
 =cut
 
-has 'well_id' => (
+has 'sample_number' => (
     is => 'ro',
-    isa => 'Str',
+    isa => 'Int',
 );
 
 =method alleles
@@ -194,9 +163,16 @@ has 'species' => (
 
 =cut
 
-sub sample_name {
+has 'sample_name' => (
+    is => 'ro',
+    isa => 'Str',
+    lazy => 1,
+    builder => '_build_sample_name',
+);
+
+sub _build_sample_name {
     my ( $self, ) = @_;
-    return join("_", $self->subplex->db_id, $self->well_id, );
+    return join("_", $self->injection_pool->pool_name, $self->sample_number, );
 }
 
 __PACKAGE__->meta->make_immutable;
@@ -212,11 +188,8 @@ __END__
     my $sample = Crispr::DB::Sample->new(
         db_id => undef,
         injection_pool => $inj,
-        subplex => $subplex,
-        barcode_id => 1,
         generation => 'G0',
         sample_type => 'sperm',
-        well_id => 'A01',
     );    
     
 =head1 DESCRIPTION
