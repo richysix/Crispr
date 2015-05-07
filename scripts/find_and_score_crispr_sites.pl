@@ -27,50 +27,67 @@ use DateTime;
 my $date_obj = DateTime->now();
 my $todays_date = $date_obj->ymd;
 
-# check registry file
-if( $options{registry_file} ){
-    Bio::EnsEMBL::Registry->load_all( $options{registry_file} );
-}
-else{
-    # if no registry file connect anonymously to the public server
-    Bio::EnsEMBL::Registry->load_registry_from_db(
-      -host    => 'ensembldb.ensembl.org',
-      -user    => 'anonymous',
-    );
-}
-my $ensembl_version = Bio::EnsEMBL::ApiVersion::software_version();
+my ( $gene_adaptor, $exon_adaptor, $transcript_adaptor, $slice_adaptor,
+    $rnaseq_gene_adaptor, $rnaseq_transcript_adaptor, $ensembl_version, );
 
-# Ensure database connection isn't lost; Ensembl 64+ can do this more elegantly
-## no critic (ProhibitMagicNumbers)
-if ( $ensembl_version < 64 ) {
-## use critic
-    Bio::EnsEMBL::Registry->set_disconnect_when_inactive();
+if( !$options{no_db} ){
+    # check registry file
+    if( $options{registry_file} ){
+        Bio::EnsEMBL::Registry->load_all( $options{registry_file} );
+    }
+    else{
+        # if no registry file connect anonymously to the public server
+        Bio::EnsEMBL::Registry->load_registry_from_db(
+          -host    => 'ensembldb.ensembl.org',
+          -user    => 'anonymous',
+        );
+    }
+    $ensembl_version = Bio::EnsEMBL::ApiVersion::software_version();
+    
+    # Ensure database connection isn't lost; Ensembl 64+ can do this more elegantly
+    ## no critic (ProhibitMagicNumbers)
+    if ( $ensembl_version < 64 ) {
+    ## use critic
+        Bio::EnsEMBL::Registry->set_disconnect_when_inactive();
+    }
+    else {
+        Bio::EnsEMBL::Registry->set_reconnect_when_lost();
+    }
+    
+    # get adaptors
+    $gene_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'core', 'gene' );
+    $exon_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'core', 'exon' );
+    $transcript_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'core', 'transcript' );
+    $slice_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'core', 'slice' );
+    $rnaseq_gene_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'otherfeatures', 'gene' );
+    $rnaseq_transcript_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'otherfeatures', 'transcript' );
 }
-else {
-    Bio::EnsEMBL::Registry->set_reconnect_when_lost();
-}
-
-# get adaptors
-my $gene_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'core', 'gene' );
-my $exon_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'core', 'exon' );
-my $transcript_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'core', 'transcript' );
-my $slice_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'core', 'slice' );
-my $rnaseq_gene_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'otherfeatures', 'gene' );
-my $rnaseq_transcript_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'otherfeatures', 'transcript' );
 
 # open filehandles for off_target fasta files
 my $basename = $todays_date;
 $basename =~ s/\A/$options{file_base}_/xms if( $options{file_base} );
 
 # make new design object
-my $crispr_design = Crispr->new(
-    species => $options{species},
-    target_seq => $options{target_sequence},
-    target_genome => $options{target_genome},
-    annotation_file => $options{annotation_file},
-    slice_adaptor => $slice_adaptor,
-    debug => $options{debug},
-);
+my $crispr_design;
+if( !$options{no_db} ){
+    $crispr_design= Crispr->new(
+        species => $options{species},
+        target_seq => $options{target_sequence},
+        target_genome => $options{target_genome},
+        annotation_file => $options{annotation_file},
+        slice_adaptor => $slice_adaptor,
+        debug => $options{debug},
+    );
+}
+else{
+    $crispr_design= Crispr->new(
+        species => $options{species},
+        target_seq => $options{target_sequence},
+        target_genome => $options{target_genome},
+        annotation_file => $options{annotation_file},
+        debug => $options{debug},
+    );
+}
 if( defined $options{num_five_prime_Gs} ){
     $crispr_design->five_prime_Gs( $options{num_five_prime_Gs} );
 }
@@ -506,26 +523,15 @@ sub get_posn {
     }
     my $target_name = $chr . ":" . $start_position . "-" . $end_position . ":" . $strand;
     
-    # get slice for position and get genes and transcripts that overlap posn
-    my $slice = $slice_adaptor->fetch_by_region( 'toplevel', $chr, $start_position, $end_position, $strand );
-    
-    if( $slice ){
-        my $gene;
-        if( $gene_id ){
-            if( $gene_id !~ m/\AENS[A-Z]*G[0-9]{11}\z/xms ){
-                die join(" ", $gene_id, "is not a valid gene id.", ), "\n";
-            }
-            # get gene from gene id and get transcripts
-            $gene = $gene_adaptor->fetch_by_stable_id( $gene_id );
+    my $target;
+    if( $options{no_db} ){
+        my $gene_name;
+        if( $gene_id !~ m/\AENS[A-Z]*G[0-9]{11}\z/xms ){
+            # assume it's a gene name
+            $gene_name = $gene_id;
+            $gene_id = undef;
         }
-        else{
-            my $genes = $gene_adaptor->fetch_all_by_Slice( $slice );
-            if( scalar @$genes == 1 ){
-                $gene = $genes->[0];
-            }
-        }
-        
-        my $target = Crispr::Target->new(
+        $target = Crispr::Target->new(
             target_name => $target_name,
             assembly => $options{assembly},
             chr => $chr,
@@ -533,44 +539,80 @@ sub get_posn {
             end => $end_position,
             strand => $strand,
             species => $options{species},
-            gene_id => $gene->stable_id,
-            gene_name => $gene->external_name,
+            gene_id => $gene_id,
+            gene_name => $gene_name,
             requestor => $requestor,
-            ensembl_version => $ensembl_version,
+            ensembl_version => undef,
         );
-        
-        if( $options{enzyme} ){
-            $target->requires_enzyme( $options{enzyme} );
-        }
-        
-        if( $options{no_crRNA} ){
-            $crispr_design->add_target( $target );
-        }
-        else{
-            my $crRNAs = [];
-            eval{
-                $crRNAs = $crispr_design->find_crRNAs_by_target( $target, );
-            };
-            if( $EVAL_ERROR && $EVAL_ERROR =~ m/seen/xms ){
-                warn join(q{ }, $EVAL_ERROR, "Skipping...\n", );
-                next;
-            }
-            elsif( $EVAL_ERROR ){
-                die $EVAL_ERROR;
-            }
-            if( scalar @{$crRNAs} ){
-                $success = 1;
-            }
-            else{
-                warn "No crRNAs for ", $target->target_name, "\n";
-                $crispr_design->remove_target( $target );
-            }
-        }
     }
     else{
-        warn "Couldn't get slice for region, $target_name.\n";
-        $success = 1;
+        # get slice for position and get genes and transcripts that overlap posn
+        my $slice = $slice_adaptor->fetch_by_region( 'toplevel', $chr, $start_position, $end_position, $strand );
+        if( $slice ){
+            my $gene;
+            if( $gene_id ){
+                if( $gene_id !~ m/\AENS[A-Z]*G[0-9]{11}\z/xms ){
+                    die join(" ", $gene_id, "is not a valid gene id.", ), "\n";
+                }
+                # get gene from gene id and get transcripts
+                $gene = $gene_adaptor->fetch_by_stable_id( $gene_id );
+            }
+            else{
+                my $genes = $gene_adaptor->fetch_all_by_Slice( $slice );
+                if( scalar @$genes == 1 ){
+                    $gene = $genes->[0];
+                }
+            }
+            
+            $target = Crispr::Target->new(
+                target_name => $target_name,
+                assembly => $options{assembly},
+                chr => $chr,
+                start => $start_position,
+                end => $end_position,
+                strand => $strand,
+                species => $options{species},
+                gene_id => $gene->stable_id,
+                gene_name => $gene->external_name,
+                requestor => $requestor,
+                ensembl_version => $ensembl_version,
+            );
+            
+        }
+        else{
+            warn "Couldn't get slice for region, $target_name.\n";
+            $success = 1;
+        }
     }
+
+    if( $options{enzyme} ){
+        $target->requires_enzyme( $options{enzyme} );
+    }
+    
+    if( $options{no_crRNA} ){
+        $crispr_design->add_target( $target );
+    }
+    else{
+        my $crRNAs = [];
+        eval{
+            $crRNAs = $crispr_design->find_crRNAs_by_target( $target, );
+        };
+        if( $EVAL_ERROR && $EVAL_ERROR =~ m/seen/xms ){
+            warn join(q{ }, $EVAL_ERROR, "Skipping...\n", );
+            next;
+        }
+        elsif( $EVAL_ERROR ){
+            die $EVAL_ERROR;
+        }
+        if( scalar @{$crRNAs} ){
+            $success = 1;
+        }
+        else{
+            warn "No crRNAs for ", $target->target_name, "\n";
+            $crispr_design->remove_target( $target );
+        }
+    }
+    
     return $success;
 }
 
@@ -626,6 +668,7 @@ sub get_and_check_options {
         'file_base=s',
         'requestor=s',
         'no_crRNA',
+        'no_db',
         'help',
         'man',
         'debug+',
@@ -753,6 +796,7 @@ possible off-target effects and optionally for its position in coding transcript
         --coding                turns on scoring of position of site within target gene
         --file_base             a prefix for all output files
         --requestor             A requestor to use for all targets
+        --no_db                 option to stop script using Ensembl database and using genome fasta file instead
         --no_crRNA              option to supress finding and scoring crispr target sites
         --help                  prints help message and exits
         --man                   prints manual page and exits
