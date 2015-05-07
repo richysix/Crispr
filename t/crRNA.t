@@ -189,6 +189,13 @@ $mock_target_object_2->set_isa( 'Crispr::Target' );
 $mock_target_object_2->mock( 'info', sub{ return (undef, undef, 'gfp', 'rw4') } );
 $mock_target_object_2->mock( 'assembly', sub{ return undef } );
 $mock_target_object_2->mock( 'gene_name', sub{ return 'gfp' } );
+# make new crRNA without a chr and add target to it
+$crRNA_no_chr = Crispr::crRNA->new(
+    start => 50,
+    end => 60,
+    species => 'Aequorea_victoria',
+    sequence => 'GGCCTTCGGGTTTGACCCCATGG',
+);
 $crRNA_no_chr->target( $mock_target_object_2 );
 
 is( $crRNA_no_chr->name, 'crRNA:gfp:50-60:1', 'Get name without chr but with gene_name');

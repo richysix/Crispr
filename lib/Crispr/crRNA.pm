@@ -103,6 +103,24 @@ has 'crRNA_id' => (
 
 =cut
 
+has 'name' => (
+    is => 'ro',
+    isa => 'Str',
+    lazy => 1,
+    builder => '_build_name',
+);
+
+=method target
+
+  Usage       : $crRNA->target;
+  Purpose     : Getter for associated target
+  Returns     : Crispr::Target object
+  Parameters  : None
+  Throws      : If input is given
+  Comments    : 
+
+=cut
+
 has 'target' => (
     is => 'rw',
     isa => 'Crispr::Target',
@@ -662,7 +680,7 @@ sub coding_scores_by_transcript {
 
 =cut
 
-sub name{
+sub _build_name {
     my ( $self, ) = @_;
     my $name = 'crRNA:';
     
