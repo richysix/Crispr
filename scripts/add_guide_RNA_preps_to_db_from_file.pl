@@ -128,11 +128,13 @@ while(<>){
                                     ([A-P])([0-9]+) # well_id
                                     \z/xms ){
         # check column number is possible
-        if( $3 > 24 ){
+        my $col_num = $3;
+        if( $col_num > 24 ){
             die join(q{ }, "Column number of well id is too large,",
                     $1, $args{crispr_guide}, ), "\n";
         }
-        my $well_id = $2 . $3;
+        $col_num = length $col_num == 1 ? '0' . $col_num : $col_num;
+        my $well_id = $2 . $col_num;
         my $plate_num = $1;
         $crRNA = $crRNA_adaptor->fetch_by_plate_num_and_well( $plate_num, $well_id, );
     }
