@@ -235,15 +235,6 @@ create table plex (
     CONSTRAINT `plex_plex_name` UNIQUE ( `plex_name` )
 ) ENGINE = InnoDB;
 
-create table subplex (
-    subplex_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    plex_id INT UNSIGNED NOT NULL,
-    plate_num TINYINT NOT NULL,
-    injection_id INT UNSIGNED NOT NULL,
-    FOREIGN KEY (plex_id) REFERENCES plex(plex_id),
-    FOREIGN KEY (injection_id) REFERENCES injection(injection_id)
-) ENGINE = InnoDB;
-
 create table sample (
     sample_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     sample_name VARCHAR(20) NOT NULL,
