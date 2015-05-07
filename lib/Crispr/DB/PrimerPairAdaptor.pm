@@ -14,6 +14,9 @@ use Crispr::PrimerPair;
 
 extends 'Crispr::DB::BaseAdaptor';
 
+# Cache for primer_pairs. HashRef keyed on db_id
+my %primer_pair_cache;
+
 =method new
 
   Usage       : my $primer_adaptor = Crispr::DB::PrimerPairAdaptor->new(
@@ -180,6 +183,98 @@ sub fetch_all_by_crRNA_id {
     return $primer_pairs;
 }
 
+=method fetch_by_id
+
+  Usage       : $primer_pair_adaptor->fetch_by_id( '1' );
+  Purpose     : method to retrieve a primer pair using it's db id.
+  Returns     : Crispr::PrimerPair
+  Parameters  : Str (primer pair db id)
+  Throws      : If input is not correct type
+  Comments    : 
+
+=cut
+
+sub fetch_by_id {
+    my ( $self, $primer_pair_id, ) = @_;
+    my $where_clause = 'pp.primer_pair_id = ?';
+    my $primer_pairs = $self->_fetch( $where_clause, [ $primer_pair_id ], );
+    return $primer_pairs->[0];
+}
+
+sub fetch_by_plate_name_and_well {
+    my ( $self, $plate_name, $well_id, ) = @_;
+    my $primer_pair;
+    
+    my $sql = <<"END_SQL";
+SELECT pp.primer_pair_id, type, left_primer_id, right_primer_id,
+pp.chr, pp.start, pp.end, pp.strand, pp.product_size,
+p1.primer_id, p1.primer_sequence, p1.primer_chr, p1.primer_start, p1.primer_end,
+p1.primer_strand, p1.primer_tail, p1.plate_id, p1.well_id
+FROM primer_pair pp, primer p1, amplicon_to_crRNA amp, plate pl
+WHERE pp.primer_pair_id = amp.primer_pair_id
+AND pp.left_primer_id = p1.primer_id
+AND pl.plate_id = p1.plate_id
+AND pl.plate_name = ? AND p1.well_id = ?;
+END_SQL
+
+    my $sth = $self->_prepare_sql(
+        $sql,
+        'p1.plate_name = ? AND p1.well_id = ?',
+        [ $plate_name, $well_id ],
+    );
+    $sth->execute();
+    
+    my ( $primer_pair_id, $type, $left_primer_id, $right_primer_id,
+        $chr, $start, $end, $strand, $product_size,
+        $primer_id, $primer_sequence, $primer_chr, $primer_start, $primer_end,
+        $primer_strand, $primer_tail, $plate_id );
+    
+    $sth->bind_columns( \( $primer_pair_id, $type,
+        $left_primer_id, $right_primer_id,
+        $chr, $start, $end, $strand, $product_size,
+        $primer_id, $primer_sequence, $primer_chr, $primer_start, $primer_end,
+        $primer_strand, $primer_tail, $plate_id, $well_id ) );
+    
+    while ( $sth->fetch ) {
+        if( !exists $primer_pair_cache{ $primer_pair_id } ){
+            my $primer_sequence = defined $primer_tail
+                    ?   $primer_tail . $primer_sequence
+                    :   $primer_sequence;
+            my $primer_name = join(":", $primer_chr,
+                                   join("-", $primer_start, $primer_end, ),
+                                   $primer_strand, );
+            
+            my $left_primer = Crispr::Primer->new(
+                primer_id => $left_primer_id,
+                plate_id => $plate_id,
+                well_id => $well_id,
+                sequence => $primer_sequence,
+                primer_name => $primer_name,
+                seq_region => $primer_chr,
+                seq_region_strand => $primer_strand,
+                seq_region_start => $primer_start,
+                seq_region_end => $primer_end,
+            );
+            my $right_primer = $self->primer_adaptor->fetch_by_id( $right_primer_id );
+            my $pair_name = join(":", $chr, join("-", $start, $end, ), $strand, );
+            
+            $primer_pair = Crispr::PrimerPair->new(
+                primer_pair_id => $primer_pair_id,
+                left_primer => $left_primer,
+                right_primer => $right_primer,
+                pair_name => $pair_name,
+                product_size => $product_size,
+                type => $type,
+            );
+            $primer_pair_cache{ $primer_pair_id } = $primer_pair;
+        }
+        else{
+            $primer_pair = $primer_pair_cache{ $primer_pair_id };
+        }
+    }
+    return $primer_pair;
+}
+
 =method _fetch
 
   Usage       : $primer_pair_adaptor->_fetch( $where_clause, $where_params_array );
@@ -192,13 +287,11 @@ sub fetch_all_by_crRNA_id {
 
 =cut
 
-# Cache for primer_pairs. HashRef keyed on db_id
-my %primer_pair_cache;
 sub _fetch {
     my ( $self, $where_clause, $where_parameters ) = @_;
     my $dbh = $self->connection->dbh();
     
-    # need to change query depending on whether drive is MySQL or SQLite
+    # need to change query depending on whether driver is MySQL or SQLite
     my ( $left_p_concat_statement, $right_p_concat_statement );
     if( ref $self->connection->driver eq 'DBIx::Connector::Driver::mysql' ){
         $left_p_concat_statement = 'concat( p1.primer_tail, p1.primer_sequence )';

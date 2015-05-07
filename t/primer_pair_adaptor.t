@@ -13,7 +13,7 @@ use Getopt::Long;
 use Readonly;
 use File::Spec;
 
-Readonly my $TESTS_FOREACH_DBC => 1 + 13 + 10;
+Readonly my $TESTS_FOREACH_DBC => 1 + 13 + 9 + 2 + 2;
 plan tests => 2 * $TESTS_FOREACH_DBC;
 
 use Crispr::DB::DBConnection;
@@ -156,6 +156,7 @@ foreach my $db_connection ( @db_connections ){
     $mock_left_primer->set_isa('Crispr::Primer');
     $mock_left_primer->mock('primer_id', sub { my @args = @_; if( $_[1]){ return $_[1] }else{ return $l_p_id} } );
     $mock_left_primer->mock( 'primer_name', sub { return '5:101-124:1' } );
+    $mock_left_primer->mock( 'well_id', sub { return 'A01' } );
     $mock_p1 = $mock_left_primer;
     
     my $mock_right_primer = Test::MockObject->new();
@@ -169,6 +170,7 @@ foreach my $db_connection ( @db_connections ){
     $mock_right_primer->set_isa('Crispr::Primer');
     $mock_right_primer->mock('primer_id', sub { my @args = @_; if( $_[1]){ return $_[1] }else{ return $r_p_id} } );
     $mock_right_primer->mock( 'primer_name', sub { return '5:600-623:-1' } );
+    $mock_right_primer->mock( 'well_id', sub { return 'A01' } );
     $mock_p2 = $mock_right_primer;
         
     my $mock_primer_pair = Test::MockObject->new();
@@ -185,7 +187,7 @@ foreach my $db_connection ( @db_connections ){
     $mock_primer_pair->mock('primer_pair_id', sub { my @args = @_; if($_[1]){ return $_[1] }else{ return $pair_id} } );
     $mock_pp = $mock_primer_pair;
     
-    # Test store method - 10 tests
+    # Test store method - 9 tests
     throws_ok{ $primer_pair_ad->store( $mock_primer_pair, [ $mock_crRNA ] ) }
         qr/Couldn't locate primer/, 'Try storing primer pair before primers are stored';
     
@@ -195,7 +197,7 @@ foreach my $db_connection ( @db_connections ){
     foreach my $p ( $mock_left_primer, $mock_right_primer ){
         $sth->execute( $p->primer_id, $p->sequence, $p->seq_region,
             $p->seq_region_start, $p->seq_region_end, $p->seq_region_strand,
-            $p->tail, 1, undef,
+            $p->tail, 1, $p->well_id,
         );
     }
     
@@ -241,13 +243,28 @@ foreach my $db_connection ( @db_connections ){
         qr/Supplied object must be a Crispr::crRNA object/, 'calling store with crRNA ids in empty ArrayRef';
     
     # test fetch methods
+    # _fetch - 2 tests
     my $where_clause = 'pp.primer_pair_id = ?';
-    ok( $primer_pair_ad->_fetch( $where_clause, [ 1 ] ), 'Test _fetch method' );
+    my $primer_pair_from_db;
+    ok( $primer_pair_from_db = $primer_pair_ad->_fetch( $where_clause, [ 1 ] ), 'Test _fetch method' );
+    check_attributes( $primer_pair_from_db->[0], $mock_primer_pair, $driver, '_fetch' );
     
+    # fetch_by_plate_and_well - 2 tests
+    ok( $primer_pair_from_db = $primer_pair_ad->fetch_by_plate_name_and_well( $mock_plate->plate_name, 'A01' ), 'Test fetch_by_plate_name_and_well method' );
+    SKIP: {
+        skip 'No primer pair returned from db', 1 if !defined $primer_pair_from_db;
+        
+        check_attributes( $primer_pair_from_db, $mock_primer_pair, $driver, 'fetch_by_plate_name_and_well' );
+    }
 }
 
 # drop databases
 foreach my $driver ( keys %test_db_connections ){
     $test_db_connections{$driver}->destroy();
+}
+
+sub check_attributes {
+    my ( $obj_1, $obj_2, $driver, $method, ) = @_;
+    is( $obj_1->primer_pair_id, $obj_2->primer_pair_id, "$driver: object from db $method - check primer pair db_id" );
 }
 
