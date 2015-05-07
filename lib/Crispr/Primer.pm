@@ -84,7 +84,7 @@ has 'primer_id' => (
 
 has 'plate_id' => (
 	is => 'ro',
-	isa => 'Int',
+	isa => 'Maybe[Int]',
 );
 
 =method well_id
