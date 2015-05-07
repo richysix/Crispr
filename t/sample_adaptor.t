@@ -16,7 +16,7 @@ use Crispr::DB::SampleAdaptor;
 use Crispr::DB::DBConnection;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 21 + 4 + 5 + 4 + 3 + 1;
+Readonly my $TESTS_IN_COMMON => 1 + 21 + 4 + 5 + 4 + 3 + 1 + 7 + 7 + 14 + 8;
 #Readonly my $TESTS_IN_COMMON => 1 + 20 + 4 + 13 + 2 + 3 + 24 + 24 + 48 + 25 + 2;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
@@ -25,11 +25,11 @@ Readonly my %TESTS_FOREACH_DBC => (
 plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
 
 # check attributes and methods - 5 + 16 tests
-my @attributes = ( qw{ dbname db_connection connection subplex_adaptor injection_pool_adaptor } );
+my @attributes = ( qw{ dbname db_connection connection analysis_adaptor injection_pool_adaptor } );
 
 my @methods = (
     qw{ store store_sample store_samples fetch_by_id fetch_by_ids
-        fetch_by_name fetch_all_by_subplex_id fetch_all_by_subplex fetch_all_by_injection_id fetch_all_by_injection_pool
+        fetch_by_name fetch_all_by_analysis_id fetch_all_by_analysis fetch_all_by_injection_id fetch_all_by_injection_pool
         _fetch delete_sample_from_db check_entry_exists_in_db fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement
         _db_error_handling }
 );
@@ -264,23 +264,6 @@ foreach my $db_connection ( @db_connections ){
         $mock_gRNA_1->injection_concentration,
     );
     
-    my $mock_subplex = Test::MockObject->new();
-    $mock_subplex->set_isa( 'Crispr::DB::Subplex' );
-    my $subplex_id = 1;
-    $mock_subplex->mock( 'db_id', sub{ my @args = @_; if( $_[1] ){ $subplex_id = $_[1] } return $subplex_id; } );
-    $mock_subplex->mock( 'plex', sub{ return $mock_plex } );
-    $mock_subplex->mock( 'injection_pool', sub{ return $mock_injection_pool } );
-    $mock_subplex->mock( 'plate_num', sub{ return 1 } );
-    
-    $statement = "insert into subplex values( ?, ?, ?, ? );";
-    $sth = $dbh->prepare($statement);
-    $sth->execute(
-        $mock_subplex->db_id,
-        $mock_plex->db_id,
-        $mock_subplex->plate_num,
-        $mock_injection_pool->db_id,
-    );
-    
     # make a new real Sample Adaptor
     my $sample_adaptor = Crispr::DB::SampleAdaptor->new( db_connection => $db_connection, );
     # 1 test
@@ -298,21 +281,18 @@ foreach my $db_connection ( @db_connections ){
     my $mock_sample = Test::MockObject->new();
     $mock_sample->set_isa( 'Crispr::DB::Sample' );
     my $sample_id = 1;
-    my $well_id = 'A01';
     $mock_sample->mock( 'db_id', sub{ return $sample_id } );
     $mock_sample->mock( 'injection_pool', sub{ return $mock_injection_pool } );
-    $mock_sample->mock( 'subplex', sub{ return $mock_subplex } );
-    $mock_sample->mock( 'barcode_id', sub{ return 1 } );
     $mock_sample->mock( 'generation', sub{ return 'G0' } );
     $mock_sample->mock( 'sample_type', sub{ return 'finclip' } );
-    $mock_sample->mock( 'well_id', sub{ return $well_id } );
     $mock_sample->mock( 'species', sub{ return 'zebrafish' } );
-    $mock_sample->mock( 'sample_name', sub{ return join("_", $mock_subplex->db_id, $mock_sample->well_id, ) } );
+    $mock_sample->mock( 'sample_number', sub { return $sample_id } );
+    $mock_sample->mock( 'sample_name', sub{ return join("_", $mock_injection_pool->db_id, $mock_sample->sample_number, ) } );
     
     # check db adaptor attributes - 4 tests
-    my $subplex_adaptor;
-    ok( $subplex_adaptor = $sample_adaptor->subplex_adaptor(), "$driver: get subplex_adaptor" );
-    isa_ok( $subplex_adaptor, 'Crispr::DB::SubplexAdaptor', "$driver: check subplex_adaptor class" );
+    my $analysis_adaptor;
+    ok( $analysis_adaptor = $sample_adaptor->analysis_adaptor(), "$driver: get analysis_adaptor" );
+    isa_ok( $analysis_adaptor, 'Crispr::DB::AnalysisAdaptor', "$driver: check analysis_adaptor class" );
     my $injection_pool_adaptor;
     ok( $injection_pool_adaptor = $sample_adaptor->injection_pool_adaptor(), "$driver: get injection_pool_adaptor" );
     isa_ok( $injection_pool_adaptor, 'Crispr::DB::InjectionPoolAdaptor', "$driver: check injection_pool_adaptor class" );
@@ -325,18 +305,15 @@ foreach my $db_connection ( @db_connections ){
        tests => {
            'eq' => {
                 sample_name => $mock_sample->sample_name,
-                well_id => $mock_sample->well_id,
                 generation => $mock_sample->generation,
                 type => $mock_sample->sample_type,
                 species => $mock_sample->species,
            },
            '==' => {
-                barcode_id => $mock_sample->barcode_id,
                 injection_id => $mock_sample->injection_pool->db_id,
-                subplex_id => $mock_sample->subplex->db_id,
            },
        },
-       label => "$driver: subplex stored",
+       label => "$driver: sample stored",
     );
     
     # test that store throws properly
@@ -362,7 +339,6 @@ foreach my $db_connection ( @db_connections ){
     
     # store sample - 4 tests
     $sample_id = 2;
-    $well_id = 'A02';
     ok( $sample_adaptor->store_sample( $mock_sample ), "$driver: store_sample" );
     row_ok(
        table => 'sample',
@@ -370,18 +346,15 @@ foreach my $db_connection ( @db_connections ){
        tests => {
            'eq' => {
                 sample_name => $mock_sample->sample_name,
-                well_id => $mock_sample->well_id,
                 generation => $mock_sample->generation,
                 type => $mock_sample->sample_type,
                 species => $mock_sample->species,
            },
            '==' => {
-                barcode_id => $mock_sample->barcode_id,
                 injection_id => $mock_sample->injection_pool->db_id,
-                subplex_id => $mock_sample->subplex->db_id,
            },
        },
-       label => "$driver: subplex stored",
+       label => "$driver: sample stored 2",
     );
     
     throws_ok { $sample_adaptor->store_samples('SampleObject') }
@@ -393,21 +366,17 @@ foreach my $db_connection ( @db_connections ){
     
     # increment mock object 1's id
     $sample_id = 3;
-    $well_id = 'A03';
     # make new mock object for store injection pools
     my $mock_sample_2 = Test::MockObject->new();
     $mock_sample_2->set_isa( 'Crispr::DB::Sample' );
     my $sample_id_2 = 4;
-    my $well_id_2 = 'A04';
     $mock_sample_2->mock( 'db_id', sub{ return $sample_id_2 } );
     $mock_sample_2->mock( 'injection_pool', sub{ return $mock_injection_pool } );
-    $mock_sample_2->mock( 'subplex', sub{ return $mock_subplex } );
-    $mock_sample_2->mock( 'barcode_id', sub{ return 1 } );
-    $mock_sample_2->mock( 'generation', sub{ return 'G0' } );
-    $mock_sample_2->mock( 'sample_type', sub{ return 'finclip' } );
-    $mock_sample_2->mock( 'well_id', sub{ return $well_id_2 } );
+    $mock_sample_2->mock( 'generation', sub{ return 'F1' } );
+    $mock_sample_2->mock( 'sample_type', sub{ return 'embryo' } );
     $mock_sample_2->mock( 'species', sub{ return 'zebrafish' } );
-    $mock_sample_2->mock( 'sample_name', sub{ return join("_", $mock_subplex->db_id, $mock_sample_2->well_id, ) } );
+    $mock_sample_2->mock( 'sample_number', sub { return $sample_id_2 } );
+    $mock_sample_2->mock( 'sample_name', sub{ return join("_", $mock_injection_pool->db_id, $mock_sample_2->sample_number, ) } );
     
     # 3 tests
     ok( $sample_adaptor->store_samples( [ $mock_sample, $mock_sample_2 ] ), "$driver: store_samples" );
@@ -417,18 +386,15 @@ foreach my $db_connection ( @db_connections ){
        tests => {
            'eq' => {
                 sample_name => $mock_sample->sample_name,
-                well_id => $mock_sample->well_id,
                 generation => $mock_sample->generation,
                 type => $mock_sample->sample_type,
                 species => $mock_sample->species,
            },
            '==' => {
-                barcode_id => $mock_sample->barcode_id,
                 injection_id => $mock_sample->injection_pool->db_id,
-                subplex_id => $mock_sample->subplex->db_id,
            },
        },
-       label => "$driver: subplex stored",
+       label => "$driver: sample stored 3",
     );
     row_ok(
        table => 'sample',
@@ -436,46 +402,44 @@ foreach my $db_connection ( @db_connections ){
        tests => {
            'eq' => {
                 sample_name => $mock_sample_2->sample_name,
-                well_id => $mock_sample_2->well_id,
                 generation => $mock_sample_2->generation,
                 type => $mock_sample_2->sample_type,
                 species => $mock_sample_2->species,
            },
            '==' => {
-                barcode_id => $mock_sample_2->barcode_id,
                 injection_id => $mock_sample_2->injection_pool->db_id,
-                subplex_id => $mock_sample_2->subplex->db_id,
            },
        },
-       label => "$driver: subplex stored",
+       label => "$driver: sample stored 4",
     );
     
     # 1 test
     throws_ok{ $sample_adaptor->fetch_by_id( 10 ) } qr/Couldn't retrieve sample/, 'Sample does not exist in db';
     
-#    # _fetch - 24 tests
-#    my $inj_pool_from_db = @{ $sample_adaptor->_fetch( 'injection_id = ?', [ 3, ] ) }[0];
-#    check_attributes( $inj_pool_from_db, $mock_sample, $driver, '_fetch', );
-#    
-#    # fetch_by_id - 24 tests
-#    $inj_pool_from_db = $sample_adaptor->fetch_by_id( 4 );
-#    check_attributes( $inj_pool_from_db, $mock_sample_2, $driver, 'fetch_by_id', );
-#    
-#    # fetch_by_id - 48 tests
-#    my @ids = ( 3, 4 );
-#    my $inj_pools_from_db = $sample_adaptor->fetch_by_ids( \@ids );
-#    
-#    my @samples = ( $mock_sample, $mock_sample_2 );
-#    foreach my $i ( 0..1 ){
-#        my $inj_pool_from_db = $inj_pools_from_db->[$i];
-#        my $mock_inj_pool = $samples[$i];
-#        check_attributes( $inj_pool_from_db, $mock_inj_pool, $driver, 'fetch_by_ids', );
-#    }
-#
-#    # fetch_by_name - 25 tests
-#    ok( $inj_pool_from_db = $sample_adaptor->fetch_by_name( '172' ), 'fetch_by_name');
-#    check_attributes( $inj_pool_from_db, $mock_sample, $driver, 'fetch_by_name', );
-#
+    # _fetch - 7 tests
+    my $sample_from_db = @{ $sample_adaptor->_fetch( 'sample_id = ?', [ 3, ] ) }[0];
+    check_attributes( $sample_from_db, $mock_sample, $driver, '_fetch', );
+    
+    # fetch_by_id - 7 tests
+    $sample_from_db = $sample_adaptor->fetch_by_id( 4 );
+    check_attributes( $sample_from_db, $mock_sample_2, $driver, 'fetch_by_id', );
+    
+    # fetch_by_ids - 14 tests
+    my @ids = ( 3, 4 );
+    my $samples_from_db = $sample_adaptor->fetch_by_ids( \@ids );
+    
+    my @samples = ( $mock_sample, $mock_sample_2 );
+    foreach my $i ( 0..1 ){
+        my $sample_from_db = $samples_from_db->[$i];
+        my $mock_sample = $samples[$i];
+        check_attributes( $sample_from_db, $mock_sample, $driver, 'fetch_by_ids', );
+    }
+
+    # fetch_by_name - 8 tests
+    $sample_id = 1;
+    ok( $sample_from_db = $sample_adaptor->fetch_by_name( '1_1' ), 'fetch_by_name');
+    check_attributes( $sample_from_db, $mock_sample, $driver, 'fetch_by_name', );
+
 #    # 2 tests
 #    ok( $sample_adaptor->fetch_all_by_date( '2014-10-13' ), 'fetch_all_by_date');
 #TODO: {
@@ -487,32 +451,15 @@ foreach my $db_connection ( @db_connections ){
     $test_db_connections{$driver}->destroy();
 }
 
-## 12 + 6 * number of guideRNAs per call
-#sub check_attributes {
-#    my ( $object1, $object2, $driver, $method ) = @_;
-#    is( $object1->db_id, $object2->db_id, "$driver: object from db $method - check db_id");
-#    is( $object1->pool_name, $object2->pool_name, "$driver: object from db $method - check pool_name");
-#    is( abs($object1->cas9_conc - $object2->cas9_conc ) < 0.1, 1, "$driver: object from db $method - check cas9_conc");
-#    is( $object1->date, $object2->date, "$driver: object from db $method - check date");
-#    is( $object1->line_injected, $object2->line_injected, "$driver: object from db $method - check line_injected");
-#    is( $object1->line_raised, $object2->line_raised, "$driver: object from db $method - check line_raised");
-#    is( $object1->sorted_by, $object2->sorted_by, "$driver: object from db $method - check sorted_by");
-#    
-#    is( $object1->cas9_prep->db_id, $object2->cas9_prep->db_id, "$driver: object from db $method - check cas9 db_id");
-#    is( $object1->cas9_prep->type, $object2->cas9_prep->type, "$driver: object from db $method - check cas9 type");
-#    is( $object1->cas9_prep->prep_type, $object2->cas9_prep->prep_type, "$driver: object from db $method - check cas9 prep_type");
-#    is( $object1->cas9_prep->made_by, $object2->cas9_prep->made_by, "$driver: object from db $method - check cas9 made_by");
-#    is( $object1->cas9_prep->date, $object2->cas9_prep->date, "$driver: object from db $method - check cas9 date");
-#
-#    foreach my $i ( 0..scalar @{$object1->guideRNAs} - 1 ){
-#        my $g1 = $object1->guideRNAs->[$i];
-#        my $g2 = $object2->guideRNAs->[$i];
-#        is( $g1->db_id, $g2->db_id, "$driver: object from db $method - check guideRNA db_id");
-#        is( $g1->type, $g2->type, "$driver: object from db $method - check guideRNA type");
-#        is( abs( $g1->injection_concentration - $g2->injection_concentration) < 0.1, 1, "$driver: object from db $method - check guideRNA concentration");
-#        is( $g1->made_by, $g2->made_by, "$driver: object from db $method - check guideRNA made_by");
-#        is( $g1->date, $g2->date, "$driver: object from db $method - check guideRNA date");
-#        is( $g1->well->position, $g2->well->position, "$driver: object from db $method - check guideRNA well");
-#    }
-#}
-#
+# 7 tests
+sub check_attributes {
+    my ( $object1, $object2, $driver, $method ) = @_;
+    is( $object1->injection_pool->db_id, $object2->injection_pool->db_id, "$driver: object from db $method - check inj db_id");
+    is( $object1->injection_pool->pool_name, $object2->injection_pool->pool_name, "$driver: object from db $method - check inj pool_name");
+    is( $object1->generation, $object2->generation, "$driver: object from db $method - check generation");
+    is( $object1->sample_type, $object2->sample_type, "$driver: object from db $method - check sample_type");
+    is( $object1->sample_number, $object2->sample_number, "$driver: object from db $method - check sample_number");
+    is( $object1->species, $object2->species, "$driver: object from db $method - check species");
+    is( $object1->sample_name, $object2->sample_name, "$driver: object from db $method - check sample_name");
+}
+

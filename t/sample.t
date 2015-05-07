@@ -19,8 +19,8 @@ $tests++;
 
 # check attributes and methods - 9 tests
 my @attributes = (
-    qw{ db_id injection_pool subplex barcode_id generation
-        sample_type alleles species }
+    qw{ db_id injection_pool generation
+        sample_type sample_number alleles species }
 );
 
 my @methods = ( qw{ sample_name } );
@@ -61,78 +61,23 @@ $mock_subplex_object->set_isa( 'Crispr::DB::Subplex' );
 $mock_subplex_object->mock( 'plex_name', sub{ return '8' } );
 $mock_subplex_object->mock( 'db_id', sub{ return 1 } );
 
-## crRNAs
-#my $mock_crRNA_1 = Test::MockObject->new();
-#$mock_crRNA_1->set_isa('Crispr::crRNA');
-#$mock_crRNA_1->mock('crRNA_id', sub{ '1' } );
-#$mock_crRNA_1->mock('name', sub{ 'crRNA:5:50383-50405:-1' } );
-#$mock_crRNA_1->mock('chr', sub{ '5' } );
-#$mock_crRNA_1->mock('start', sub{ '50383' } );
-#$mock_crRNA_1->mock('end', sub{ '50405' } );
-#$mock_crRNA_1->mock('strand', sub{ '-1' } );
-#$mock_crRNA_1->mock('cut_site', sub{ '50388' } );
-#$mock_crRNA_1->mock('sequence', sub{ 'GGAATAGAGAGATAGAGAGTCGG' } );
-#$mock_crRNA_1->mock('forward_oligo', sub{ 'ATGGGGAATAGAGAGATAGAGAGT' } );
-#$mock_crRNA_1->mock('reverse_oligo', sub{ 'AAACACTCTCTATCTCTCTATTCC' } );
-#$mock_crRNA_1->mock('score', sub{ '0.853' } );
-#$mock_crRNA_1->mock('coding_score', sub{ '0.853' } );
-#$mock_crRNA_1->mock('off_target_score', sub{ '0.95' } );
-#$mock_crRNA_1->mock('target_id', sub{ '1' } );
-#$mock_crRNA_1->mock('target', sub{ return $mock_target } );
-#$mock_crRNA_1->mock('unique_restriction_sites', sub { return undef } );
-#$mock_crRNA_1->mock('coding_scores', sub { return undef } );
-#$mock_crRNA_1->mock( 'off_target_hits', sub { return undef } );
-#$mock_crRNA_1->mock( 'plasmid_backbone', sub { return 'pDR274' } );
-#$mock_crRNA_1->mock( 'primer_pairs', sub { return undef } );
-#$mock_crRNA_1->mock( 'info', sub { return ( qw{ crRNA:5:50383-50405:-1 5 50383
-#    50405 -1 0.853 GGAATAGAGAGATAGAGAGTCGG ATGGGGAATAGAGAGATAGAGAGT
-#    AAACACTCTCTATCTCTCTATTCC NULL NULL NULL NULL NULL NULL NULL 2 pDR274 } ); });
-#
-#my $mock_crRNA_2 = Test::MockObject->new();
-#$mock_crRNA_2->set_isa('Crispr::crRNA');
-#$mock_crRNA_2->mock('crRNA_id', sub{ '2' } );
-#$mock_crRNA_2->mock('name', sub{ 'crRNA:5:50403-50425:1' } );
-#$mock_crRNA_2->mock('chr', sub{ '5' } );
-#$mock_crRNA_2->mock('start', sub{ '50403' } );
-#$mock_crRNA_2->mock('end', sub{ '50425' } );
-#$mock_crRNA_2->mock('strand', sub{ '1' } );
-#$mock_crRNA_2->mock('cut_site', sub{ '50419' } );
-#$mock_crRNA_2->mock('sequence', sub{ 'GGAATAGAGAGATAGAGAGTCGG' } );
-#$mock_crRNA_2->mock('forward_oligo', sub{ 'ATGGGGAATAGAGAGATAGAGAGT' } );
-#$mock_crRNA_2->mock('reverse_oligo', sub{ 'AAACACTCTCTATCTCTCTATTCC' } );
-#$mock_crRNA_2->mock('score', sub{ '0.853' } );
-#$mock_crRNA_2->mock('coding_score', sub{ '0.853' } );
-#$mock_crRNA_2->mock('off_target_score', sub{ '0.90' } );
-#$mock_crRNA_2->mock('target_id', sub{ '1' } );
-#$mock_crRNA_2->mock('target', sub{ return $mock_target } );
-#$mock_crRNA_2->mock('unique_restriction_sites', sub { return undef } );
-#$mock_crRNA_2->mock('coding_scores', sub { return undef } );
-#$mock_crRNA_2->mock( 'off_target_hits', sub { return undef } );
-#$mock_crRNA_2->mock( 'plasmid_backbone', sub { return 'pDR274' } );
-#$mock_crRNA_2->mock( 'primer_pairs', sub { return undef } );
-#$mock_crRNA_2->mock( 'info', sub { return ( qw{ crRNA:5:50403-50425:-1 5 50403
-#    50425 1 0.853 GGAATAGAGAGATAGAGAGTCGG ATGGGGAATAGAGAGATAGAGAGT
-#    AAACACTCTCTATCTCTCTATTCC NULL NULL NULL NULL NULL NULL NULL 2 pDR274 } ); });
-
-
 $sample = Crispr::DB::Sample->new(
     db_id => 1,
     injection_pool => $mock_inj_object,
-    subplex => $mock_subplex_object,
-    barcode_id => 1,
     generation => 'G0',
     sample_type => 'sperm',
-    well_id => 'A01',
+    sample_number => 1,
+    species => 'zebrafish',
 );
 
 is( $sample->db_id, 1, 'check db_id');
-is( $sample->barcode_id, 1, 'check barcode_id');
 is( $sample->generation, 'G0', 'check generation');
 is( $sample->sample_type, 'sperm', 'check sample_type');
+is( $sample->sample_number, 1, 'check sample_type');
 $tests += 4;
 
 # check sample_name
-is( $sample->sample_name, '1_A01', 'check sample name' );
+is( $sample->sample_name, '170_1', 'check sample name' );
 $tests++;
 
 # check alleles attribute
