@@ -378,7 +378,7 @@ sub find_crRNAs_by_region {
 	my $r_regex = $self->_construct_regex_from_target_seq( $r_str );
 	warn $r_regex, "\n" if $self->debug == 2;
 	
-	# fetch region from Ensembl
+	# fetch sequence either from Ensembl or from fasta file
 	my ( $chr, $interval, $strand ) = split /:/, $region;
 	if( !$chr || !$interval ){
 		croak "Couldn't understand region - $region.\n";
@@ -387,14 +387,16 @@ sub find_crRNAs_by_region {
 	if( !$start || !$end ){
 		croak "Couldn't understand region - $region.\n";
 	}
+    # expand start and stop positions by length of target sequence
+    my $slice_start = $start - $self->target_seq_length;
+    my $slice_end = $end + $self->target_seq_length;
     
-	my $slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $start, $end, '1' );
-	# expand slice by length of target sequence
-	my $expanded_slice = $slice->expand( $self->target_seq_length, $self->target_seq_length );
-	my $match_start = $expanded_slice->start;
-	my $match_end = $expanded_slice->end;
-    my $search_seq = $expanded_slice->seq;
-	warn $search_seq, "\n" if $self->debug == 2;
+    my $region_seq = $self->_fetch_sequence( $chr, $slice_start, $slice_end, '1' );
+    my $match_start = $slice_start;
+    my $match_end = $slice_end;
+    my $search_seq = $region_seq->seq;
+    warn $search_seq, "\n" if $self->debug == 2;
+
     # search sequence for forward regex
     while( $search_seq =~ m/$f_regex/g ){
         # remove crisprs with transcriptional stop sequence
@@ -1222,6 +1224,10 @@ sub score_off_targets_from_sam_output {
 	elsif( any { $_ eq 'intron' } @{$annotations} ){
 		$type = 'intron';
 	}
+    else{
+        die join(q{ }, 'Could not understand the annotation returned for off-target:',
+                    @{$annotations}, ), "\n";
+    }
 
 	# make an off target object and add it to interval tree
 	my $off_target_obj = Crispr::OffTarget->new(

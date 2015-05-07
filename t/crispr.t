@@ -69,6 +69,15 @@ my $design_obj_no_target_seq = Crispr->new(
     debug => 0,
 );
 
+my $design_obj_no_slice_adaptor = Crispr->new(
+    species => 'zebrafish',
+    target_seq => 'NNNNNNNNNNNNNNNNNNNNNGG',
+    five_prime_Gs => 0,
+    target_genome => 't/data/mock_genome.fa',
+    annotation_file => 't/data/mock_annotation.gff',
+    debug => 0,
+);
+
 # check attributes
 throws_ok { Crispr->new( target_seq => 'NNNNNJNNNNNNNNNNNNNNNGG' ) } qr/Not\sa\svalid\scrRNA\starget\ssequence/, 'Incorrect target seq - non-DNA character';
 throws_ok { Crispr->new( five_prime_Gs => 3 ) } qr/Validation\sfailed/, 'Attempt to set five_prime_Gs to 3';
@@ -77,7 +86,7 @@ throws_ok { Crispr->new( target_genome => 'non_existent_genome_file.fa' ) }
 $tests+=3;
 
 # test methods
-# find_crRNAs_by_region - 6 tests
+# find_crRNAs_by_region - 8 tests
 throws_ok { $design_obj_no_target_seq->find_crRNAs_by_region() } qr/A\sregion\smust\sbe\ssupplied\sto\sfind_crRNAs_by_region/,
     'find crRNAs by region - no region';
 throws_ok { $design_obj_no_target_seq->find_crRNAs_by_region( '5:46628364-46628423', ) } qr/The\starget_seq\sattribute\smust\sbe\sdefined\sto\ssearch\sfor\scrRNAs/,
@@ -86,9 +95,14 @@ throws_ok { $design_obj->find_crRNAs_by_region( '0:46628364-46628423', ) } qr/Co
     'find crRNAs by region - incorrect region format';
 throws_ok { $design_obj->find_crRNAs_by_region( '5-46628364-46628423', ) } qr/Couldn't\sunderstand\sregion/,
     'find crRNAs by region - incorrect region format';
+
 ok( $design_obj->find_crRNAs_by_region( '5:46628364-46628423' ), 'find crRNAs by region');
 is( scalar keys %{ $design_obj->all_crisprs }, 9, 'check number of crispr sites' );
-$tests+=6;
+ok( $design_obj_no_slice_adaptor->find_crRNAs_by_region( 'test_chr1:81-180' ), 'find crRNAs by region - no slice adaptor');
+is( scalar keys %{ $design_obj_no_slice_adaptor->all_crisprs }, 16, 'check number of crispr sites - no slice adaptor' );
+#warn Dumper( $design_obj_no_slice_adaptor->all_crisprs );
+$tests+=8;
+#$tests+=6;
 
 # find_crRNAs_by_target - 10 tests
 # make mock Target object
