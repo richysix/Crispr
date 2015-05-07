@@ -47,8 +47,6 @@ subtype 'Crispr::PrimerPair::Type',
                     product_size_range => '500-1000',
                     excluded_regions => [ '651,122', '1282,29', ]
                     product_size => '668',
-                    left_primer => $left_primer,
-                    right_primer => $right_primer,
                     type => 'ext',
                     pair_compl_end => '0.00',
                     pair_compl_any => '3.00',
