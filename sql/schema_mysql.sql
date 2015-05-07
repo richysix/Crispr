@@ -247,17 +247,36 @@ create table subplex (
 create table sample (
     sample_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     sample_name VARCHAR(20) NOT NULL,
+    sample_number INT UNSIGNED NOT NULL,
     injection_id INT UNSIGNED NOT NULL,
-    subplex_id INT UNSIGNED NOT NULL,
-    well_id CHAR(3) NOT NULL,
-    barcode_id SMALLINT NOT NULL,
     generation ENUM('G0', 'F1', 'F2') NOT NULL,
     type ENUM('sperm', 'embryo', 'finclip') NOT NULL,
     species VARCHAR(50) NOT NULL,
-    FOREIGN KEY (injection_id) REFERENCES injection(injection_id),
-    FOREIGN KEY (subplex_id) REFERENCES subplex(subplex_id)
+    FOREIGN KEY (injection_id) REFERENCES injection(injection_id)
 ) ENGINE = InnoDB;
 CREATE UNIQUE INDEX `sample_name` ON sample (`sample_name`);
+
+create table analysis (
+    analysis_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    plex_id INT UNSIGNED NOT NULL,
+    analysis_started DATE,
+    analysis_finished DATE,
+    FOREIGN KEY (plex_id) REFERENCES plex(plex_id)
+) ENGINE = InnoDB;
+
+create table analysis_information (
+    analysis_id INT UNSIGNED NOT NULL,
+    sample_id INT UNSIGNED NOT NULL,
+    primer_pair_id INT UNSIGNED NOT NULL,
+    barcode_id SMALLINT NOT NULL,
+    plate_number TINYINT NOT NULL,
+    well_id CHAR(3) NOT NULL,
+    CONSTRAINT `analysis_analysis_id_sample_id_primer_pair_id` UNIQUE ( `analysis_id`, `sample_id`, `primer_pair_id` ),
+    FOREIGN KEY (analysis_id) REFERENCES analysis(analysis_id),
+    FOREIGN KEY (sample_id) REFERENCES sample(sample_id),
+    FOREIGN KEY (primer_pair_id) REFERENCES primer_pair(primer_pair_id)
+) ENGINE = InnoDB;
+CREATE INDEX `analysis_analysis_id` ON analysis (`analysis_id`);
 
 create table sequencing_results (
     sample_id INT UNSIGNED NOT NULL,
