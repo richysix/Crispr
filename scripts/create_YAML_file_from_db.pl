@@ -26,10 +26,12 @@ my $db_connection = Crispr::DB::DBConnection->new( $options{crispr_db}, );
 # get adaptors
 my $plex_adaptor = $db_connection->get_adaptor( 'plex' );
 my $injection_pool_adaptor = $db_connection->get_adaptor( 'injection_pool' );
-my $subplex_adaptor = $db_connection->get_adaptor( 'subplex' );
+my $analysis_adaptor = $db_connection->get_adaptor( 'analysis' );
 my $sample_adaptor = $db_connection->get_adaptor( 'sample' );
+my $sample_amplicon_adaptor = $db_connection->get_adaptor( 'sample_amplicon' );
 my $primer_pair_adaptor = $db_connection->get_adaptor( 'primer_pair' );
 my $target_adaptor = $db_connection->get_adaptor( 'target' );
+my $crRNA_adaptor = $db_connection->get_adaptor( 'crRNA' );
 
 my $yaml = YAML::Tiny->new;
 $yaml->[0]->{lane} = $options{lane};
@@ -42,88 +44,91 @@ if( !$plex ){
 }
 $yaml->[0]->{run_id} = $plex->run_id;
 
-my $subplexes = $subplex_adaptor->fetch_all_by_plex( $plex );
+my $analyses = $analysis_adaptor->fetch_all_by_plex( $plex );
 
-# get sample info for each subplex
-my %subplex_info;
+# get sample info for each analysis
+my %analysis_info;
 my %crisprs_for_primer_pair;
 my %info_for_well_block;
-my %subplexes_for_wells;
+my %analyses_for_wells;
 my %gene_name_for_primer_pair;
-foreach my $subplex ( @{$subplexes} ){
-    my $subplex_id = $subplex->db_id;
-    my $samples = $sample_adaptor->fetch_all_by_subplex( $subplex );
-    # got through samples and add barcodes, well_ids and sample_names to yaml
-    foreach my $sample ( @{$samples} ){
-        push @{ $subplex_info{ $subplex_id }{ well_ids } }, $sample->well_id;
-        push @{ $subplex_info{ $subplex_id }{ indices } }, $sample->barcode_id;
-        push @{ $subplex_info{ $subplex_id }{ sample_names } }, $sample->sample_name;
-    }
-    
+foreach my $analysis ( @{$analyses} ){
+    my $analysis_id = $analysis->db_id;
+    my $sample_amplicons = $sample_amplicon_adaptor->fetch_all_by_analysis( $analysis );
+    # go through samples and add barcodes, well_ids and sample_names to yaml
     my %pairs_seen;
-    foreach my $guide_rna ( @{ $subplex->injection_pool->guideRNAs } ){
-        my $crRNA_id = $guide_rna->crRNA->crRNA_id;
-        # get illumina amplicon
-        my @primer_pairs = grep { $_->type eq 'int-illumina_tailed' } @{ $primer_pair_adaptor->fetch_all_by_crRNA_id( $crRNA_id ) };
-        if( scalar @primer_pairs > 1 ){
-            die "Got more than one pair of int-illumina_tailed primers for ",
-                $guide_rna->crRNA->name, "\n";
-        }
-        elsif( !@primer_pairs  ){
-            die "Got no int-illumina_tailed primers for ",
-                $guide_rna->crRNA->name, "\n";
-        }
-        else{
-            my $pair_name = $primer_pairs[0]->pair_name;
-            next if( exists $pairs_seen{$pair_name} );
-            push @{ $subplex_info{ $subplex_id }{primer_pairs} }, $primer_pairs[0];
-            push @{ $crisprs_for_primer_pair{ $pair_name } }, $guide_rna->crRNA;
-            my $target = $target_adaptor->fetch_by_crRNA( $guide_rna->crRNA );
-            $gene_name_for_primer_pair{$pair_name} = $target->gene_name;
-            $pairs_seen{$pair_name} = 1;
+    my %crisprs_seen;
+    my %plate_nums;
+    foreach my $sample_amplicon ( @{$sample_amplicons} ){
+        $plate_nums{$sample_amplicon->plate_number} = 1;
+        push @{ $analysis_info{ $analysis_id }{ well_ids } }, $sample_amplicon->well_id;
+        push @{ $analysis_info{ $analysis_id }{ indices } }, $sample_amplicon->barcode_id;
+        push @{ $analysis_info{ $analysis_id }{ sample_names } }, $sample_amplicon->sample_name;
+        
+        foreach my $primer_pair ( @{$sample_amplicon->amplicons} ){
+            next if $primer_pair->type ne 'int-illumina_tailed';
+            next if( exists $pairs_seen{$primer_pair->pair_name} );
+            push @{ $analysis_info{ $analysis_id }{primer_pairs} }, $primer_pair;
+            
+            foreach my $crispr ( @{ $crRNA_adaptor->fetch_all_by_primer_pair( $primer_pair ) } ){
+                if( !exists $crisprs_seen{$primer_pair->pair_name}{$crispr->name} ){
+                    push @{ $crisprs_for_primer_pair{ $analysis_id }{ $primer_pair->pair_name } }, $crispr;
+                    my $target = $target_adaptor->fetch_by_crRNA( $crispr );
+                    $gene_name_for_primer_pair{ $analysis_id }{$primer_pair->pair_name} = $target->gene_name || $target->target_name;
+                    $crisprs_seen{$primer_pair->pair_name}{$crispr->name} = 1;
+                }
+            }
+            $pairs_seen{$primer_pair->pair_name} = 1;
         }
     }
     
-    my $plate_num = $subplex->plate_num;
-    my $well_ids = join(",", @{ $subplex_info{ $subplex_id }{ well_ids } } );
-    push @{ $subplexes_for_wells{$plate_num}{ $well_ids } }, $subplex_id;
-    $info_for_well_block{$plate_num}{ $well_ids }{ indices } = join(",", @{ $subplex_info{ $subplex_id }{ indices } } );
-    $info_for_well_block{$plate_num}{ $well_ids }{ sample_names } = join(",", @{ $subplex_info{ $subplex_id }{ sample_names } } );
+    my $plate_num;
+    if( keys %plate_nums != 1 ){
+        die "number of plate numbers is wrong!\n", join("\t", keys %plate_nums );
+    }
+    else{
+        $plate_num = ( keys %plate_nums )[0];
+    }
+    
+    my $well_ids = join(",", @{ $analysis_info{ $analysis_id }{ well_ids } } );
+    push @{ $analyses_for_wells{$plate_num}{ $well_ids } }, $analysis_id;
+    $info_for_well_block{$plate_num}{ $well_ids }{ indices } = join(",", @{ $analysis_info{ $analysis_id }{ indices } } );
+    $info_for_well_block{$plate_num}{ $well_ids }{ sample_names } = join(",", @{ $analysis_info{ $analysis_id }{ sample_names } } );
 }
 
 if( $options{debug} > 2 ){
-    warn Dumper( %subplex_info, %crisprs_for_primer_pair, %info_for_well_block, %gene_name_for_primer_pair, );
+    warn Dumper( %analysis_info, %crisprs_for_primer_pair, %info_for_well_block, %gene_name_for_primer_pair, );
     exit;
 }
 
-foreach my $plate_num ( sort { $a <=> $b } keys %subplexes_for_wells ){
+foreach my $plate_num ( sort { $a <=> $b } keys %analyses_for_wells ){
     my $plate = {
         name => $plate_num,
         wells => [  ],
     };
-    foreach my $well_ids ( sort keys %{$subplexes_for_wells{$plate_num}} ){
+    foreach my $well_ids ( sort keys %{$analyses_for_wells{$plate_num}} ){
         my $well_block = {
             well_ids => $well_ids,
             indices => $info_for_well_block{$plate_num}{ $well_ids }{ 'indices' },
             sample_names => $info_for_well_block{$plate_num}{ $well_ids }{ 'sample_names' },
             plexes => [  ],
         };
-        foreach my $subplex_id ( sort @{$subplexes_for_wells{$plate_num}{$well_ids}} ){
-            my $subplex = {
-                name => $subplex_id,
+        foreach my $analysis_id ( sort @{$analyses_for_wells{$plate_num}{$well_ids}} ){
+            my $analysis = {
+                name => $analysis_id,
                 region_info => [  ],
             };
-            foreach my $primer_pair ( @{ $subplex_info{ $subplex_id }{primer_pairs} } ){
+            foreach my $primer_pair ( @{ $analysis_info{ $analysis_id }{primer_pairs} } ){
                 my $pair_name = $primer_pair->pair_name;
                 my $region_info = {
-                    gene_name => $gene_name_for_primer_pair{$pair_name},
+                    gene_name => $gene_name_for_primer_pair{ $analysis_id }{$pair_name},
                     region => $primer_pair->pair_name,
-                    crisprs => [ map { $_->name } @{$crisprs_for_primer_pair{$pair_name}} ],
+                    crisprs => [ map { $_->name } @{$crisprs_for_primer_pair{ $analysis_id }{$pair_name}} ],
                 };
-                push @{ $subplex->{region_info} }, $region_info;
+                push @{ $analysis->{region_info} }, $region_info;
             }
             
-            push @{ $well_block->{plexes} }, $subplex;
+            push @{ $well_block->{plexes} }, $analysis;
         }
         push @{ $plate->{wells} }, $well_block;
     }
@@ -211,6 +216,10 @@ The name of the plex. REQUIRED.
 =head1 OPTIONS
 
 =over 8
+
+=item B<--lane>
+
+Lane number. Default = 1.
 
 =item B<--output_file>
 
