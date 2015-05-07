@@ -8,8 +8,11 @@ use strict;
 use Getopt::Long;
 use autodie;
 use Pod::Usage;
+use English qw( -no_match_vars );
+use List::MoreUtils qw( none );
 
 use Crispr::DB::DBConnection;
+use Crispr::DB::Sample;
 
 # get options
 my %options;
@@ -17,45 +20,84 @@ get_and_check_options();
 
 # connect to db
 my $db_connection = Crispr::DB::DBConnection->new( $options{crispr_db}, );
+my $injection_pool_adaptor = $db_connection->get_adaptor( 'injection_pool' );
+my $sample_adaptor = $db_connection->get_adaptor( 'sample' );
 
+# parse input file, create Sample objects and add them to db
+my @attributes = ( qw{ injection_name num_samples generation sample_type species } );
+
+my @required_attributes = qw{ injection_name num_samples generation sample_type species };
+
+my $comment_regex = qr/#/;
+my @columns;
+my @samples;
 # go through input
 while(<>){
-    my $line = $_;
-    chomp $line;
-    my ( $barcode, $plex_name, $plate_num, $well_id, $injection_name,
-        $generation, $sample_type, $species, ) = split /\t/, $line ;
+    my @values;
     
-    # get injection id and subplex id from db using plate_num and injection_name
-    my $sql = <<'END_SQL';
-    SELECT subplex_id, i.injection_id
-    FROM injection i, subplex sub
-    WHERE i.injection_id = sub.injection_id AND
-        i.injection_name = ? AND
-        sub.plate_num = ?;
-END_SQL
-
-    my $dbh = $db_connection->connection->dbh();
-    
-    my $sth = $dbh->prepare( $sql );
-    $sth->execute( $injection_name, $plate_num, );
-    
-    my @results;
-    while( my @fields = $sth->fetchrow_array ){
-		push @results, \@fields;
-	}
-    if( scalar @results != 1 ){
-        die "Either too many or too few results returned for:\n$line\n";
+    chomp;
+    if( $INPUT_LINE_NUMBER == 1 ){
+        if( !m/\A $comment_regex/xms ){
+            die "Input needs a header line starting with a #\n";
+        }
+        s|$comment_regex||xms;
+        @columns = split /\t/, $_;
+        foreach my $column_name ( @columns ){
+            if( none { $column_name eq $_ } @attributes ){
+                die "Could not recognise column name, ", $column_name, ".\n";
+            }
+        }
+        foreach my $attribute ( @required_attributes ){
+            if( none { $attribute eq $_ } @columns ){
+                die "Missing required attribute: ", $attribute, ".\n";
+            }
+        }
+        next;
     }
-    my $subplex_id = $results[0]->[0];
-    my $injection_id = $results[0]->[1];
+    else{
+        @values = split /\t/, $_;
+    }
     
-    my $add_sql = 'INSERT into sample values( ?, ?, ?, ?, ?, ?, ?, ?, ? );';
+    my %args;
+    for( my $i = 0; $i < scalar @columns; $i++ ){
+        if( $values[$i] eq 'NULL' ){
+            $values[$i] = undef;
+        }
+        $args{ $columns[$i] } = $values[$i];
+    }
+    warn Dumper( %args ) if $options{debug} > 1;
     
-    my $sample_name = join("_", $subplex_id, $well_id, );
-    $sth = $dbh->prepare( $add_sql );
-    $sth->execute( undef, $sample_name, $injection_id, $subplex_id,
-        $well_id, $barcode, $generation, $sample_type, $species,
-    );
+    # get injection pool object
+    $args{'injection_pool'} = $injection_pool_adaptor->fetch_by_name( $args{'injection_name'} );
+    
+    foreach my $sample_number ( 1 .. $args{'num_samples'} ){
+        # make new sample object
+        $args{'sample_name'} = join("_", $args{'injection_name'}, $sample_number, );
+        $args{'sample_number'} = $sample_number;
+        my $sample = Crispr::DB::Sample->new( \%args );
+        push @samples, $sample;
+    }
+}
+
+if( $options{debug} > 1 ){
+    warn Dumper( @samples, );
+}
+
+foreach my $sample ( @samples ){
+    eval{
+        $sample_adaptor->store_sample( $sample );
+    };
+    if( $EVAL_ERROR ){
+        die join(q{ }, "There was a problem storing the sample,",
+                $sample->sample_name, "in the database.\n",
+                "ERROR MSG:", $EVAL_ERROR, ), "\n";
+    }
+    else{
+        print join(q{ }, 'Sample,', $sample->sample_name . ',',
+            'was stored correctly in the database with id:',
+            $sample->db_id,
+        ), "\n";
+    }
 }
 
 sub get_and_check_options {
@@ -75,6 +117,12 @@ sub get_and_check_options {
     }
     elsif( $options{man} ) {
         pod2usage( -verbose => 2 );
+    }
+    
+    # default values
+    $options{debug} = defined $options{debug} ? $options{debug} : 0;
+    if( $options{debug} > 1 ){
+        use Data::Dumper;
     }
     
     print "Settings:\n", map { join(' - ', $_, defined $options{$_} ? $options{$_} : 'off'),"\n" } sort keys %options if $options{verbose};
