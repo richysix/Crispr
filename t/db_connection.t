@@ -15,7 +15,7 @@ use Readonly;
 use Crispr::DB::DBConnection;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 11 + 1 + 5 + 2 + 6 + 6 + 6 + 60 + 1;
+Readonly my $TESTS_IN_COMMON => 1 + 11 + 1 + 5 + 2 + ( 6 * 14 ) + 1;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON + 5,
     sqlite => $TESTS_IN_COMMON + 2,
@@ -163,6 +163,7 @@ foreach my $db_connection ( @db_connections ){
     isa_ok( $cas9_prep_adaptor, 'Crispr::DB::Cas9PrepAdaptor', "$driver: get cas9_prep adaptor 3" );
     is( $cas9_prep_adaptor->connection, $db_connection->connection, "$driver: cas9_prep - check connections are the same 3" );
     
+    # crispr pair
     my $crispr_pair_adaptor = $db_connection->get_adaptor( 'crispr_pair' );
     isa_ok( $crispr_pair_adaptor, 'Crispr::DB::CrisprPairAdaptor', "$driver: get crispr_pair adaptor" );
     is( $crispr_pair_adaptor->connection, $db_connection->connection, "$driver: crispr_pair - check connections are the same" );
@@ -173,6 +174,7 @@ foreach my $db_connection ( @db_connections ){
     isa_ok( $crispr_pair_adaptor, 'Crispr::DB::CrisprPairAdaptor', "$driver: get crispr_pair adaptor 2" );
     is( $crispr_pair_adaptor->connection, $db_connection->connection, "$driver: crispr_pair - check connections are the same 2" );
     
+    # primer
     my $primer_adaptor = $db_connection->get_adaptor( 'primer' );
     isa_ok( $primer_adaptor, 'Crispr::DB::PrimerAdaptor', "$driver: get primer adaptor" );
     is( $primer_adaptor->connection, $db_connection->connection, "$driver: primer - check connections are the same" );
@@ -183,6 +185,7 @@ foreach my $db_connection ( @db_connections ){
     isa_ok( $primer_adaptor, 'Crispr::DB::PrimerAdaptor', "$driver: get primer adaptor 3" );
     is( $primer_adaptor->connection, $db_connection->connection, "$driver: primer - check connections are the same 3" );
     
+    # primer pair
     my $primer_pair_adaptor = $db_connection->get_adaptor( 'primer_pair' );
     isa_ok( $primer_pair_adaptor, 'Crispr::DB::PrimerPairAdaptor', "$driver: get primer_pair adaptor" );
     is( $primer_pair_adaptor->connection, $db_connection->connection, "$driver: primer_pair - check connections are the same" );
@@ -193,6 +196,7 @@ foreach my $db_connection ( @db_connections ){
     isa_ok( $primer_pair_adaptor, 'Crispr::DB::PrimerPairAdaptor', "$driver: get primer_pair adaptor 3" );
     is( $primer_pair_adaptor->connection, $db_connection->connection, "$driver: primer_pair - check connections are the same 3" );
     
+    # plate
     my $plate_adaptor = $db_connection->get_adaptor( 'plate' );
     isa_ok( $plate_adaptor, 'Crispr::DB::PlateAdaptor', "$driver: get plate adaptor" );
     is( $plate_adaptor->connection, $db_connection->connection, "$driver: plate - check connections are the same" );
@@ -203,6 +207,7 @@ foreach my $db_connection ( @db_connections ){
     isa_ok( $plate_adaptor, 'Crispr::DB::PlateAdaptor', "$driver: get plate adaptor 3" );
     is( $plate_adaptor->connection, $db_connection->connection, "$driver: plate - check connections are the same 3" );
     
+    # guideRNA_prep
     my $guideRNA_prep_adaptor = $db_connection->get_adaptor( 'guideRNA_prep' );
     isa_ok( $guideRNA_prep_adaptor, 'Crispr::DB::GuideRNAPrepAdaptor', "$driver: get guideRNA_prep adaptor" );
     is( $guideRNA_prep_adaptor->connection, $db_connection->connection, "$driver: guideRNA_prep - check connections are the same" );
@@ -213,6 +218,7 @@ foreach my $db_connection ( @db_connections ){
     isa_ok( $guideRNA_prep_adaptor, 'Crispr::DB::GuideRNAPrepAdaptor', "$driver: get guideRNA_prep adaptor 3" );
     is( $guideRNA_prep_adaptor->connection, $db_connection->connection, "$driver: guideRNA_prep - check connections are the same 3" );
     
+    # injection pool
     my $injection_pool_adaptor = $db_connection->get_adaptor( 'injection_pool' );
     isa_ok( $injection_pool_adaptor, 'Crispr::DB::InjectionPoolAdaptor', "$driver: get injection_pool adaptor" );
     is( $injection_pool_adaptor->connection, $db_connection->connection, "$driver: injection_pool - check connections are the same" );
@@ -223,6 +229,7 @@ foreach my $db_connection ( @db_connections ){
     isa_ok( $injection_pool_adaptor, 'Crispr::DB::InjectionPoolAdaptor', "$driver: get injection_pool adaptor 3" );
     is( $injection_pool_adaptor->connection, $db_connection->connection, "$driver: injection_pool - check connections are the same 3" );
     
+    # plex
     my $plex_adaptor = $db_connection->get_adaptor( 'plex' );
     isa_ok( $plex_adaptor, 'Crispr::DB::PlexAdaptor', "$driver: get plex adaptor" );
     is( $plex_adaptor->connection, $db_connection->connection, "$driver: plex - check connections are the same" );
@@ -233,16 +240,18 @@ foreach my $db_connection ( @db_connections ){
     isa_ok( $plex_adaptor, 'Crispr::DB::PlexAdaptor', "$driver: get plex adaptor 3" );
     is( $plex_adaptor->connection, $db_connection->connection, "$driver: plex - check connections are the same 3" );
     
-    my $subplex_adaptor = $db_connection->get_adaptor( 'subplex' );
-    isa_ok( $subplex_adaptor, 'Crispr::DB::SubplexAdaptor', "$driver: get subplex adaptor" );
-    is( $subplex_adaptor->connection, $db_connection->connection, "$driver: subplex - check connections are the same" );
-    $subplex_adaptor = $db_connection->get_adaptor( 'subplexadaptor' );
-    isa_ok( $subplex_adaptor, 'Crispr::DB::SubplexAdaptor', "$driver: get subplex adaptor 2" );
-    is( $subplex_adaptor->connection, $db_connection->connection, "$driver: subplex - check connections are the same 2" );
-    $subplex_adaptor = $db_connection->get_adaptor( 'subplex_adaptor' );
-    isa_ok( $subplex_adaptor, 'Crispr::DB::SubplexAdaptor', "$driver: get subplex adaptor 3" );
-    is( $subplex_adaptor->connection, $db_connection->connection, "$driver: subplex - check connections are the same 3" );
+    # analysis
+    my $analysis_adaptor = $db_connection->get_adaptor( 'analysis' );
+    isa_ok( $analysis_adaptor, 'Crispr::DB::AnalysisAdaptor', "$driver: get analysis adaptor" );
+    is( $analysis_adaptor->connection, $db_connection->connection, "$driver: analysis - check connections are the same" );
+    $analysis_adaptor = $db_connection->get_adaptor( 'analysisadaptor' );
+    isa_ok( $analysis_adaptor, 'Crispr::DB::AnalysisAdaptor', "$driver: get analysis adaptor 2" );
+    is( $analysis_adaptor->connection, $db_connection->connection, "$driver: analysis - check connections are the same 2" );
+    $analysis_adaptor = $db_connection->get_adaptor( 'analysis_adaptor' );
+    isa_ok( $analysis_adaptor, 'Crispr::DB::AnalysisAdaptor', "$driver: get analysis adaptor 3" );
+    is( $analysis_adaptor->connection, $db_connection->connection, "$driver: analysis - check connections are the same 3" );
     
+    # sample
     my $sample_adaptor = $db_connection->get_adaptor( 'sample' );
     isa_ok( $sample_adaptor, 'Crispr::DB::SampleAdaptor', "$driver: get sample adaptor" );
     is( $sample_adaptor->connection, $db_connection->connection, "$driver: sample - check connections are the same" );
@@ -252,6 +261,17 @@ foreach my $db_connection ( @db_connections ){
     $sample_adaptor = $db_connection->get_adaptor( 'sample_adaptor' );
     isa_ok( $sample_adaptor, 'Crispr::DB::SampleAdaptor', "$driver: get sample adaptor 3" );
     is( $sample_adaptor->connection, $db_connection->connection, "$driver: sample - check connections are the same 3" );
+    
+    # sample_amplicon
+    my $sample_amplicon_adaptor = $db_connection->get_adaptor( 'sample_amplicon' );
+    isa_ok( $sample_amplicon_adaptor, 'Crispr::DB::SampleAmpliconAdaptor', "$driver: get sample_amplicon adaptor" );
+    is( $sample_amplicon_adaptor->connection, $db_connection->connection, "$driver: sample_amplicon - check connections are the same" );
+    $sample_amplicon_adaptor = $db_connection->get_adaptor( 'sample_ampliconadaptor' );
+    isa_ok( $sample_amplicon_adaptor, 'Crispr::DB::SampleAmpliconAdaptor', "$driver: get sample_amplicon adaptor 2" );
+    is( $sample_amplicon_adaptor->connection, $db_connection->connection, "$driver: sample_amplicon - check connections are the same 2" );
+    $sample_amplicon_adaptor = $db_connection->get_adaptor( 'sample_amplicon_adaptor' );
+    isa_ok( $sample_amplicon_adaptor, 'Crispr::DB::SampleAmpliconAdaptor', "$driver: get sample_amplicon adaptor 3" );
+    is( $sample_amplicon_adaptor->connection, $db_connection->connection, "$driver: sample_amplicon - check connections are the same 3" );
     
     SKIP: {
         skip "methods not implemented yet!", 6;

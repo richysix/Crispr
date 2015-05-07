@@ -25,8 +25,9 @@ use Crispr::DB::PrimerAdaptor;
 use Crispr::DB::PrimerPairAdaptor;
 use Crispr::DB::InjectionPoolAdaptor;
 use Crispr::DB::PlexAdaptor;
-use Crispr::DB::SubplexAdaptor;
+use Crispr::DB::AnalysisAdaptor;
 use Crispr::DB::SampleAdaptor;
+use Crispr::DB::SampleAmpliconAdaptor;
 
 =method new
 
@@ -385,10 +386,12 @@ sub get_adaptor {
         injectionpooladaptor => 'Crispr::DB::InjectionPoolAdaptor',
         plex => 'Crispr::DB::PlexAdaptor',
         plexadaptor => 'Crispr::DB::PlexAdaptor',
-        subplex => 'Crispr::DB::SubplexAdaptor',
-        subplexadaptor => 'Crispr::DB::SubplexAdaptor',
+        analysis => 'Crispr::DB::AnalysisAdaptor',
+        analysisadaptor => 'Crispr::DB::AnalysisAdaptor',
         sample => 'Crispr::DB::SampleAdaptor',
         sampleadaptor => 'Crispr::DB::SampleAdaptor',
+        sampleamplicon => 'Crispr::DB::SampleAmpliconAdaptor',
+        sampleampliconadaptor => 'Crispr::DB::SampleAmpliconAdaptor',
     );
     
     my %args = (
