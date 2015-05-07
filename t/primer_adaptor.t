@@ -21,7 +21,7 @@ my $count_output = qx/wc -l $test_data/;
 chomp $count_output;
 $count_output =~ s/\s$test_data//mxs;
 
-Readonly my $TESTS_FOREACH_DBC => 1 + 14 + $count_output * 2 + 2;
+Readonly my $TESTS_FOREACH_DBC => 1 + 14 + $count_output * 2 + 2 + 2;
 plan tests => 2 * $TESTS_FOREACH_DBC;
 
 use Crispr::DB::DBConnection;
@@ -253,5 +253,19 @@ foreach my $db_connection ( @db_connections ){
            label => "$driver: primers stored - with tail",
         );
     }
+    
+    # test fetch methods
+    # _fetch - 2 tests
+    my $primer;
+    ok( $primers = $primer_ad->_fetch( 'primer_id = ?',
+        [ $mock_left_primer->primer_id, ] ), "$driver: Test _fetch method" );
+    check_attributes( $primers->[0], $mock_left_primer, $driver, '_fetch' );
+    
     $db_connection->destroy();
 }
+
+sub check_attributes {
+    my ( $obj_1, $obj_2, $driver, $method, ) = @_;
+    is( $obj_1->primer_id, $obj_2->primer_id, "$driver: object from db $method - check primer db_id" );
+}
+

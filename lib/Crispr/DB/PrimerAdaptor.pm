@@ -14,6 +14,9 @@ use Readonly;
 
 extends 'Crispr::DB::BaseAdaptor';
 
+# Cache for primers. HashRef keyed on db_id
+my %primer_cache;
+
 =method new
 
   Usage       : my $primer_adaptor = Crispr::DB::PrimerAdaptor->new(
@@ -179,19 +182,10 @@ sub _split_primer_into_seq_and_tail {
 
 sub fetch_by_id {
     my ( $self, $primer_id ) = @_;
-    my $dbh = $self->connection->dbh();
-    # select statement
-    my $statement = 'select * from primer where primer_id = ?';
-    my ( $primers, $num_rows ) = $self->_fetch_primers_by_attributes( $statement, [ $primer_id ] );
-    if( $num_rows == 0 ){
-        "Couldn't find primer:$primer_id in database.\n";
-    }
-    elsif( $num_rows > 1 ){
-        "Primer id:$primer_id should be unique, but got more than one row returned!\n";
-    }
-    else{
-        return $primers->[0];
-    }
+    # where clause
+    my $where_clause = 'primer_id = ?';
+    my $primers = $self->_fetch( $where_clause, [ $primer_id ] );
+    return $primers->[0];
 }
 
 =method fetch_by_name
@@ -259,6 +253,83 @@ sub _fetch_primers_by_attributes {
     return ( $primers, $num_rows );
 }
 
+=method _fetch
+
+  Usage       : $primer = $primer_adaptor->_fetch( $where_clause, $where_params_array  );
+  Purpose     : internal method for fetching primer from the database.
+  Returns     : Crispr::Primer
+  Parameters  : Str - Where statement e.g. 'primer_id = ?'
+                ArrayRef - Where Parameters. One for each ? in where statement
+  Throws      : 
+  Comments    : 
+
+=cut
+
+sub _fetch {
+    my ( $self, $where_clause, $where_parameters ) = @_;
+    my $dbh = $self->connection->dbh();
+    
+    # need to change query depending on whether driver is MySQL or SQLite
+    my $p_concat_statement;
+    if( ref $self->connection->driver eq 'DBIx::Connector::Driver::mysql' ){
+        $p_concat_statement = 'concat( p.primer_tail, p.primer_sequence )';
+    }else{
+        $p_concat_statement = 'p.primer_tail || p.primer_sequence';
+    }
+    
+    my $sql = <<"END_SQL";
+        SELECT
+            p.primer_id, $p_concat_statement as left_sequence,
+            p.primer_chr, p.primer_start, p.primer_end, p.primer_strand,
+            p.plate_id, p.well_id
+        FROM primer p
+END_SQL
+
+    if ($where_clause) {
+        $sql .= 'WHERE ' . $where_clause;
+    }
+
+    my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
+    $sth->execute();
+
+    my ( $primer_id, $primer_sequence, $primer_chr,
+        $primer_start, $primer_end, $primer_strand,
+        $plate_id, $well_id, );
+    
+    $sth->bind_columns( \( $primer_id, $primer_sequence, $primer_chr,
+        $primer_start, $primer_end, $primer_strand,
+        $plate_id, $well_id, ) );
+
+    my @primers = ();
+    while ( $sth->fetch ) {
+        my $primer;
+        if( !exists $primer_cache{ $primer_id } ){
+            my $primer_name = join(":", $primer_chr,
+                                   join("-", $primer_start, $primer_end, ),
+                                   $primer_strand, );
+            $primer = Crispr::Primer->new(
+                    primer_id => $primer_id,
+                    plate_id => $plate_id,
+                    well_id => $well_id,
+                    sequence => $primer_sequence,
+                    primer_name => $primer_name,
+                    seq_region => $primer_chr,
+                    seq_region_strand => $primer_strand,
+                    seq_region_start => $primer_start,
+                    seq_region_end => $primer_end,
+            );
+            $primer_cache{ $primer_id } = $primer;
+        }
+        else{
+            $primer = $primer_cache{ $primer_id };
+        }
+        
+        push @primers, $primer;
+    }
+
+    return \@primers;    
+}
+
 #_make_new_primer_from_db
 
   #Usage       : $crRNAs = $primer_adaptor->_make_new_primer_from_db( \@fields );
@@ -274,7 +345,7 @@ sub _make_new_primer_from_db {
     my $primer = Crispr::Primer->new(
         primer_id => $fields->[0],
         sequence => $fields->[1],
-        seq_region_name => $fields->[2],
+        seq_region => $fields->[2],
         seq_region_start => $fields->[3],
         seq_region_end => $fields->[4],
         seq_region_strand => $fields->[5],
