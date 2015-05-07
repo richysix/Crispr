@@ -30,22 +30,22 @@ my %sample_cache; # Cache for Sample objects. HashRef keyed on sample_id (db_id)
 
 =cut
 
-=method subplex_adaptor
+=method analysis_adaptor
 
-  Usage       : $self->subplex_adaptor();
-  Purpose     : Getter for a subplex_adaptor.
-  Returns     : Crispr::DB::SubplexAdaptor
+  Usage       : $self->analysis_adaptor();
+  Purpose     : Getter for a analysis_adaptor.
+  Returns     : Crispr::DB::AnalysisAdaptor
   Parameters  : None
   Throws      : 
   Comments    : 
 
 =cut
 
-has 'subplex_adaptor' => (
+has 'analysis_adaptor' => (
     is => 'ro',
-    isa => 'Crispr::DB::SubplexAdaptor',
+    isa => 'Crispr::DB::AnalysisAdaptor',
     lazy => 1,
-    builder => '_build_subplex_adaptor',
+    builder => '_build_analysis_adaptor',
 );
 
 =method injection_pool_adaptor
@@ -132,33 +132,11 @@ sub store_samples {
         }
     }
     
-    my $add_sample_statement = "insert into sample values( ?, ?, ?, ?, ?, ?, ?, ?, ? );"; 
+    my $add_sample_statement = "insert into sample values( ?, ?, ?, ?, ?, ?, ? );"; 
     
     $self->connection->txn(  fixup => sub {
         my $sth = $dbh->prepare($add_sample_statement);
         foreach my $sample ( @{$samples} ){
-            # check subplex exists
-            my $subplex_id;
-            my ( $subplex_check_statement, $subplex_params );
-            if( !defined $sample->subplex ){
-                confess join("\n", "One of the Sample objects does not contain a Subplex object.",
-                    "This is required to able to add the sample to the database.", ), "\n";
-            }
-            else{
-                if( defined $sample->subplex->db_id ){
-                    $subplex_check_statement = "select count(*) from subplex where subplex_id = ?;";
-                    $subplex_params = [ $sample->subplex->db_id ];
-                }
-                else{
-                    confess "Subplex object must have a database id!\n";
-                }
-            }
-            # check subplex exists in db
-            if( !$self->check_entry_exists_in_db( $subplex_check_statement, $subplex_params ) ){
-                confess join(q{ }, "Sample,", $sample->subplex->db_id,
-                             "does not exist in the database.", ), "\n";
-            }
-            
             # check injection pool for id and check it exists in the db
             my $injection_id;
             my ( $inj_pool_check_statement, $inj_pool_params );
@@ -183,7 +161,10 @@ sub store_samples {
             }
             else{
                 # need db_id
-                if( !$injection_id ){
+                if( defined $sample->injection_pool->db_id ){
+                    $injection_id = $sample->injection_pool->db_id;
+                }
+                else{
                     my $injection_pool = $self->injection_pool_adaptor->fetch_by_name( $sample->injection_pool->pool_name );
                     $injection_id = $injection_pool->db_id;
                 }
@@ -191,10 +172,8 @@ sub store_samples {
             
             # add sample
             $sth->execute(
-                $sample->db_id, $sample->sample_name,
-                $injection_id, $sample->subplex->db_id,
-                $sample->well_id, $sample->barcode_id,
-                $sample->generation, $sample->sample_type,
+                $sample->db_id, $sample->sample_name, $sample->sample_number,
+                $injection_id, $sample->generation, $sample->sample_type,
                 $sample->species,
             );
             
@@ -221,9 +200,15 @@ sub store_samples {
 
 sub fetch_by_id {
     my ( $self, $id ) = @_;
-    my $sample = $self->_fetch( 'sample_id = ?;', [ $id ] )->[0];
-    if( !$sample ){
-        confess "Couldn't retrieve sample, $id, from database.\n";
+    my $sample;
+    if( exists $sample_cache{$id} ){
+        $sample = $sample_cache{$id};
+    }
+    else{
+        $sample = $self->_fetch( 'sample_id = ?;', [ $id ] )->[0];
+        if( !$sample ){
+            confess "Couldn't retrieve sample, $id, from database.\n";
+        }
     }
     return $sample;
 }
@@ -270,43 +255,6 @@ sub fetch_by_name {
     return $sample;
 }
 
-=method fetch_all_by_subplex_id
-
-  Usage       : $samples = $sample_adaptor->fetch_all_by_plex_id( $plex_id );
-  Purpose     : Fetch an sample given a plex database id
-  Returns     : Crispr::DB::Sample object
-  Parameters  : Int
-  Throws      : If no rows are returned from the database or if too many rows are returned
-  Comments    : None
-
-=cut
-
-sub fetch_all_by_subplex_id {
-    my ( $self, $subplex_id ) = @_;
-    my $samples = $self->_fetch( 'subplex_id = ?;', [ $subplex_id ] );
-    if( !$samples ){
-        confess join(q{ }, "Couldn't retrieve samples for subplex id, ",
-                     $subplex_id, "from database.\n" );
-    }
-    return $samples;
-}
-
-=method fetch_all_by_subplex
-
-  Usage       : $samples = $sample_adaptor->fetch_all_by_subplex( $subplex );
-  Purpose     : Fetch an sample given a Subplex object
-  Returns     : Crispr::DB::Sample object
-  Parameters  : Crispr::DB::Subplex object
-  Throws      : If no rows are returned from the database or if too many rows are returned
-  Comments    : None
-
-=cut
-
-sub fetch_all_by_subplex {
-    my ( $self, $subplex ) = @_;
-    return $self->fetch_all_by_subplex_id( $subplex->db_id );
-}
-
 =method fetch_all_by_injection_id
 
   Usage       : $samples = $sample_adaptor->fetch_all_by_injection_id( $inj_id );
@@ -344,6 +292,88 @@ sub fetch_all_by_injection_pool {
     return $self->fetch_all_by_injection_id( $inj_pool->db_id );
 }
 
+=method fetch_all_by_analysis_id
+
+  Usage       : $samples = $sample_adaptor->fetch_all_by_plex_id( $plex_id );
+  Purpose     : Fetch an sample given a plex database id
+  Returns     : Crispr::DB::Sample object
+  Parameters  : Int
+  Throws      : If no rows are returned from the database or if too many rows are returned
+  Comments    : None
+
+=cut
+
+sub fetch_all_by_analysis_id {
+    my ( $self, $analysis_id ) = @_;
+    
+    my $where_clause = 'analysis_id = ?;';
+    my $where_parameters = [ $analysis_id ];
+    my $sql = <<'END_SQL';
+        SELECT
+            s.sample_id, sample_name, sample_number,
+            injection_id, generation, type, species
+        FROM sample s, analysis_information info
+        WHERE s.sample_id = info.sample_id
+END_SQL
+
+    if ($where_clause) {
+        $sql .= 'AND ' . $where_clause;
+    }
+    
+    my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
+    $sth->execute();
+
+    my ( $sample_id, $sample_name, $sample_number, $injection_id,
+        $generation, $type, $species, );
+    
+    $sth->bind_columns( \( $sample_id, $sample_name, $sample_number,
+                          $injection_id, $generation, $type, $species, ) );
+
+    my @samples = ();
+    while ( $sth->fetch ) {
+        
+        my $sample;
+        if( !exists $sample_cache{ $sample_id } ){
+            # fetch injection pool by id
+            my $injection_pool = $self->injection_pool_adaptor->fetch_by_id( $injection_id );
+            
+            $sample = Crispr::DB::Sample->new(
+                db_id => $sample_id,
+                sample_name => $sample_name,
+                sample_number => $sample_number,
+                injection_pool => $injection_pool,
+                generation => $generation,
+                sample_type => $type,
+                species => $species,
+            );
+            $sample_cache{ $sample_id } = $sample;
+        }
+        else{
+            $sample = $sample_cache{ $sample_id };
+        }
+        
+        push @samples, $sample;
+    }
+
+    return \@samples;
+}
+
+=method fetch_all_by_analysis
+
+  Usage       : $samples = $sample_adaptor->fetch_all_by_analysis( $analysis );
+  Purpose     : Fetch an sample given a Analysis object
+  Returns     : Crispr::DB::Sample object
+  Parameters  : Crispr::DB::Analysis object
+  Throws      : If no rows are returned from the database or if too many rows are returned
+  Comments    : None
+
+=cut
+
+sub fetch_all_by_analysis {
+    my ( $self, $analysis ) = @_;
+    return $self->fetch_all_by_analysis_id( $analysis->db_id );
+}
+
 #_fetch
 #
 #Usage       : $sample = $self->_fetch( \@fields );
@@ -360,10 +390,8 @@ sub _fetch {
     
     my $sql = <<'END_SQL';
         SELECT
-            sample_id, sample_name,
-            injection_id, subplex_id,
-            well_id, barcode_id,
-            generation, type, species
+            sample_id, sample_name, sample_number,
+            injection_id, generation, type, species
         FROM sample
 END_SQL
 
@@ -374,30 +402,27 @@ END_SQL
     my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
     $sth->execute();
 
-    my ( $sample_id, $sample_name, $injection_id, $subplex_id,
-            $well_id, $barcode_id, $generation, $type, $species, );
+    my ( $sample_id, $sample_name, $sample_number, $injection_id,
+        $generation, $type, $species, );
     
-    $sth->bind_columns( \( $sample_id, $sample_name, $injection_id, $subplex_id,
-            $well_id, $barcode_id, $generation, $type, $species, ) );
+    $sth->bind_columns( \( $sample_id, $sample_name, $sample_number,
+                          $injection_id, $generation, $type, $species, ) );
 
     my @samples = ();
     while ( $sth->fetch ) {
         
         my $sample;
         if( !exists $sample_cache{ $sample_id } ){
-            # fetch subplex by subplex_id
-            my $subplex = $self->subplex_adaptor->fetch_by_id( $subplex_id );
             # fetch injection pool by id
             my $injection_pool = $self->injection_pool_adaptor->fetch_by_id( $injection_id );
             
             $sample = Crispr::DB::Sample->new(
                 db_id => $sample_id,
+                sample_name => $sample_name,
+                sample_number => $sample_number,
                 injection_pool => $injection_pool,
-                subplex => $subplex,
-                barcode_id => $barcode_id,
                 generation => $generation,
                 sample_type => $type,
-                well_id => $well_id,
                 species => $species,
             );
             $sample_cache{ $sample_id } = $sample;
@@ -589,18 +614,18 @@ sub delete_sample_from_db {
 
 =cut
 
-#_build_subplex_adaptor
+#_build_analysis_adaptor
 
-  #Usage       : $subplex_adaptor = $self->_build_subplex_adaptor();
-  #Purpose     : Internal method to create a new Crispr::DB::SubplexAdaptor
-  #Returns     : Crispr::DB::SubplexAdaptor
+  #Usage       : $analysis_adaptor = $self->_build_analysis_adaptor();
+  #Purpose     : Internal method to create a new Crispr::DB::AnalysisAdaptor
+  #Returns     : Crispr::DB::AnalysisAdaptor
   #Parameters  : None
   #Throws      : 
   #Comments    : 
 
-sub _build_subplex_adaptor {
+sub _build_analysis_adaptor {
     my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'subplex' );
+    return $self->db_connection->get_adaptor( 'analysis' );
 }
 
 #_build_injection_pool_adaptor
