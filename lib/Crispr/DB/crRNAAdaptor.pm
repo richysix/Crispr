@@ -21,6 +21,8 @@ use Crispr::DB::TargetAdaptor;
 
 extends 'Crispr::DB::BaseAdaptor';
 
+my %crRNA_cache; # Cache for crRNA objects. HashRef keyed on crRNA_id
+
 =method new
 
   Usage       : my $crRNA_adaptor = Crispr::DB::crRNAAdaptor->new(
@@ -219,7 +221,7 @@ sub store_crRNAs {
 				$crRNA->chr, $crRNA->start, $crRNA->end, $crRNA->strand,
 				$crRNA->sequence, $crRNA->five_prime_Gs,
                 $crRNA->score, $crRNA->off_target_score,
-                $crRNA->coding_score || undef,
+                $crRNA->coding_score,
 				$crRNA->target_id, $plate_id, $well_id,
 			);
 			
@@ -847,6 +849,65 @@ END_ST
     return $crRNA;
 }
 
+=method fetch_all_by_primer_pair
+
+    Usage       : $crRNAs = $crRNA_adaptor->fetch_all_by_primer_pair( $primer_pair );
+    Purpose     : Fetch a list of crRNAs given a Crispr::PrimerPair object
+    Returns     : Arrayref of Crispr::crRNA objects
+    Parameters  : Crispr::PrimerPair
+    Throws      : If PrimerPair primer_pair_id attribute is not defined
+                    If no rows are returned from the database
+    Comments    : None
+
+=cut
+
+sub fetch_all_by_primer_pair {
+    my ( $self, $primer_pair, ) = @_;
+    my @crRNAs;
+    
+    if( !defined $primer_pair->primer_pair_id ){
+        die join(q{ }, "primer_pair_id attribute is not defined for primer pair,",
+            $primer_pair->pair_name, "; Cannot retrieve crRNAs from database."), "\n";
+    }
+    my $where_clause = 'primer_pair_id = ? and amp.crRNA_id = cr.crRNA_id;';
+    my $where_parameters = [ $primer_pair->primer_pair_id ];
+    
+    my $sql = <<END_ST;
+    SELECT cr.crRNA_id, crRNA_name, chr, start, end, strand, sequence,
+    num_five_prime_Gs, score, off_target_score, coding_score, target_id,
+    plate_id, well_id
+    FROM crRNA cr, amplicon_to_crRNA amp
+END_ST
+    
+    if ($where_clause) {
+        $sql .= 'WHERE ' . $where_clause;
+    }
+    
+    my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
+    $sth->execute();
+
+    my ( $crRNA_id, $crRNA_name, $chr, $start, $end, $strand, $sequence,
+        $num_five_prime_Gs, $score, $off_target_score, $coding_score,
+        $target_id, $plate_id, $well_id );
+    
+    $sth->bind_columns( \( $crRNA_id, $crRNA_name, $chr, $start, $end, $strand, $sequence,
+        $num_five_prime_Gs, $score, $off_target_score, $coding_score,
+        $target_id, $plate_id, $well_id ) );
+    
+    while ( $sth->fetch ) {
+        if( !exists $crRNA_cache{ $crRNA_id } ){
+            my $crRNA = $self->_make_new_crRNA_from_db(
+                [ $crRNA_id, $crRNA_name, $chr, $start, $end, $strand,
+                $sequence, $num_five_prime_Gs, ] );
+            push @crRNAs, $crRNA;
+        }
+        else{
+            push @crRNAs, $crRNA_cache{ $crRNA_id };
+        }
+    }
+    
+    return \@crRNAs;
+}
 =method _make_new_crRNA_from_db
 
   Usage       : $crRNAs = $crRNA_adaptor->_make_new_crRNA_from_db( $fields );

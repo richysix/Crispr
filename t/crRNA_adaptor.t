@@ -31,7 +31,7 @@ my $transcript_count = qx/$cmd/;
 chomp $transcript_count;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 16 + 2 + $count_output * 13 + 1 + $transcript_count + 2 + 13 + 1 + 15;
+Readonly my $TESTS_IN_COMMON => 1 + 16 + 2 + $count_output * 13 + 1 + $transcript_count + 2 + 13 + 1 + 15 + 10;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
@@ -129,7 +129,7 @@ foreach my $db_connection ( @db_connections ){
     my $sth ;
     $sth = $dbh->prepare($statement);
     $sth->execute( 1, 'CR_000001-', '96', 'crispr', undef, undef, );
-    $sth->execute( 2, 'CR_000001a', '96', 'construction_oligos', undef, undef, );
+    $sth->execute( 2, 'CR_000001a', '96', 'cloning_oligos', undef, undef, );
     $sth->execute( 3, 'CR_000001b', '96', 'expression_construct', undef, undef, );
     $sth->execute( 4, 'CR_000001c', '96', 'expression_construct', undef, undef, );
     
@@ -184,11 +184,14 @@ foreach my $db_connection ( @db_connections ){
         #$mock_off_target->mock('exonerate_score', sub { return $align_score } );
         #$mock_off_target->mock('exonerate_hits', sub { return $alignments } );
         #$mock_off_target->mock('number_bwa_exon_hits', sub { return undef } );
-    
+        
+        $coding_score = $coding_score eq 'NULL' ? undef : $coding_score;
         my %coding_scores_for;
-        foreach ( split /;/, $coding_scores_by_transcript ){
-            my( $transcript, $score ) = split /=/, $_;
-            $coding_scores_for{ $transcript } = $score;
+        if( $coding_scores_by_transcript ne 'NULL' ){
+            foreach ( split /;/, $coding_scores_by_transcript ){
+                my( $transcript, $score ) = split /=/, $_;
+                $coding_scores_for{ $transcript } = $score;
+            }
         }
         #print Dumper( %coding_scores_for );
         
@@ -281,18 +284,26 @@ foreach my $db_connection ( @db_connections ){
         #print $row{'score'}, "\t", $score, "\t", abs($row{'score'} - $score), "\n";
         is( abs($row{'score'} - $score) < 0.002, 1, "score from db - $id" );
         #print $row{'coding_score'}, "\t", $coding_score, abs($row{'score'} - $score), "\n";
-        is( abs($row{'coding_score'} - $coding_score) < 0.002, 1, "coding score from db - $id" );
+        if( !defined $coding_score ){
+            is( $row{'coding_score'}, undef, "coding score from db - $id" );
+        }
+        else{
+            is( abs($row{'coding_score'} - $coding_score) < 0.002, 1, "coding score from db - $id" );
+        }
         
         # store coding scores
-        ok( $crRNA_adaptor->store_coding_scores( $mock_crRNA ), 'store coding scores' );
         my @rows;
-        row_ok(
-            table => 'coding_scores',
-            where => [ crRNA_id => $count ],
-            store_rows => \@rows,
-        );
-        foreach my $row ( @rows ){
-            is( $row->{'score'} - $coding_scores_for{ $row->{'transcript_id'} } < 0.002, 1, "Transcript scores from db - $id");
+        ok( $crRNA_adaptor->store_coding_scores( $mock_crRNA ), 'store coding scores' );
+        SKIP: {
+            skip 'undef coding scores', 1 if !defined $coding_score;
+            row_ok(
+                table => 'coding_scores',
+                where => [ crRNA_id => $count ],
+                store_rows => \@rows,
+            );
+            foreach my $row ( @rows ){
+                is( $row->{'score'} - $coding_scores_for{ $row->{'transcript_id'} } < 0.002, 1, "Transcript scores from db - $id");
+            }
         }
         
         # make mock well object
@@ -485,8 +496,86 @@ foreach my $db_connection ( @db_connections ){
         is( $row->{annotation}, $ex->[3], "$driver: off_target_info check annotation" );
     }
     
+    # make mock primer and primer pair objects
+    my $mock_left_primer = Test::MockObject->new();
+    my $l_p_id = 1;
+    $mock_left_primer->mock( 'sequence', sub { return 'CGACAGTAGACAGTTAGACGAG' } );
+    $mock_left_primer->mock( 'seq_region', sub { return '5' } );
+    $mock_left_primer->mock( 'seq_region_start', sub { return 101 } );
+    $mock_left_primer->mock( 'seq_region_end', sub { return 124 } );
+    $mock_left_primer->mock( 'seq_region_strand', sub { return '1' } );
+    $mock_left_primer->mock( 'tail', sub { return undef } );
+    $mock_left_primer->set_isa('Crispr::Primer');
+    $mock_left_primer->mock( 'primer_id', sub { my @args = @_; if( $_[1]){ return $_[1] }else{ return $l_p_id} } );
+    $mock_left_primer->mock( 'primer_name', sub { return '5:101-124:1' } );
+    $mock_left_primer->mock( 'well_id', sub { return 'A01' } );
+    
+    my $mock_right_primer = Test::MockObject->new();
+    my $r_p_id = 2;
+    $mock_right_primer->mock( 'sequence', sub { return 'GATAGATACGATAGATGGGAC' } );
+    $mock_right_primer->mock( 'seq_region', sub { return '5' } );
+    $mock_right_primer->mock( 'seq_region_start', sub { return 600 } );
+    $mock_right_primer->mock( 'seq_region_end', sub { return 623 } );
+    $mock_right_primer->mock( 'seq_region_strand', sub { return '-1' } );
+    $mock_right_primer->mock( 'tail', sub { return undef } );
+    $mock_right_primer->set_isa('Crispr::Primer');
+    $mock_right_primer->mock('primer_id', sub { my @args = @_; if( $_[1]){ return $_[1] }else{ return $r_p_id} } );
+    $mock_right_primer->mock( 'primer_name', sub { return '5:600-623:-1' } );
+    $mock_right_primer->mock( 'well_id', sub { return 'A01' } );
+    
+    # add primers and primer pair direct to db
+    my $p_insert_st = 'insert into primer values( ?, ?, ?, ?, ?, ?, ?, ?, ? );';
+    $sth = $dbh->prepare( $p_insert_st );
+    foreach my $p ( $mock_left_primer, $mock_right_primer ){
+        $sth->execute(
+            $p->primer_id, $p->sequence, $p->seq_region, $p->seq_region_start,
+            $p->seq_region_end, $p->seq_region_strand, undef,
+            undef, undef
+        );
+    }
+    
+    my $mock_primer_pair = Test::MockObject->new();
+    my $pair_id = 1;
+    $mock_primer_pair->mock( 'type', sub{ return 'ext' } );
+    $mock_primer_pair->mock( 'left_primer', sub{ return $mock_left_primer } );
+    $mock_primer_pair->mock( 'right_primer', sub{ return $mock_right_primer } );
+    $mock_primer_pair->mock( 'seq_region', sub{ return $mock_left_primer->seq_region } );
+    $mock_primer_pair->mock( 'seq_region_start', sub{ return $mock_left_primer->seq_region_start } );
+    $mock_primer_pair->mock( 'seq_region_end', sub{ return $mock_right_primer->seq_region_end } );
+    $mock_primer_pair->mock( 'seq_region_strand', sub{ return 1 } );
+    $mock_primer_pair->mock( 'product_size', sub{ return 523 } );
+    $mock_primer_pair->set_isa('Crispr::PrimerPair');
+    $mock_primer_pair->mock('primer_pair_id', sub { my @args = @_; if($_[1]){ return $_[1] }else{ return $pair_id} } );
+    $mock_primer_pair->mock('pair_name', sub { return '5:101-623:1' } );
+    
+    my $pp_insert_st = 'insert into primer_pair values( ?, ?, ?, ?, ?, ?, ?, ?, ? );';
+    $sth = $dbh->prepare( $pp_insert_st );
+    $sth->execute(
+        $mock_primer_pair->primer_pair_id, $mock_primer_pair->type,
+        $mock_primer_pair->left_primer->primer_id, $mock_primer_pair->right_primer->primer_id,
+        $mock_primer_pair->seq_region, $mock_primer_pair->seq_region_start, $mock_primer_pair->seq_region_end,
+        $mock_primer_pair->seq_region_strand, $mock_primer_pair->product_size,
+    );
+    
+    # add primer_pair and crispr to amplicon_to_crRNA table
+    my $amp_st = 'insert into amplicon_to_crRNA values( ?, ? );';
+    $sth = $dbh->prepare( $amp_st );
+    $sth->execute(
+        $mock_primer_pair->primer_pair_id,
+        $mock_crRNA1->crRNA_id,
+    );
+    
+    # test fetch_all_by_primer_pair - 10 test
+    $pair_id = undef;
+    throws_ok { $crRNA_adaptor->fetch_all_by_primer_pair( $mock_primer_pair ) }
+        qr/primer_pair_id attribute is not defined/,
+        "$driver: check fetch_all_by_primer_pair throws when there is no primer_pair_id";
+    $pair_id = 1;
+    ok( my $crRNAs_from_db = $crRNA_adaptor->fetch_all_by_primer_pair( $mock_primer_pair ), "$driver: fetch_all_by_primer_pair" );
+    check_attributes( $crRNAs_from_db->[0], $mock_crRNA1, $driver, 'fetch_all_by_primer_pair' );
+    
     # destroy database
-    $test_db_connections{$driver}->destroy();
+#    $test_db_connections{$driver}->destroy();
 }
 
 sub increment {
@@ -503,3 +592,15 @@ sub increment {
     return ( $rowi, $coli );
 }
 
+# 8 tests each call
+sub check_attributes {
+    my ( $obj_1, $obj_2, $driver, $method, ) = @_;
+    is( $obj_1->crRNA_id, $obj_2->crRNA_id, "$driver: object from db $method - check crRNA db_id" );
+    is( $obj_1->name, $obj_2->name, "$driver: object from db $method - check crRNA name" );
+    is( $obj_1->sequence, $obj_2->sequence, "$driver: object from db $method - check crRNA sequence" );
+    is( $obj_1->chr, $obj_2->chr, "$driver: object from db $method - check crRNA chr" );
+    is( $obj_1->start, $obj_2->start, "$driver: object from db $method - check crRNA start" );
+    is( $obj_1->end, $obj_2->end, "$driver: object from db $method - check crRNA end" );
+    is( $obj_1->strand, $obj_2->strand, "$driver: object from db $method - check crRNA strand" );
+    is( $obj_1->five_prime_Gs, $obj_2->five_prime_Gs, "$driver: object from db $method - check crRNA five_prime_Gs" );
+}
