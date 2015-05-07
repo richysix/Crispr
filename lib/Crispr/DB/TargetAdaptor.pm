@@ -395,6 +395,52 @@ END_SQL
     return $targets[0];
 }
 
+=method fetch_gene_name_by_primer_pair
+
+  Usage       : $name = $target_adaptor->fetch_gene_name_by_primer_pair( $primer_pair );
+  Purpose     : Fetch a gene name given a primer pair object
+  Returns     : gene name (Str)
+  Parameters  : Crispr::PrimerPair
+  Throws      : If no rows are returned from the database
+  Comments    : None
+
+=cut
+
+sub fetch_gene_name_by_primer_pair {
+    my ( $self, $primer_pair ) = @_;
+    
+    my $where_parameters;
+    if( !defined $primer_pair->primer_pair_id ){
+        die "Supplied primer pair does not have a database id";
+    }
+    else{
+        $where_parameters = [ $primer_pair->primer_pair_id ];
+    }
+    my $where_clause = 'pp.primer_pair_id = ?';
+    my $sql = <<'END_SQL';
+SELECT target_name, gene_name
+FROM target t, crRNA cr, amplicon_to_crRNA amp, primer_pair pp
+WHERE pp.primer_pair_id = amp.primer_pair_id AND
+amp.crRNA_id = cr.crRNA_id AND cr.target_id = t.target_id
+END_SQL
+
+    if ($where_clause) {
+        $sql .= 'AND ' . $where_clause;
+    }
+    
+    my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
+    $sth->execute();
+
+    my ( $target_name, $gene_name );
+    $sth->bind_columns( \( $target_name, $gene_name, ) );
+    
+    my $name;
+    while ( $sth->fetch ) {
+        $name = $gene_name ? $gene_name : $target_name;
+    }
+    return $name;
+}
+
 #_fetch
 #
 #Usage       : $targets = $self->_fetch( \@fields );
