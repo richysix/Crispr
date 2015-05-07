@@ -15,7 +15,7 @@ with 'Crispr::SharedMethods';
 
 =method new
 
-  Usage       : my $inj = Crispr::DB::Plex->new(
+  Usage       : my $plex = Crispr::DB::Plex->new(
 					db_id => undef,
                     plex_name => 'MPX14',
 					run_id => 12345,
@@ -36,7 +36,7 @@ with 'Crispr::SharedMethods';
 
 =method db_id
 
-  Usage       : $inj->db_id;
+  Usage       : $plex->db_id;
   Purpose     : Getter/Setter for Plex db_id attribute
   Returns     : Int (can be undef)
   Parameters  : None
@@ -52,7 +52,7 @@ has 'db_id' => (
 
 =method plex_name
 
-  Usage       : $inj->plex_name;
+  Usage       : $plex->plex_name;
   Purpose     : Getter for Plex plex_name attribute
   Returns     : Str
   Parameters  : None
@@ -68,7 +68,7 @@ has 'plex_name' => (
 
 =method run_id
 
-  Usage       : $inj->run_id;
+  Usage       : $plex->run_id;
   Purpose     : Getter for run_id attribute
   Returns     : Int
   Parameters  : None
@@ -84,7 +84,7 @@ has 'run_id' => (
 
 =method analysis_started
 
-  Usage       : $inj->analysis_started;
+  Usage       : $plex->analysis_started;
   Purpose     : Getter for analysis_started attribute
   Returns     : DateTime
   Parameters  : None
@@ -100,7 +100,7 @@ has 'analysis_started' => (
 
 =method analysis_finished
 
-  Usage       : $inj->analysis_finished;
+  Usage       : $plex->analysis_finished;
   Purpose     : Getter for analysis_finished attribute
   Returns     : DateTime
   Parameters  : None
@@ -216,7 +216,7 @@ __END__
 =head1 SYNOPSIS
  
     use Crispr::DB::Plex;
-    my $inj = Crispr::DB::Plex->new(
+    my $plex = Crispr::DB::Plex->new(
         db_id => undef,
         plex_name => 'MPX14',
         run_id => 12345,
