@@ -200,6 +200,7 @@ sub store_injection_pools {
             };
             if( $EVAL_ERROR ){
                 if( $EVAL_ERROR =~ m/ALREADY\sEXISTS/xms ){
+                    $injection_pool = $self->fetch_by_name( $injection_pool->pool_name );
                     warn join("\n", "Injection already exists in the database.",
                             join("\t", $injection_pool->info, ),
                             'Skipping ...',
