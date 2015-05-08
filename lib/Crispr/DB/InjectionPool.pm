@@ -252,6 +252,19 @@ around 'date' => sub {
     }
 };
 
+sub info {
+    my ( $self, ) = @_;
+    return (
+        $self->db_id || 'NULL',
+        $self->pool_name,
+        $self->cas9_conc,
+        $self->date || 'NULL',
+        $self->line_injected,
+        $self->line_raised || 'NULL',
+        $self->sorted_by || 'NULL',
+    );
+}
+
 __PACKAGE__->meta->make_immutable;
 1;
 

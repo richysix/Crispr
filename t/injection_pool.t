@@ -143,7 +143,8 @@ is( $injection_pool->date, '2014-05-24', 'check date');
 is( $injection_pool->line_injected, 'line1', 'check line_injected');
 is( $injection_pool->line_raised, 'line2', 'check line_raised');
 is( $injection_pool->sorted_by, 'crispr_test', 'check sorted_by');
-$tests += 6;
+is( join(":", $injection_pool->info, ), 'NULL:170:200:2014-05-24:line1:line2:crispr_test' );
+$tests += 7;
 
 # check it throws with non date input
 throws_ok { Crispr::DB::InjectionPool->new( date => '14-05-24' ) } qr/The\sdate\ssupplied\sis\snot\sa\svalid\sformat/, 'non valid date format';
