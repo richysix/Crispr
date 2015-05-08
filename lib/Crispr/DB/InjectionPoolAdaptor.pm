@@ -184,6 +184,7 @@ sub store_injection_pools {
     my $check_cas9_statement = "select count(*) from cas9_prep where cas9_prep_id = ?;";
     my $check_guideRNA_statement = "select count(*) from guideRNA_prep where guideRNA_prep_id = ?;";
     my $check_crRNA_statement = "select count(*) from crRNA where crRNA_id = ?;";
+    my $check_inj_statement = "SELECT count(*) from injection WHERE injection_name = ?;";
     
     my $add_inj_statement = "insert into injection values( ?, ?, ?, ?, ?, ?, ?, ? );"; 
     my $add_gRNA_statement = "insert into injection_pool values( ?, ?, ?, ? );"; 
@@ -191,6 +192,25 @@ sub store_injection_pools {
     $self->connection->txn(  fixup => sub {
         my $sth;
         foreach my $injection_pool ( @{$injection_pools} ){
+            # check whether injection already exists in the db
+            eval{
+                if( $self->check_entry_exists_in_db( $check_inj_statement, [ $injection_pool->pool_name, ] ) ){
+                    die "ALREADY EXISTS";
+                }
+            };
+            if( $EVAL_ERROR ){
+                if( $EVAL_ERROR =~ m/ALREADY\sEXISTS/xms ){
+                    warn join("\n", "Injection already exists in the database.",
+                            join("\t", $injection_pool->info, ),
+                            'Skipping ...',
+                        ), "\n";
+                    next;
+                }
+                else{
+                    confess $EVAL_ERROR, "\n";
+                }
+            }
+            
             $sth = $dbh->prepare($add_inj_statement);
             # check cas9 prep exists
             eval{
@@ -242,7 +262,7 @@ sub store_injection_pools {
             }
         }
         
-        $sth->finish();
+        $sth->finish() if $sth;
     } );
     
     return $injection_pools;

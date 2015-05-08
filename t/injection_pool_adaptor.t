@@ -217,6 +217,15 @@ foreach my $db_connection ( @db_connections ){
     $mock_injection_pool->mock( 'line_raised', sub{ return undef } );
     $mock_injection_pool->mock( 'sorted_by', sub{ return 'cr_1' } );
     $mock_injection_pool->mock( 'guideRNAs', sub{ return [ $mock_gRNA_1, $mock_gRNA_2, ] } );
+    $mock_injection_pool->mock( 'info', sub{ return (
+                                                $mock_injection_pool->db_id || 'NULL',
+                                                $mock_injection_pool->pool_name,
+                                                $mock_injection_pool->cas9_conc,
+                                                $mock_injection_pool->date || 'NULL',
+                                                $mock_injection_pool->line_injected,
+                                                $mock_injection_pool->line_raised || 'NULL',
+                                                $mock_injection_pool->sorted_by || 'NULL',
+                                                ) } );
     
     # make a new real InjectionPool Adaptor
     my $injection_pool_adaptor = Crispr::DB::InjectionPoolAdaptor->new( db_connection => $db_connection, );
@@ -279,18 +288,20 @@ foreach my $db_connection ( @db_connections ){
         qr/Argument\smust\sbe\sCrispr::DB::InjectionPool\sobject/,
         "$driver: store_injection_pool throws if object is not Crispr::DB::InjectionPool";
     
-    # check throws ok on attempted duplicate entry
-    # for this we need to suppress the warning that is generated as well, hence the nested warning_like test
-    # This does not affect the apparent number of tests run
-    my $regex = $driver eq 'mysql' ?   qr/Duplicate\sentry/xms
-        :                           qr/PRIMARY\sKEY\smust\sbe\sunique/xms;
+    ## check throws ok on attempted duplicate entry
+    ## for this we need to suppress the warning that is generated as well, hence the nested warning_like test
+    ## This does not affect the apparent number of tests run
+    #my $regex = $driver eq 'mysql' ?   qr/Duplicate\sentry/xms
+    #    :                           qr/PRIMARY\sKEY\smust\sbe\sunique/xms;
     
-    throws_ok {
-        warning_like { $injection_pool_adaptor->store_injection_pool( $mock_injection_pool) }
-            $regex;
-    }
-        $regex,
-        "$driver: store_injection_pool throws because of duplicate entry";
+    #throws_ok {
+    #    warning_like { $injection_pool_adaptor->store_injection_pool( $mock_injection_pool) }
+    #        $regex;
+    #}
+    #    $regex,
+    #    "$driver: store_injection_pool throws because of duplicate entry";
+    warning_like { $injection_pool_adaptor->store_injection_pool( $mock_injection_pool) }
+        qr/Injection\salready\sexists\sin\sthe\sdatabase/, 'check warning if injection already exists';
     
     $i_id = 2;
     $mock_injection_pool->mock( 'pool_name', sub{ return '171' } );
