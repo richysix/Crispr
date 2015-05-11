@@ -107,7 +107,7 @@ die "Something went wrong. There aren't any targets!\n" if !$targets_for;
 
 # check that at least one of the target pairs for a given gene has some crRNAs
 foreach my $target_id ( keys %{$targets_for} ){
-    if( !exists $targets_for->{ $target_id } ){
+    if( !@{$targets_for->{ $target_id }} ){
         warn "## No crRNAs for any of the targets for $target_id\n";
     }
 }
@@ -118,9 +118,21 @@ if( !@{$crispr_design->targets} ){
     warn "There are no targets to score.\n";
     exit 1;
 }
-print "Scoring off-targets...\n" if $options{verbose};
+# filter for variation if option selected
+if( defined $options{variation_file} ){
+    foreach my $target ( @{ $crispr_design->targets } ){
+        $crispr_design->filter_crRNAs_from_target_by_snps_and_indels( $target, $options{variation_file}, 1 );
+        
+        if( !@{$target->crRNAs} ){
+            #remove from targets if there are no crispr sites for that target
+            warn "No crRNAs for ", $target->target_name, " after filtering by variation\n";
+            $crispr_design->remove_target( $target );
+        }
+    }
+}
 
 # score off targets using bwa
+print "Scoring off-targets...\n" if $options{verbose};
 $crispr_design->find_off_targets( $crispr_design->all_crisprs, $basename, );
 
 if( $options{debug} ){
@@ -204,7 +216,7 @@ foreach my $target_id ( keys %{$targets_for} ){
             warn $a_crRNA->name, ':', "\n" if $options{debug};
             # add key for this a_crRNA so we get self matches as well
             $relevant_crRNAs_lookup{ $a_crRNA->name } = 1;
-            warn Dumper( %relevant_crRNAs_lookup ) if $options{debug};
+            warn "crRNAs lookup:\n", Dumper( %relevant_crRNAs_lookup ) if $options{debug};
             #lookup overlapping intervals
             if( $a_crRNA->off_target_hits->all_off_targets ){
                 foreach my $off_target_obj ( $a_crRNA->off_target_hits->all_off_targets ){
@@ -382,6 +394,7 @@ sub no_match {
 
 sub targets_from_gene {
     my ( $targets_for, $columns, ) = @_;
+    $targets_for->{ $columns->[0] } = [];
     $check_five_prime_score = 1;
     my $gene = fetch_gene( $columns );
     #my $gene =  $columns->[0] =~ m/\AENS[A-Z]*G[0-9]{11}# gene id/xms       ?   $gene_adaptor->fetch_by_stable_id( $columns->[0] )
@@ -466,6 +479,7 @@ sub fetch_gene {
 
 sub targets_from_transcript {
     my ( $targets_for, $columns, ) = @_;
+    $targets_for->{ $columns->[0] } = [];
     $check_five_prime_score = 1;
     
     my $transcript =    $columns->[0] =~ m/\AENS[A-Z]*T[0-9]{11}# transcript id/xms   ?   $transcript_adaptor->fetch_by_stable_id( $columns->[0] )
@@ -516,6 +530,7 @@ sub targets_from_transcript {
 
 sub targets_from_exon {
     my ( $targets_for, $columns, ) = @_;
+    $targets_for->{ $columns->[0] } = [];
     
     my $exon = $exon_adaptor->fetch_by_stable_id( $columns->[0] );
     my $gene = $gene_adaptor->fetch_by_exon_stable_id( $columns->[0] );
@@ -558,6 +573,8 @@ sub targets_from_exon {
 
 sub targets_from_posn {
     my ( $targets_for, $columns, ) = @_;
+    $targets_for->{ $columns->[0] } = [];
+    
     # split posn information
     my ( $chr, $region, $strand ) = split /:/, $columns->[0];
     if( !$chr || !$region ){
@@ -873,6 +890,7 @@ sub get_and_check_options {
         'assembly=s',
         'target_genome=s',
         'annotation_file=s',
+        'variation_file=s',
         'target_sequence=s',
         'num_five_prime_Gs=i',
         'min_crispr_separation=i',
@@ -888,7 +906,7 @@ sub get_and_check_options {
     
     # Documentation
     if( $options{help} ) {
-        pod2usage(1);
+        pod2usage( -verbose => 0, exitval => 1, );
     }
     elsif( $options{man} ) {
         pod2usage( -verbose => 2 );
@@ -910,6 +928,15 @@ sub get_and_check_options {
     }
     elsif( !$options{target_genome} && !$options{species} ){
         pod2usage( "Must specify at least one of --target_genome and --species!\n." );
+    }
+    
+    # check annotation file and variation file exist
+    foreach my $file ( $options{annotation_file}, $options{variation_file} ){
+        if( $file ){
+            if( !-e $file || -z $file ){
+                die "$file does not exists or is empty!\n";
+            }
+        }
     }
     
     if( defined $options{num_five_prime_Gs} ){
@@ -981,6 +1008,7 @@ Design crispr pairs to create deletions.
         --assembly                      current assembly
         --target_genome                 a target genome fasta file for scoring off-targets
         --annotation_file               an annotation gff file for scoring off-targets
+        --variation_file                a file of known background variation for filtering crispr target sites
         --target_sequence               crRNA consensus sequence (e.g. GGNNNNNNNNNNNNNNNNNNNGG)
         --num_five_prime_Gs             The number of 5' Gs present in the consensus sequence, 0,1 OR 2
         --min_crispr_separation         The minimum separation for two crispr sites in a pair [default=20 bp]
@@ -1048,6 +1076,11 @@ The path of the target genome file. This needs to have been indexed by bwa in or
 =item B<--annotation_file >
 
 The path of the annotation file for the appropriate species. Must be in gff format.
+
+=item B<--variation_file >
+
+A file of known background variation for filtering crispr target sites.
+Accepts tabixed vcf and all_var format.
 
 =item B<--target_sequence >
 

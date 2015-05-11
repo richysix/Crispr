@@ -378,7 +378,7 @@ sub find_crRNAs_by_region {
 	my $r_regex = $self->_construct_regex_from_target_seq( $r_str );
 	warn $r_regex, "\n" if $self->debug == 2;
 	
-	# fetch region from Ensembl
+	# fetch sequence either from Ensembl or from fasta file
 	my ( $chr, $interval, $strand ) = split /:/, $region;
 	if( !$chr || !$interval ){
 		croak "Couldn't understand region - $region.\n";
@@ -387,14 +387,16 @@ sub find_crRNAs_by_region {
 	if( !$start || !$end ){
 		croak "Couldn't understand region - $region.\n";
 	}
+    # expand start and stop positions by length of target sequence
+    my $slice_start = $start - $self->target_seq_length;
+    my $slice_end = $end + $self->target_seq_length;
     
-	my $slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $start, $end, '1' );
-	# expand slice by length of target sequence
-	my $expanded_slice = $slice->expand( $self->target_seq_length, $self->target_seq_length );
-	my $match_start = $expanded_slice->start;
-	my $match_end = $expanded_slice->end;
-    my $search_seq = $expanded_slice->seq;
-	warn $search_seq, "\n" if $self->debug == 2;
+    my $region_seq = $self->_fetch_sequence( $chr, $slice_start, $slice_end, '1' );
+    my $match_start = $slice_start;
+    my $match_end = $slice_end;
+    my $search_seq = $region_seq->seq;
+    warn $search_seq, "\n" if $self->debug == 2;
+
     # search sequence for forward regex
     while( $search_seq =~ m/$f_regex/g ){
         # remove crisprs with transcriptional stop sequence
@@ -409,7 +411,7 @@ sub find_crRNAs_by_region {
 		my $crRNA = Crispr::crRNA->new(
 			chr => $chr,
 			start => $match_offset + $match_start,
-			end => $match_offset + $match_start + $self->target_seq_length,
+			end => $match_offset + $match_start + ($self->target_seq_length - 1),
 			strand => '1',
 			sequence => $1,
 			species => $self->species,
@@ -436,7 +438,7 @@ sub find_crRNAs_by_region {
 		my $crRNA = Crispr::crRNA->new(
 			chr => $chr,
 			start => $match_offset + $match_start,
-			end => $match_offset + $match_start + 22,
+			end => $match_offset + $match_start + ($self->target_seq_length - 1),
 			strand => '-1',
 			sequence => $rev_com_seq,
 			species => $self->species,
@@ -452,6 +454,15 @@ sub find_crRNAs_by_region {
 	$self->add_crisprs( \@crRNAs, $target_name );
 	return \@crRNAs;
 }
+
+#_construct_regex_from_target_seq
+#
+#Usage       : $crRNA->_construct_regex_from_target_seq( 'NNNNNNNNNNNNNNNNNNNNNGG' );
+#Purpose     : Internal method to construct a regex for the target sequence
+#Returns     : Stringified version of a regex for the target sequence
+#Parameters  : Target sequence
+#Throws      : 
+#Comments    : 
 
 sub _construct_regex_from_target_seq {
 	my ( $self, $target_str ) = @_;
@@ -511,7 +522,7 @@ sub find_crRNAs_by_target {
             "not a ", ref $target, ".\n";
     }
 	if( $self->_seen_target_name( $target->target_name ) ){
-		croak "This target, ", $target->target_name,", has been seen before.\n";
+		die "This target, ", $target->target_name,", has been seen before.\n";
 	}
 	my $crRNAs;
     eval {
@@ -601,6 +612,112 @@ sub filter_crRNAs_from_target_by_score {
 	$target->crRNAs( \@crRNAs_to_keep );
 	$self->remove_crisprs( \@crRNAs_to_delete );
 	return \@crRNAs_to_keep;
+}
+
+=method filter_crRNAs_from_target_by_snps_and_indels
+
+  Usage       : $crispr_design->filter_crRNAs_from_target_by_snps_and_indels( $target, $common_var_file, $var_threshold );
+  Purpose     : method to filter out crRNAs with SNPs and indels above a threshold
+  Returns     : ArrayRef of Crispr::crRNA objects
+  Parameters  : Crispr::Target
+                Str - filename for variation file
+                Int (Variation threshold)
+  Throws      : If Target not supplied.
+                If variation file not supplied or file does not exist or is empty
+  Comments    : Numbers of SNPs/indels must be strictly lower than the supplied threshold
+                The threshold defaults to 1 (i.e. remove crRNAs with 1 or more SNPs/indels )
+                Variation file must be bgzipped and tabix indexed
+
+=cut
+
+sub filter_crRNAs_from_target_by_snps_and_indels {
+    my ( $self, $target, $common_var_file, $var_threshold, ) = @_;
+	
+    # check parameters
+    if( !$target ){
+        die "A Crispr::Target object must be supplied!\n";
+    }
+    elsif( !$common_var_file ){
+        die "A variation filename must be supplied!\n";
+    }
+    if( !-e $common_var_file || -z $common_var_file ){
+        die "Variation file does not exist or is empty!\n",
+            $common_var_file, "\n";
+    }
+    $var_threshold = $var_threshold ?   $var_threshold
+        :                               1;
+    
+	my @crRNAs_to_keep;
+	my @crRNAs_to_delete;
+	my $crRNAs = $target->crRNAs;
+	foreach my $crRNA ( @{$crRNAs} ){
+		if( $self->count_var_for_crRNA( $crRNA, $common_var_file, ) < $var_threshold ){
+			push @crRNAs_to_keep, $crRNA;
+		}
+		else{
+			push @crRNAs_to_delete, $crRNA;
+		}
+	}
+	$target->crRNAs( \@crRNAs_to_keep );
+	$self->remove_crisprs( \@crRNAs_to_delete );
+	return \@crRNAs_to_keep;
+}
+
+=method count_var_for_crRNA
+
+  Usage       : $crispr_design->count_var_for_crRNA( $crRNA, $common_var_file );
+  Purpose     : method to count SNPs and indels within a crispr target sequence
+  Returns     : Int
+  Parameters  : Crispr::crRNA
+                Str - filename for variation file
+  Throws      : 
+  Comments    : Variation file must be bgzipped and tabix indexed
+
+=cut
+
+sub count_var_for_crRNA {
+    my ( $self, $crRNA, $common_var_file, ) = @_;
+    my $file_type = $common_var_file =~ m/\.vcf\.gz \z/xms ? 'vcf'
+        :           $common_var_file =~ m/\.var\.gz \z/xms ? 'var'
+        :                                                    undef;
+    if( !$file_type ){
+        die "Do not understand the format of variation file, $common_var_file.\n";
+    }
+    
+    # get coords of crRNA and construct tabix command
+    my $region = join(":", $crRNA->chr, join("-", $crRNA->start, $crRNA->end ) );
+    
+    my $tabix_cmd = qq{ tabix $common_var_file $region 2>&1 };
+    open my $var_pipe, '-|', $tabix_cmd;
+    my $error_message = '[tabix] the index file either does not exist or is older than the vcf file. Please reindex';
+    my $err_regex = qr/$error_message/;
+    
+    # count up SNPs and indels
+    my $var_count = 0;
+    while ( my $line = <$var_pipe>) {
+        chomp $line;
+        if( $line =~ m/$err_regex/xms ){
+            die $error_message, "\n", $common_var_file, "\n";
+        }
+        elsif( $line =~ m/\[tabix]/xms ){
+            warn $line, "\n", $common_var_file, "\n";
+            next;
+        }
+        else{
+            my ( $type, $chr, $id, $pos, $ref, $alt, undef, );
+            if( $file_type eq 'var' ){
+                ( $type, $chr, $pos, $ref, $alt, undef, ) = split /\t/xms, $line;
+                next if $type ne '-';
+            }
+            elsif( $file_type eq 'vcf' ){
+                ( $chr, $pos, $id, $ref, $alt, undef, ) = split /\t/xms, $line;
+            }
+            $var_count++;
+        }
+    }
+    
+    # return count
+    return $var_count;
 }
 
 =method add_targets
@@ -864,8 +981,10 @@ sub create_crRNA_from_crRNA_name {
         start => $start,
         end => $end,
         strand => $strand || 1,
-        species => $species || undef,
     );
+    if( defined $species ){
+        $args{species} = $species;
+    }
     
     # get sequence if possible
     my $sequence;
@@ -1053,6 +1172,10 @@ sub filter_and_score_off_targets {
             #get slice
             #my $off_target_slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $pos, $end, $strand, );
             my $off_target_slice = $self->_fetch_sequence( $chr, $pos, $end, $strand, );
+            if( !$off_target_slice ){
+                carp "Couldn't retrieve sequence for off-target hit!\n",
+                        join("\t", $chr, $pos, $end, $strand ), "\n";
+            }
             next if( $off_target_slice->seq !~ m/GG\z/xms || $off_target_slice->seq =~ m/N/xms );
             warn $crRNAs->{$crispr_id}->name, "\t", $off_target_slice->seq, "\t", $off_target_slice->strand, "\n" if( $self->debug == 2 );
             $crRNAs = $self->score_off_targets_from_sam_output( $crRNAs, $crispr_id, $chr, $pos, $end, $strand, $mismatch, );
@@ -1101,10 +1224,14 @@ sub score_off_targets_from_sam_output {
 	elsif( any { $_ eq 'intron' } @{$annotations} ){
 		$type = 'intron';
 	}
+    else{
+        die join(q{ }, 'Could not understand the annotation returned for off-target:',
+                    @{$annotations}, ), "\n";
+    }
 
 	# make an off target object and add it to interval tree
 	my $off_target_obj = Crispr::OffTarget->new(
-		crRNA_name => $id,
+		crRNA_name => $crRNA->name,
 		chr => $chr,
 		start => $start,
 		end => $end,
@@ -1117,6 +1244,61 @@ sub score_off_targets_from_sam_output {
     $crRNA->off_target_hits->add_off_target( $off_target_obj );
     
 	return $crRNAs;
+}
+
+=method make_and_add_off_target_from_position
+
+  Usage       : $crispr->make_and_add_off_target_from_position( $crRNA, $pos, $annotation, );
+  Purpose     : Takes a position and an annotation and creates an off-target object and adds it to the supplied crRNA object
+  Returns     : crRNA
+  Parameters  : crRNA       Crispr::crRNA
+                position    String
+                annotation  String
+  Throws      : 
+  Comments    : 
+
+=cut
+
+sub make_and_add_off_target_from_position {
+    my ( $self, $crRNA, $pos, $annotation ) = @_;
+    
+    # check args
+    if( !$crRNA || !$pos || !$annotation ){
+        confess "method: make_and_add_off_target_from_position - ",
+            "One of the arguments was not specified\n",
+            "Arguments are: crRNA, position, annotation\n";
+    }
+    # check crispr off_target_info object exists
+    if( !defined $crRNA->off_target_hits ){
+        $crRNA->off_target_hits(
+            Crispr::OffTargetInfo->new(
+                crRNA_name => $crRNA->name,
+            )
+        );
+    }
+    
+    my ( $chr, $range, $strand ) = split /:/, $pos;
+    my ( $start, $end ) = split /-/, $range;
+    $strand = $strand  ?   $strand   :   '1';
+    
+    # get sequence to check for mismatches
+    my $off_target_seq = $self->_fetch_sequence( $chr, $start, $end, $strand, );
+    if( !$off_target_seq ){
+        confess "Couldn't fetch sequence for off-target position to check for mismatches!\n";
+    }
+    my $mismatches = (uc($off_target_seq->seq) ^ uc($crRNA->sequence)) =~ tr/\001-\255//;
+    
+    my %args = (
+        crRNA_name => $crRNA->name,
+        chr => $chr,
+        start => $start,
+        end => $end,
+        strand => $strand,
+        mismatches => $mismatches,
+        annotation => $annotation,
+    );
+    
+    $crRNA->off_target_hits->_make_and_add_off_target( \%args );
 }
 
 =method _fetch_sequence
@@ -1138,8 +1320,15 @@ sub _fetch_sequence {
     
     # try Ensembl db first
     my $off_target_slice;
-    if( defined $self->slice_adaptor ){
-        $off_target_slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $pos, $end, $strand, );
+    eval{
+        if( defined $self->slice_adaptor ){
+            $off_target_slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $pos, $end, $strand, );
+        }
+    };
+    if( $EVAL_ERROR ){
+        warn join("\n", "An error occured while trying to connect to the Ensembl database!",
+                $EVAL_ERROR,
+                "Using genome fasta file if it exists...", ), "\n";
     }
 
     # if slice is undef, try fasta file
@@ -1181,13 +1370,13 @@ sub calculate_all_pc_coding_scores {
 	return $crRNA;
 }
 
-=method calculate_all_pc_coding_scores
+=method calculate_pc_coding_score
 
-  Usage       : $crispr->calculate_all_pc_coding_scores( $crRNA, $transcripts );
+  Usage       : $crispr->calculate_pc_coding_score( $crRNA, $transcript );
   Purpose     : Calculates the position of a crRNA relative to the start of a transcript and produces a score
-  Returns     : HashRef of Crispr::crRNA objects
+  Returns     : Float (coding score)
   Parameters  : Crispr::crRNA object
-                ArrayRef of Bio::EnsEMBL::Transcript objects
+                Bio::EnsEMBL::Transcript object
   Throws      : 
   Comments    : The score is the percentage of the protein removed by a premature stop at the crRNA cut-site
                 i.e. 1 is the start of the transcript and 0 is the end

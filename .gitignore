@@ -7,3 +7,4 @@ t/data/zv9_*
 t/data/e*_annotation.gff
 .build/
 perltidy.LOG
+test.db

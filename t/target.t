@@ -59,7 +59,7 @@ foreach( @{ $target->crRNAs } ){
 
 # make a new Mock target adaptor object
 my $ta = Test::MockObject->new();
-$ta->set_isa('Crispr::Adaptors::TargetAdaptor');
+$ta->set_isa('Crispr::DB::TargetAdaptor');
 $target->target_adaptor( $ta );
 
 # new target without a chr, assembly, strand, gene_id, gene_name, ensembl_version
@@ -73,7 +73,7 @@ my $target_2 = Crispr::Target->new(
 );
 
 # check target_adaptor - 2 tests
-isa_ok( $target->target_adaptor, 'Crispr::Adaptors::TargetAdaptor', 'target_adaptor');
+isa_ok( $target->target_adaptor, 'Crispr::DB::TargetAdaptor', 'target_adaptor');
 is( $target_2->target_adaptor, undef, 'target_adaptor2');
 
 # check Target and attributes

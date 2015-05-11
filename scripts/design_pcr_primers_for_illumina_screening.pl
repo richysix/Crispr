@@ -75,7 +75,7 @@ my $targets;
 my @ids;
 
 # set up constants
-Readonly my $SLICE_EXTENDER => 600;
+Readonly my $SLICE_EXTENDER => 500;
 Readonly my $DISTANCE_TO_TARGET => 100;
 
 my $adaptors_for;
@@ -101,9 +101,9 @@ while(<>){
     if( $name =~ m/\AcrRNA:[[:alnum:]_]+:   # crRNA:CHR:
                     [0-9]+\-[0-9]+:         # RANGE:
                     [1-]+                   # STRAND
-                    _crRNA:[[:alnum:]_]+:[0-9]+\-[0-9]+:[1-]+ #SAME AGAIN JOINED BY UNDERSCORE
+                    \.crRNA:[[:alnum:]_]+:[0-9]+\-[0-9]+:[1-]+ #SAME AGAIN JOINED BY .
                     \z/xms ){ # matches a crispr pair name
-        my ( $name1, $name2 ) = split /_/, $name;
+        my ( $name1, $name2 ) = split /\./, $name;
         # make crRNA for each name and then Crispr pair
         my $crRNA_1 = $crispr_design->create_crRNA_from_crRNA_name( $name1 );
         my $crRNA_2 = $crispr_design->create_crRNA_from_crRNA_name( $name2 );
@@ -236,13 +236,9 @@ if( $options{debug} == 2 ){
 # parameters: product size 250-300
 my @pcr_size_ranges = (
     {
-        ext => '400-800',
-        int => '250-300',
+        ext => $options{ext_product_size},
+        int => $options{int_product_size},
     },
-    #{
-    #    ext => '600-1000',
-    #    int => '250-300',
-    #},
 );
 my $round = 0;
 
@@ -463,14 +459,12 @@ sub primer_design {
         }
     }
     
-    my @target_offsets = ( 25, 10 );
-    
-    foreach my $side ( 'left', 'right', 'none' ){
-        foreach my $target_offset ( @target_offsets ){
-            ##  PRIMERS - ROUND 1 ##
+    foreach my $side ( 'left', 'right' ){
+        foreach my $target_offset ( @{$options{target_offset}} ){
+            ##  INTERNAL PRIMERS - ROUND 1 ##
             $round++;
             # reset excluded regions to remove effects of repeat/variation masking
-            $targets = reset_excluded_regions( $targets, $target_offset, $side, );
+            $targets = reset_excluded_regions( $targets, $target_offset, $side, 1, );
             if( $options{debug} == 2 ){
                 print Dumper( $targets );
             }
@@ -481,7 +475,7 @@ sub primer_design {
                 return $targets;
             }
             $round++;
-            $targets = reset_excluded_regions( $targets, $target_offset, $side, );
+            $targets = reset_excluded_regions( $targets, $target_offset, $side, 1, );
             $targets = $primer_design_settings->design_primers($targets, 'int', $int_range, 2, $round, 1, 1, $adaptors_for, !$options{restriction_enzymes}, );    
             
             ##  INTERNAL PRIMERS - ROUND 3 ##
@@ -489,26 +483,77 @@ sub primer_design {
                 return $targets;
             }
             $round++;
-            $targets = reset_excluded_regions( $targets, $target_offset, $side, );
-            $targets = $primer_design_settings->design_primers($targets, 'int', $int_range, 6, $round, 0, 1, $adaptors_for, !$options{restriction_enzymes}, );
+            $targets = reset_excluded_regions( $targets, $target_offset, $side, 0, );
+            $targets = $primer_design_settings->design_primers($targets, 'int', $int_range, 6, $round, 1, 1, $adaptors_for, !$options{restriction_enzymes}, );
             
             ##  INTERNAL PRIMERS - ROUND 4 ##
             if( all { defined $targets->{$_}->{int_primers} } keys %$targets ){
                 return $targets;
             }
             $round++;
-            $targets = reset_excluded_regions( $targets, $target_offset, $side, );
-            $targets = $primer_design_settings->design_primers($targets, 'int', $int_range, 2, $round, 0, 1, $adaptors_for, !$options{restriction_enzymes}, );
+            $targets = reset_excluded_regions( $targets, $target_offset, $side, 0, );
+            $targets = $primer_design_settings->design_primers($targets, 'int', $int_range, 2, $round, 1, 1, $adaptors_for, !$options{restriction_enzymes}, );
             
             ##  INTERNAL PRIMERS - ROUND 5 ##
             if( all { defined $targets->{$_}->{int_primers} } keys %$targets ){
                 return $targets;
             }
             $round++;
-            $targets = reset_excluded_regions( $targets, $target_offset, $side, );
-            $targets = $primer_design_settings->design_primers($targets, 'int', $int_range, 6, $round, 0, 0, $adaptors_for, !$options{restriction_enzymes}, );
+            $targets = reset_excluded_regions( $targets, $target_offset, $side, 1, );
+            $targets = $primer_design_settings->design_primers($targets, 'int', $int_range, 6, $round, 1, 0, $adaptors_for, !$options{restriction_enzymes}, );
             
             ##  INTERNAL PRIMERS - ROUND 6 ##
+            if( all { defined $targets->{$_}->{int_primers} } keys %$targets ){
+                return $targets;
+            }
+            $round++;
+            $targets = reset_excluded_regions( $targets, $target_offset, $side, 1, );
+            $targets = $primer_design_settings->design_primers($targets, 'int', $int_range, 2, $round, 1, 0, $adaptors_for, !$options{restriction_enzymes}, );
+            
+            ##  INTERNAL PRIMERS - ROUND 7 ##
+            if( all { defined $targets->{$_}->{int_primers} } keys %$targets ){
+                return $targets;
+            }
+            $round++;
+            $targets = reset_excluded_regions( $targets, $target_offset, $side, 0, );
+            $targets = $primer_design_settings->design_primers($targets, 'int', $int_range, 6, $round, 1, 0, $adaptors_for, !$options{restriction_enzymes}, );
+            
+            ##  INTERNAL PRIMERS - ROUND 8 ##
+            if( all { defined $targets->{$_}->{int_primers} } keys %$targets ){
+                return $targets;
+            }
+            $round++;
+            $targets = reset_excluded_regions( $targets, $target_offset, $side, 0, );
+            $targets = $primer_design_settings->design_primers($targets, 'int', $int_range, 2, $round, 1, 0, $adaptors_for, !$options{restriction_enzymes}, );
+            
+        }
+    }
+    foreach my $side ( 'left', 'right' ){
+        foreach my $target_offset ( @{$options{target_offset}} ){
+            ##  INTERNAL PRIMERS - ROUND 9 ##
+            if( all { defined $targets->{$_}->{int_primers} } keys %$targets ){
+                return $targets;
+            }
+            $round++;
+            $targets = reset_excluded_regions( $targets, $target_offset, $side, 1, );
+            $targets = $primer_design_settings->design_primers($targets, 'int', $int_range, 6, $round, 0, 0, $adaptors_for, !$options{restriction_enzymes}, );
+            
+            ##  INTERNAL PRIMERS - ROUND 10 ##
+            if( all { defined $targets->{$_}->{int_primers} } keys %$targets ){
+                return $targets;
+            }
+            $round++;
+            $targets = $primer_design_settings->design_primers($targets, 'int', $int_range, 2, $round, 0, 0, $adaptors_for, !$options{restriction_enzymes}, );
+            
+            ##  INTERNAL PRIMERS - ROUND 11 ##
+            if( all { defined $targets->{$_}->{int_primers} } keys %$targets ){
+                return $targets;
+            }
+            $round++;
+            $targets = reset_excluded_regions( $targets, $target_offset, $side, 0, );
+            $targets = $primer_design_settings->design_primers($targets, 'int', $int_range, 6, $round, 0, 0, $adaptors_for, !$options{restriction_enzymes}, );
+            
+            ##  INTERNAL PRIMERS - ROUND 12 ##
             if( all { defined $targets->{$_}->{int_primers} } keys %$targets ){
                 return $targets;
             }
@@ -534,25 +579,22 @@ sub primer_design {
 
 
 sub reset_excluded_regions {
-    my ( $targets, $target_offset, $side_to_constrain) = @_;
+    my ( $targets, $target_offset, $side_to_constrain, $exclude_ext_primers, ) = @_;
     
     foreach my $id (sort keys %$targets) {
         if ( !defined $targets->{$id}->{int_primers}) {
             my $target_start = $targets->{ $id }->{target_start};
             my $target_end = $targets->{ $id }->{target_end};
             my $ext_p    = $targets->{$id}->{ext_primers};
-            $targets->{$id}->{int_amp}[5] =
-                [
-                    [ 1, $ext_p->left_primer->length - 10 ],
-                    [ $ext_p->product_size - 10, 10 ],
-                ];
-            if( $side_to_constrain ne 'none' ){
-                my $target_excluded_start = $side_to_constrain eq 'left'
-                    ?                       $target_start - $target_offset
-                    :                       $target_start;
+            $targets->{$id}->{int_amp}[5] = [];
+            if( $exclude_ext_primers ){
                 push @{$targets->{$id}->{int_amp}[5]},
-                    [ $target_excluded_start, $target_offset + 1 ],
+                    [ 1, $ext_p->left_primer->length - 10 ],
+                    [ $ext_p->product_size - 10, 10 ];
             }
+            push @{$targets->{$id}->{int_amp}[5]},
+                [ $target_start - $target_offset, ($target_end + $target_offset) - ($target_start - $target_offset) + 1 ];
+            
             if( $target_start > $DISTANCE_TO_TARGET && $side_to_constrain eq 'left' ){
                 push @{$targets->{$id}->{int_amp}[5]},
                     [ 1, $target_start - $DISTANCE_TO_TARGET ];
@@ -643,7 +685,7 @@ sub get_enzyme_information {
 #   Returns     : 1 if subroutine exectutes completely
 #   Parameters  : 
 #   Throws      : 
-#   Comments    : Need to add some code for checking existance of registry file
+#   Comments    : Need to add some code for checking existence of registry file
 #                 and primer3 file.
 # 
 
@@ -657,20 +699,53 @@ sub get_and_check_options {
         'species=s',
         'left_adaptor=s',
         'right_adaptor=s',
+        'ext_product_size=s',
+        'int_product_size=s',
+        'target_offset=i@',
         'file_prefix=s',
         'restriction_enzymes!',
         'primer3_settings=f%',
         'debug+',
         'help',
         'man',
+        'verbose',
     ) or pod2usage(2);
     
     # Documentation
     if( $options{help} ) {
-        pod2usage(1);
+        pod2usage( -verbose => 0, -exitval => 1, );
     }
     elsif( $options{man} ) {
         pod2usage( -verbose => 2 );
+    }
+    
+    # check product sizes and set defaults if not set
+    if( $options{ext_product_size} ){
+        if( $options{ext_product_size} !~ m/\A  [0-9]+  # some numbers
+                                                \-      # literal hyphen
+                                                [0-9]+  # some more numbers
+                                                \z/xms ){
+            die "External product size should be a range of the form [0-9]+-[0-9]+\n";
+        }
+    }
+    else{
+        $options{ext_product_size} = '300-600';
+    }
+    
+    if( $options{int_product_size} ){
+        if( $options{int_product_size} !~ m/\A  [0-9]+  # some numbers
+                                                \-      # literal hyphen
+                                                [0-9]+  # some more numbers
+                                                \z/xms ){
+            die "Internal product size should be a range of the form [0-9]+-[0-9]+\n";
+        }
+    }
+    else{
+        $options{int_product_size} = '250-300';
+    }
+    
+    if( !defined $options{target_offset} ){
+        $options{target_offset} = [ 60, 40 ];
     }
     
     if( !$options{primer3file} ){
@@ -689,7 +764,26 @@ sub get_and_check_options {
             " does not exist.\nWill try connecting to Ensembl anonymously...\n";
     }
     
-    print "Settings:\n", map { join(' - ', $_, defined $options{$_} ? $options{$_} : 'off'),"\n" } sort keys %options if $options{verbose};
+    if( $options{verbose} ){
+        print "Settings:\n";
+        foreach my $option ( sort keys %options ){
+            if( !ref $options{$option} ){
+                print join(q{ - }, $option, $options{$option} ), "\n";
+            }
+            elsif( ref $options{$option} eq 'ARRAY' ){
+                print join(q{ - }, $option,
+                        join(",", @{$options{$option}} ),
+                        ), "\n";
+            }
+            elsif( ref $options{$option} eq 'HASH' ){
+                print join(q{ - }, $option,
+                        join ("\n",
+                            map { join(q{=}, $_, $options{$option}->{$_} ) }
+                                sort keys %{$options{$option}}, ),
+                        ), "\n";
+            }
+        }
+    }
     
     return 1;
 }
@@ -715,6 +809,11 @@ Design PCR primers for screening by Illumina Sequencing.
         --species                   A species to use for all input
         --left_adaptor              option to change the default left primer adaptor
         --right_adaptor             option to change the default right primer adaptor
+        --ext_product_size          external product size range [default: 300-600]
+        --int_product_size          internal product size range [default: 250-300]
+        --target_offset             distance away from the crispr cut site that the primers must end
+                                    can be specified multiple times
+                                    offsets are tried in the order specified [default: 60,40]
         --file_prefix               a common prefix for primer output files
         --restriction_enzymes       output unique restriction enzyme info for each crRNA
         --norestriction_enzymes     turn off restriction enzyme output
@@ -778,6 +877,26 @@ option to change the default right primer adaptor.
 This is added to the 5 prime end of the right internal primer.
 
 Default: TCGGCATTCCTGCTGAACCGCTCTTCCGATCT (Illumina)
+
+=item B<--ext_product_size>
+
+Size range for the external product.
+Must be a string of the form START-END.
+Default: 300-600.
+
+=item B<--int_product_size>
+
+Size range for the internal product.
+Must be a string of the form START-END.
+Default: 250-300.
+
+=item B<--target_offset>
+
+Distances away from the crispr cut site that the primers must end.
+Can be specified multiple times in which case they are used sequentially in the order that they are specified on the command line.
+If primers for some of the targets cannot be designed using the first offset the remainder will be designed using the next offset and so on.
+Therefore it makes sense for the offsets to get smaller.
+Default: 60,40.
 
 =item B<--file_prefix>
 

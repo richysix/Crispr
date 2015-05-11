@@ -1,4 +1,4 @@
-#target_id	name	assembly	chr	start	end	strand	species	requires_enzyme	gene_id	gene_name	requestor	ensembl_version	designed
+#target_id	target_name	assembly	chr	start	end	strand	species	requires_enzyme	gene_id	gene_name	requestor	ensembl_version	designed
 NULL	ENSDARG00000008454	Zv9	7	49697695	49708223	-1	zebrafish	y	ENSDARG00000008454	cepb1b	crispr_test	70	NULL
 NULL	ENSDARG00000013997	Zv9	3	56286616	56343600	-1	zebrafish	y	ENSDARG00000013997	ern1	crispr_test	70	NULL
 NULL	ENSDARG00000014373	Zv9	10	6548795	6570246	1	zebrafish	y	ENSDARG00000014373	vasa	crispr_test	70	NULL

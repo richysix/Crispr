@@ -169,8 +169,8 @@ is( $crRNA->coding_score - 0.445 < 0.001, 1, "check overall coding score after a
 like( join(';', $crRNA->coding_scores_by_transcript), qr/ENSDART00000037671=0.1;ENSDART00000037681=0.5;ENSDART00000037691=0.734/,
      "check coding_scores_by_transcript after adding a new score");
 
-is( $crRNA_2->coding_score, undef, "check undef coding_scores");
-is( $crRNA_2->coding_scores, undef, "check undef coding_scores hashref");
+is( $crRNA_2->coding_score, undef, "check undef coding_score");
+isa_ok( $crRNA_2->coding_scores, 'HASH', "check coding_scores empty hashref");
 
 # check plasmid_backbone - 4 tests
 is( $crRNA->plasmid_backbone, 'pDR274', 'Get plasmid_backbone' );
@@ -189,6 +189,13 @@ $mock_target_object_2->set_isa( 'Crispr::Target' );
 $mock_target_object_2->mock( 'info', sub{ return (undef, undef, 'gfp', 'rw4') } );
 $mock_target_object_2->mock( 'assembly', sub{ return undef } );
 $mock_target_object_2->mock( 'gene_name', sub{ return 'gfp' } );
+# make new crRNA without a chr and add target to it
+$crRNA_no_chr = Crispr::crRNA->new(
+    start => 50,
+    end => 60,
+    species => 'Aequorea_victoria',
+    sequence => 'GGCCTTCGGGTTTGACCCCATGG',
+);
 $crRNA_no_chr->target( $mock_target_object_2 );
 
 is( $crRNA_no_chr->name, 'crRNA:gfp:50-60:1', 'Get name without chr but with gene_name');

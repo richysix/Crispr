@@ -69,6 +69,15 @@ my $design_obj_no_target_seq = Crispr->new(
     debug => 0,
 );
 
+my $design_obj_no_slice_adaptor = Crispr->new(
+    species => 'zebrafish',
+    target_seq => 'NNNNNNNNNNNNNNNNNNNNNGG',
+    five_prime_Gs => 0,
+    target_genome => 't/data/mock_genome.fa',
+    annotation_file => 't/data/mock_annotation.gff',
+    debug => 0,
+);
+
 # check attributes
 throws_ok { Crispr->new( target_seq => 'NNNNNJNNNNNNNNNNNNNNNGG' ) } qr/Not\sa\svalid\scrRNA\starget\ssequence/, 'Incorrect target seq - non-DNA character';
 throws_ok { Crispr->new( five_prime_Gs => 3 ) } qr/Validation\sfailed/, 'Attempt to set five_prime_Gs to 3';
@@ -77,7 +86,7 @@ throws_ok { Crispr->new( target_genome => 'non_existent_genome_file.fa' ) }
 $tests+=3;
 
 # test methods
-# find_crRNAs_by_region - 6 tests
+# find_crRNAs_by_region - 8 tests
 throws_ok { $design_obj_no_target_seq->find_crRNAs_by_region() } qr/A\sregion\smust\sbe\ssupplied\sto\sfind_crRNAs_by_region/,
     'find crRNAs by region - no region';
 throws_ok { $design_obj_no_target_seq->find_crRNAs_by_region( '5:46628364-46628423', ) } qr/The\starget_seq\sattribute\smust\sbe\sdefined\sto\ssearch\sfor\scrRNAs/,
@@ -86,9 +95,14 @@ throws_ok { $design_obj->find_crRNAs_by_region( '0:46628364-46628423', ) } qr/Co
     'find crRNAs by region - incorrect region format';
 throws_ok { $design_obj->find_crRNAs_by_region( '5-46628364-46628423', ) } qr/Couldn't\sunderstand\sregion/,
     'find crRNAs by region - incorrect region format';
+
 ok( $design_obj->find_crRNAs_by_region( '5:46628364-46628423' ), 'find crRNAs by region');
 is( scalar keys %{ $design_obj->all_crisprs }, 9, 'check number of crispr sites' );
-$tests+=6;
+ok( $design_obj_no_slice_adaptor->find_crRNAs_by_region( 'test_chr1:81-180' ), 'find crRNAs by region - no slice adaptor');
+is( scalar keys %{ $design_obj_no_slice_adaptor->all_crisprs }, 16, 'check number of crispr sites - no slice adaptor' );
+#warn Dumper( $design_obj_no_slice_adaptor->all_crisprs );
+$tests+=8;
+#$tests+=6;
 
 # find_crRNAs_by_target - 10 tests
 # make mock Target object
@@ -174,6 +188,12 @@ my $design_obj2 = Crispr->new(
 
 $design_obj2->_testing( 1 );
 ok( $design_obj2->find_off_targets( $design_obj2->all_crisprs,  ), 'off_targets' );
+## Off Targets for crRNA:test_chr1:101-123:1
+#exon:test_chr1:201-223:1 mismatches:2 annotation:exon
+#intron:test_chr2:101-123:1 mismatches:3 annotation:intron
+#intron:test_chr3:101-223:1 mismatches:1 annotation:intron
+#nongenic:test_chr1:1-23:1 mismatches:1 annotation:nongenic
+#nongenic:test_chr3:201-223:1 mismatches:2 annotation:nongenic
 is( $mock_crRNA1->off_target_hits->score, 0.76, 'check off target score 1');
 is( $mock_crRNA2->off_target_hits->score, 1, 'check off target score 2');
 $tests+=3;
@@ -245,7 +265,7 @@ SKIP: {
 
 # calculate protein coding scores
 # change output of mock methods
-$mock_crRNA1->mock( 'name', sub{ return 'crRNA:3:5689156-5689178:1' });
+$mock_crRNA1->mock( 'name', sub{ return 'crRNA:3:5689156-5689178:1' } );
 $mock_crRNA1->mock( 'chr', sub{ return '3' });
 $mock_crRNA1->mock( 'start', sub{ return 5689156 });
 $mock_crRNA1->mock( 'end', sub{ return 5689178 });
@@ -284,10 +304,29 @@ $mock_crRNA2->mock( 'score', sub{ return 0.504 });
 $mock_crRNA2->mock( 'target', sub{ return $mock_target });
 
 $crRNAs = [ $mock_crRNA1, $mock_crRNA2 ];
-
 ok( $design_obj->filter_crRNAs_from_target_by_score( $mock_target, 1 ), 'filter crRNAs by score');
 is( scalar @{ $mock_target->crRNAs }, 1, 'check crisprs left after filtering by score' );
 $tests+=2;
+
+# add crispr 1 back to target
+$crRNAs = [ $mock_crRNA1, $mock_crRNA2 ];
+# test snps methods - 2 tests
+is( $design_obj->count_var_for_crRNA( $mock_crRNA1, 't/data/test.var.gz' ), 3, 'check count snps for crRNA 1' );
+is( $design_obj->count_var_for_crRNA( $mock_crRNA2, 't/data/test.var.gz' ), 0, 'check count snps for crRNA 2' );
+ok( $design_obj->filter_crRNAs_from_target_by_snps_and_indels($mock_target, 't/data/test.var.gz', 1 ), 'check filter crRNAs by SNPs' );
+is( scalar @{ $mock_target->crRNAs }, 1, 'check crisprs left after filtering by SNPs' );
+
+# check parameter testing of filter method
+throws_ok{ $design_obj->filter_crRNAs_from_target_by_snps_and_indels() }
+    qr/A Crispr::Target object must be supplied/,
+    'check filter_crRNAs_from_target_by_snps_and_indels throws when no target supplied';
+throws_ok{ $design_obj->filter_crRNAs_from_target_by_snps_and_indels($mock_target) }
+    qr/A variation filename must be supplied/,
+    'check filter_crRNAs_from_target_by_snps_and_indels throws when no var file supplied';
+throws_ok{ $design_obj->filter_crRNAs_from_target_by_snps_and_indels($mock_target, 't/data/test.var.g' ) }
+    qr/Variation file does not exist or is empty/,
+    'check filter_crRNAs_from_target_by_snps_and_indels throws when var file does not exist';
+$tests+=7;
 
 # test method remove targets
 ok( $design_obj->remove_target( $mock_target ), 'remove target');

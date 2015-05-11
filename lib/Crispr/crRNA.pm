@@ -70,7 +70,7 @@ subtype 'Crispr::crRNA::DNA',
 				unique_restriction_sites => Crispr::EnzymeInfo,
 				plasmid_backbone => String,
 				primer_pairs => ArrayRef of Crispr::PrimerPair,
-				crRNA_adaptor => Crispr::Adaptors::crRNAAdaptor,
+				crRNA_adaptor => Crispr::DB::crRNAAdaptor,
   Throws      : If parameters are not the correct type
   Comments    : None
 
@@ -90,6 +90,24 @@ subtype 'Crispr::crRNA::DNA',
 has 'crRNA_id' => (
     is => 'rw',
     isa => 'Maybe[Int]',
+);
+
+=method target
+
+  Usage       : $crRNA->target;
+  Purpose     : Getter for associated target
+  Returns     : Crispr::Target object
+  Parameters  : None
+  Throws      : If input is given
+  Comments    : 
+
+=cut
+
+has 'name' => (
+    is => 'ro',
+    isa => 'Str',
+    lazy => 1,
+    builder => '_build_name',
 );
 
 =method target
@@ -263,6 +281,8 @@ has 'off_target_hits' => (
 has 'coding_scores' => (
     is => 'ro',
     isa => 'HashRef',
+    lazy => 1,
+    default => sub { return {}; },
 	writer => '_set_coding_scores',
 );
 
@@ -320,7 +340,7 @@ has 'primer_pairs' => (
 
   Usage       : $crRNA->crRNA_adaptor;
   Purpose     : Getter for crRNA_adaptor attribute
-  Returns     : Crispr::Adaptors::crRNAAdaptor object
+  Returns     : Crispr::DB::crRNAAdaptor object
   Parameters  : None
   Throws      : If input is given
   Comments    : 
@@ -329,7 +349,7 @@ has 'primer_pairs' => (
 
 has 'crRNA_adaptor' => (
     is => 'rw',
-    isa => 'Crispr::Adaptors::crRNAAdaptor',
+    isa => 'Crispr::DB::crRNAAdaptor',
 );
 
 around BUILDARGS => sub{
@@ -660,7 +680,7 @@ sub coding_scores_by_transcript {
 
 =cut
 
-sub name{
+sub _build_name {
     my ( $self, ) = @_;
     my $name = 'crRNA:';
     
@@ -904,6 +924,31 @@ sub t7_hairpin_oligo {
         confess "Can't produce oligo without a crRNA sequence!\n";
     }
 	
+}
+
+=method t7_fillin_oligo
+
+  Usage       : $crRNA->t7_fillin_oligo;
+  Purpose     : Getter for t7_fillin_oligo attribute
+  Returns     : String
+  Parameters  : None
+  Throws      : If sequence attribute is undef or empty
+  Comments    : 
+
+=cut
+
+sub t7_fillin_oligo {
+	my ( $self, ) = @_;
+	my $promoter_sequence = 'TAATACGACTCACTATA';
+	my $overlap_sequence = 'GTTTTAGAGCTAGAAATAGCAAG';
+	my $guide_sequence = '';
+    if( $self->sequence ){
+        $guide_sequence = 'GG' . substr( $self->sequence, 2, 18 );
+    }
+    else{
+        confess "Can't produce oligo without a crRNA sequence!\n";
+    }
+	return join(q{}, $promoter_sequence, $guide_sequence, $overlap_sequence );
 }
 
 #_build_backbone
