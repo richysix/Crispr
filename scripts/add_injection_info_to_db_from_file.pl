@@ -192,7 +192,7 @@ __END__
 
 =head1 NAME
 
-program_name.pl
+add_injection_info_to_db_from_file.pl
 
 =head1 DESCRIPTION
 
@@ -202,7 +202,7 @@ Description
 
 =head1 SYNOPSIS
 
-    program_name.pl [options] input file | STDIN
+    add_injection_info_to_db_from_file.pl [options] input file | STDIN
         --crispr_db             config file for connecting to the database
         --help                  print this help message
         --man                   print the manual page

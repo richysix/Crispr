@@ -258,8 +258,8 @@ sub fetch_by_name {
 =method fetch_all_by_injection_id
 
   Usage       : $samples = $sample_adaptor->fetch_all_by_injection_id( $inj_id );
-  Purpose     : Fetch an sample given an InjectionPool object
-  Returns     : Crispr::DB::Sample object
+  Purpose     : Fetch a sample given an InjectionPool db_id
+  Returns     : ArrayRef of Crispr::DB::Sample objects
   Parameters  : Crispr::DB::InjectionPool object
   Throws      : If no rows are returned from the database or if too many rows are returned
   Comments    : None
@@ -279,8 +279,8 @@ sub fetch_all_by_injection_id {
 =method fetch_all_by_injection_pool
 
   Usage       : $samples = $sample_adaptor->fetch_all_by_injection_pool( $inj_pool );
-  Purpose     : Fetch an sample given an InjectionPool object
-  Returns     : Crispr::DB::Sample object
+  Purpose     : Fetch a sample given an InjectionPool object
+  Returns     : ArrayRef of Crispr::DB::Sample objects
   Parameters  : Crispr::DB::InjectionPool object
   Throws      : If no rows are returned from the database or if too many rows are returned
   Comments    : None
