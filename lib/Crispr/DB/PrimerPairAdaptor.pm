@@ -201,6 +201,18 @@ sub fetch_by_id {
     return $primer_pairs->[0];
 }
 
+=method fetch_by_plate_name_and_well
+
+  Usage       : $primer_pair_adaptor->fetch_by_plate_name_and_well( 'CR_000001g', 'A01' );
+  Purpose     : method to retrieve a primer pair using a plate name and well id
+  Returns     : Crispr::PrimerPair
+  Parameters  : Str (plate name)
+                Str (well id)
+  Throws      : 
+  Comments    : returns undef if no primer pair object is returned form the database
+
+=cut
+
 sub fetch_by_plate_name_and_well {
     my ( $self, $plate_name, $well_id, ) = @_;
     my $primer_pair;
@@ -373,6 +385,17 @@ END_SQL
 
     return \@primer_pairs;    
 }
+
+=method _make_new_primer_pair_from_db
+
+  Usage       : $primer_pair_adaptor->_make_new_primer_pair_from_db( $primer_info );
+  Purpose     : internal method to make a new PrimerPair from an ArrayRef of fields
+  Returns     : Crispr::PrimerPair
+  Parameters  : ArrayRef[ Str ] - db info for primer pair
+  Throws      : 
+  Comments    : 
+
+=cut
 
 sub _make_new_primer_pair_from_db {
     my ( $self, $fields, ) = @_;

@@ -110,7 +110,7 @@ has 'cas9_conc' => (
 
 =method date
 
-  Usage       : $target->date;
+  Usage       : $inj->date;
   Purpose     : Getter for date attribute
   Returns     : DateTime
   Parameters  : Either DateTime object or Str of form yyyy-mm-dd
@@ -128,7 +128,7 @@ has 'date' => (
 
 =method line_injected
 
-  Usage       : $target->line_injected;
+  Usage       : $inj->line_injected;
   Purpose     : Getter for line_injected attribute
   Returns     : Str
   Parameters  : None
@@ -144,7 +144,7 @@ has 'line_injected' => (
 
 =method line_raised
 
-  Usage       : $target->line_raised;
+  Usage       : $inj->line_raised;
   Purpose     : Getter/Setter for line_raised attribute
   Returns     : Str (Can be undef)
   Parameters  : None
@@ -160,7 +160,7 @@ has 'line_raised' => (
 
 =method sorted_by
 
-  Usage       : $target->sorted_by;
+  Usage       : $inj->sorted_by;
   Purpose     : Getter for sorted_by attribute
   Returns     : Str (can be undef)
   Parameters  : None
@@ -176,7 +176,7 @@ has 'sorted_by' => (
 
 =method guideRNAs
 
-  Usage       : $target->guideRNAs;
+  Usage       : $inj->guideRNAs;
   Purpose     : Getter for guideRNAs attribute
   Returns     : Str (can be undef)
   Parameters  : None
@@ -251,6 +251,18 @@ around 'date' => sub {
         }
     }
 };
+
+=method info
+
+  Usage       : $inj->info;
+  Purpose     : returns information about an InjectionPool object
+  Returns     : Array
+  Parameters  : None
+  Throws      : 
+  Comments    : undef attributes are returned as the string 'NULL'
+
+=cut
+
 
 sub info {
     my ( $self, ) = @_;
