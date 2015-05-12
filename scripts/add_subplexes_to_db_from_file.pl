@@ -67,7 +67,7 @@ if( $options{debug} > 1 ){
 }
 
 # parse input file, create Subplex and Sample objects and add them to db
-my @attributes = ( qw{ sample_plate_num injection_name sample_numbers wells barcodes barcode_plate_num amplicons } );
+my @attributes = ( qw{ analysis_id sample_plate_num injection_name sample_numbers wells barcodes barcode_plate_num amplicons } );
 
 my @required_attributes = qw{ sample_plate_num injection_name sample_numbers wells amplicons };
 
@@ -176,6 +176,7 @@ while(<>){
     
     # make new analysis object
     my $analysis = Crispr::DB::Analysis->new(
+        db_id => $args{analysis_id} || undef,
         plex => $plex,
         analysis_started => $options{analysis_started},
         analysis_finished => $options{analysis_finished},
