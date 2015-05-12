@@ -69,8 +69,18 @@ while(<>){
     
     # get injection pool object
     $args{'injection_pool'} = $injection_pool_adaptor->fetch_by_name( $args{'injection_name'} );
+    my $samples = $sample_adaptor->fetch_all_by_injection_pool( $args{'injection_pool'} );
     
-    foreach my $sample_number ( 1 .. $args{'num_samples'} ){
+    my @sample_numbers;
+    if( @{$samples} ){
+        @sample_numbers = sort { $b <=> $a }
+                            map { $_->sample_number } @{$samples};
+    }
+    my $starting_sample_number = @sample_numbers
+        ?   $sample_numbers[0]
+        :   0;
+    
+    foreach my $sample_number ( $starting_sample_number + 1 .. $starting_sample_number + $args{'num_samples'} ){
         # make new sample object
         $args{'sample_name'} = join("_", $args{'injection_name'}, $sample_number, );
         $args{'sample_number'} = $sample_number;
