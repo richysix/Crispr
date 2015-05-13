@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
-# PODNAME: add_subplexes_to_db_from_file.pl
-# ABSTRACT: Add information about subplexes and samples to a CRISPR SQL database from a file.
+# PODNAME: add_analysis_information_to_db_from_file.pl
+# ABSTRACT: Add information about analyses and samples to a CRISPR SQL database from a file.
 
 use warnings;
 use strict;
@@ -66,7 +66,7 @@ if( $options{debug} > 1 ){
     warn Dumper( $plex );
 }
 
-# parse input file, create Subplex and Sample objects and add them to db
+# parse input file, create Analysis and Sample objects and add them to db
 my @attributes = ( qw{ analysis_id sample_plate_num injection_name sample_numbers wells barcodes barcode_plate_num amplicons } );
 
 my @required_attributes = qw{ sample_plate_num injection_name sample_numbers wells amplicons };
@@ -205,6 +205,14 @@ else{
     ), "\n";
 }
 
+# parse_barcodes
+#Usage       :   my @barcodes = parse_barcodes( $barcodes, );
+#Purpose     :   split up either a comma-separated list or a number range into an array
+#Returns     :   Array of Int
+#Parameters  :   Str
+#Throws      :   
+#Comments    :   
+
 sub parse_barcodes {
     my ( $barcodes, ) = @_;
     my @barcodes = parse_number_range( $barcodes, 'barcodes' );
@@ -214,6 +222,14 @@ sub parse_barcodes {
     return @barcodes;
 }
 
+# parse_sample_numbers
+#Usage       :   my @sample_numbers = parse_sample_numbers( $sample_numbers );
+#Purpose     :   split up either a comma-separated list or a number range into an array
+#Returns     :   Array of Int
+#Parameters  :   Str
+#Throws      :   
+#Comments    :   
+
 sub parse_sample_numbers {
     my ( $sample_numbers, ) = @_;
     my @sample_numbers = parse_number_range( $sample_numbers, 'sample numbers' );
@@ -222,6 +238,15 @@ sub parse_sample_numbers {
     }
     return @sample_numbers;
 }
+
+# parse_number_range
+#Usage       :   my @sample_numbers = parse_number_range( $numbers, $type );
+#Purpose     :   split up either a comma-separated list or a number range into an array
+#Returns     :   Array of Int
+#Parameters  :   Str (Either comma-separated list or range like 1-24)
+#                Str (Type - Either barcodes or sample_numbers)
+#Throws      :   
+#Comments    :   
 
 sub parse_number_range {
     my ( $number_range, $type, ) = @_;
@@ -248,6 +273,15 @@ sub parse_number_range {
     }
     return @numbers;
 }
+
+# parse_wells
+#Usage       :   my @wells = parse_wells( $wells, );
+#Purpose     :   split up either a comma-separated list or range of well ids
+#               into an array of well ids
+#Returns     :   Array of Str
+#Parameters  :   Str (Either comma-separated list or range like A1-A24)
+#Throws      :   
+#Comments    :   
 
 sub parse_wells {
     my ( $wells, ) = @_;
@@ -277,17 +311,16 @@ sub parse_wells {
     return @wells;
 }
 
-=func
-Usage       :   my @barcode_plates = slices_to_chunk( $slices, 1, 100 );
-Purpose     :   Produce and return an Array of barcode plates for assigning
-                barcode indexes to samples
-Returns     :   Arrayref of Labware::Plate objects
-Parameters  :   None
-Throws      :   
-Comments    :   Assumes there are 384 barcodes.
-                It will produce 4 x 96 well plates or 1 x 384 well plate
-                depending on the barcode plate format
-=cut
+# set_up_barcode_plates
+#Usage       :   my @barcode_plates = set_up_barcode_plates();
+#Purpose     :   Produce and return an Array of barcode plates for assigning
+#                barcode indexes to samples
+#Returns     :   Arrayref of Labware::Plate objects
+#Parameters  :   None
+#Throws      :   
+#Comments    :   Assumes there are 384 barcodes.
+#                It will produce 4 x 96 well plates or 1 x 384 well plate
+#                depending on the barcode plate format
 
 sub set_up_barcode_plates {
     
@@ -377,6 +410,20 @@ sub set_up_barcode_plates {
     return( \@barcode_plates, );
 }
 
+# add_96_well_plate_to_quadrant
+#Usage       :  add_96_well_plate_to_quadrant( $barcode_plate, $plate, $quadrant )
+#Purpose     :  Takes a 384 well barcode plate and adds a source 96 well barcode plate into a specific quadrant
+#Returns     :  
+#Parameters  :  Labware::Plate (barcode plate)
+#               Labware::Plate (96 well barcode plate)
+#               Int (quadrant number)
+#Throws      :
+#Comments    :  Quadrants are numbered like this:
+#               1   A01, A03 .. A23, C01, C03 .. C23 etc.
+#               2   A02, A04 .. A24, C02, C04 .. C24 etc.
+#               3   B01, B03 .. B23, D01, D03 .. D23 etc.
+#               4   B02, B04 .. B24, D02, D04 .. D24 etc.
+
 sub add_96_well_plate_to_quadrant{
     my ( $barcode_plate, $plate, $quadrant ) = @_;
     
@@ -401,6 +448,16 @@ sub add_96_well_plate_to_quadrant{
     }
 }
 
+# increment_indices
+#Usage       :   ( $rowi, $coli, ) = increment_indices( $rowi, $coli, );
+#Purpose     :   Increment row and column indices
+#Returns     :   Int (row index)
+#                Int (col index)
+#Parameters  :   Int (row index)
+#                Int (col index)
+#Throws      :   If row index becomes larger than 8
+#Comments    :   Increments row-wise (i.e. A01, A02, A03 etc)
+
 sub increment_indices {
     my ( $rowi, $coli, ) = @_;
     $coli++;
@@ -413,6 +470,15 @@ sub increment_indices {
     }
     return ( $rowi, $coli, );
 }
+
+# get_and_check_options
+#Usage       :   get_and_check_options();
+#Purpose     :   Get command line options and process them
+#Returns     :   
+#Parameters  :   None
+#Throws      :   If plex_name is not set
+#                If run_id is not set
+#Comments    :   
 
 sub get_and_check_options {
     
@@ -470,18 +536,18 @@ __END__
 
 =head1 NAME
 
-add_subplexes_to_db_from_file.pl
+add_analysis_information_to_db_from_file.pl
 
 =head1 DESCRIPTION
 
-Script to add information abotu sequencing subplexes (a subset of a full run) to a CRISPR SQL database.
+Script to add information about MiSeq analyses (usually a subset of a full run) to a CRISPR SQL database.
 
 
 =cut
 
 =head1 SYNOPSIS
 
-    add_subplexes_to_db_from_file.pl [options] filename(s) | STDIN
+    add_analysis_information_to_db_from_file.pl [options] filename(s) | STDIN
         --plex_name             name of the plex (e.g. MPX22) REQUIRED
         --run_id                The id of the sequencing run REQUIRED
         --analysis_started      date that analysis was started (yyyy-mm-dd)
@@ -499,9 +565,33 @@ Script to add information abotu sequencing subplexes (a subset of a full run) to
 
 =item B<input>
 
-Subplex info. Can be a list of filenames or on STDIN.
+Analysis info. Can be a list of filenames or on STDIN.
 
 Should contain the following columns: 
+
+=over
+
+=item sample_plate_num
+
+=item injection_name
+
+=item sample_numbers
+
+=item wells
+
+=item barcodes OR barcode_plate_num
+
+=item amplicons
+
+=back
+
+Optional columns are:
+
+=over
+
+=item analysis_id
+
+=back
 
 =back
 
