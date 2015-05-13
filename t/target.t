@@ -21,7 +21,7 @@ use Crispr::Target;
 # make a new target - designed should be undef
 # have not defined crRNAs
 my $target = Crispr::Target->new(
-    target_name => 'SLC39A14',
+    target_name => 'KAT5_exon1',
     assembly => 'Zv9',
     chr => '5',
     start => 18067321,
@@ -30,7 +30,7 @@ my $target = Crispr::Target->new(
     species => 'danio_rerio',
     requires_enzyme => 1,
     gene_id => 'ENSDARG00000090174',
-    gene_name => 'SLC39A14',
+    gene_name => 'KAT5 (1 of 2)',
     requestor => 'crispr_test',
     ensembl_version => 71,
 ); 
@@ -99,7 +99,7 @@ throws_ok { Crispr::Target->new( target_id => 'string') } qr/Validation failed/m
 throws_ok { Crispr::Target->new( target_id => '' ) } qr/Validation failed/ms, 'Empty string id';
 
 # 4 tests - check type constraints for target_name
-is( $target->target_name, 'SLC39A14', 'Get target_name' );
+is( $target->target_name, 'KAT5_exon1', 'Get target_name' );
 throws_ok { Crispr::Target->new( target_name => '' ) } qr/Attribute is empty/, 'empty target_name';
 $tmp_target = Crispr::Target->new( target_name => 1 ); #coerced to string '1'
 is( $tmp_target->target_name, '1', 'Number as string');
@@ -166,7 +166,7 @@ is( $target->gene_id, 'ENSDARG00000090174', 'Gene id 1');
 is( $target_2->gene_id, undef, 'Gene id 2');
 
 # gene_name - 2 tests
-is( $target->gene_name, 'SLC39A14', 'Gene name 1');
+is( $target->gene_name, 'KAT5_1_of_2', 'Gene name 1');
 is( $target_2->gene_name, undef, 'Gene name 2');
 
 # requestor - 2 tests
@@ -196,11 +196,11 @@ is( $target_2->region, '50-60:1', 'Get region without chr');
 is( $target->length, 16146, 'check length' );
 
 like( join("\t", $target->summary ),
-    qr/SLC39A14\tENSDARG00000090174\tSLC39A14\tcrispr_test/, 'check summary 1' );
+    qr/KAT5_exon1\tENSDARG00000090174\tKAT5_1_of_2\tcrispr_test/, 'check summary 1' );
 like( join("\t", $target_2->summary ),
     qr/gfp_50_100\tNULL\tNULL\tcrispr_test/, 'check summary 2' );
 like( join("\t", $target->info ),
-    qr/\A NULL\tSLC39A14\tZv9\t5\t18067321\t18083466\t-1\tdanio_rerio\ty\tENSDARG00000090174\tSLC39A14\tcrispr_test\t71\t$todays_date \z/xms, 'check info 1' );
+    qr/\A NULL\tKAT5_exon1\tZv9\t5\t18067321\t18083466\t-1\tdanio_rerio\ty\tENSDARG00000090174\tKAT5_1_of_2\tcrispr_test\t71\t$todays_date \z/xms, 'check info 1' );
 like( join("\t", $target_2->info ),
     qr/\A NULL\tgfp_50_100\tNULL\tNULL\t50\t60\t1\tAequorea_victoria\tn\tNULL\tNULL\tcrispr_test\tNULL\t2012-07-18 \z/xms, 'check info 2' );
 

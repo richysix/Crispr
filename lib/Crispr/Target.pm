@@ -608,32 +608,20 @@ around 'designed' => sub {
     }
 };
 
-##_parse_date
-##
-##Usage       : $crRNA->_parse_date( '2014-03-21' );
-##Purpose     : Converts dates in form yyyy-mm-dd into DateTime object
-##Returns     : DateTime object
-##Parameters  : String
-##Throws      : If date is not in correct format
-##Comments    :
-#
-#sub _parse_date {
-#    my ( $self, $input ) = @_;
-#    my $date_obj;
-#    
-#    if( $input =~ m/\A([0-9]{4})-([0-9]{2})-([0-9]{2})\z/xms ){
-#        $date_obj = DateTime->new(
-#            year       => $1,
-#            month      => $2,
-#            day        => $3,
-#        );
-#    }
-#    else{
-#        confess "The date supplied is not a valid format\n";
-#    }
-#    return $date_obj;
-#}
-#
+around 'gene_name' => sub {
+    my ( $method, $self, $input ) = @_;
+    if( $input ){
+        return $self->$method( $input );
+    }
+    else{
+        my $gene_name = $self->$method;
+        if( defined $gene_name ){
+            $gene_name =~ s|[()]||xmsg;
+            $gene_name =~ s|\s+|_|xmsg;
+        }
+        return $gene_name;
+    }
+};
 
 __PACKAGE__->meta->make_immutable;
 1;
