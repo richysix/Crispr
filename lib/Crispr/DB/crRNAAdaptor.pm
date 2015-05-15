@@ -26,7 +26,7 @@ my %crRNA_cache; # Cache for crRNA objects. HashRef keyed on crRNA_id
 =method new
 
   Usage       : my $crRNA_adaptor = Crispr::DB::crRNAAdaptor->new(
-					db_connection => $db_connection,
+                    db_connection => $db_connection,
                 );
   Purpose     : Constructor for creating crRNAAdaptor objects
   Returns     : Crispr::DB::crRNAAdaptor object
@@ -113,8 +113,8 @@ sub store {
 =cut
 
 sub store_crRNAs {
-	## Store crRNAs
-	##  DOES NOT STORE CONSTRUCTION OLIGOS OR EXPRESSION CONSTRUCTS OR PRIMERS  ##
+    ## Store crRNAs
+    ##  DOES NOT STORE CONSTRUCTION OLIGOS OR EXPRESSION CONSTRUCTS OR PRIMERS  ##
     my ( $self, $input ) = @_;
     my $dbh = $self->connection->dbh();
     
@@ -196,7 +196,7 @@ sub store_crRNAs {
             # insert values into table crRNA
             my $statement = "insert into crRNA values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );";
             
-			# check target exists - check_entry_exists_in_db inherited from BaseAdaptor.
+            # check target exists - check_entry_exists_in_db inherited from BaseAdaptor.
             my ( $check_target_st, $target_params );
             if( $crRNA->target->target_id ){
                 $check_target_st = 'select count(*) from target where target_id = ?;';
@@ -207,33 +207,34 @@ sub store_crRNAs {
                 $target_params = [ $crRNA->target->target_name, $crRNA->target->requestor ];
             }
             
-			if( !$self->check_entry_exists_in_db( $check_target_st, $target_params ) ){
-				# try and store it in the db
-				$self->target_adaptor->store( $crRNA->target );
-			}
-			# need target_id - if have target_name but no id, get id from db.
-			if( !$crRNA->target_id && $crRNA->target_name ){
-				$crRNA->target( $self->target_adaptor->fetch_by_name_and_requestor( $crRNA->target_name, $crRNA->target->requestor ) );
-			}
-			
-			my $sth = $dbh->prepare($statement);
-			$sth->execute($crRNA->crRNA_id, $crRNA->name,
-				$crRNA->chr, $crRNA->start, $crRNA->end, $crRNA->strand,
-				$crRNA->sequence, $crRNA->five_prime_Gs,
-                $crRNA->score, $crRNA->off_target_score,
-                $crRNA->coding_score,
-				$crRNA->target_id, $plate_id, $well_id,
-			);
-			
-			my $last_id;
-			$last_id = $dbh->last_insert_id( 'information_schema', $self->dbname(), 'crRNA', 'crRNA_id' );
-			$crRNA->crRNA_id( $last_id );
-			$sth->finish();
-			
-			$self->target_adaptor->update_designed( $crRNA->target );
-			
+            if( !$self->check_entry_exists_in_db( $check_target_st, $target_params ) ){
+                # try and store it in the db
+                $self->target_adaptor->store( $crRNA->target );
+            }
+            # need target_id - if have target_name but no id, get id from db.
+            if( !$crRNA->target_id && $crRNA->target_name ){
+                $crRNA->target( $self->target_adaptor->fetch_by_name_and_requestor( $crRNA->target_name, $crRNA->target->requestor ) );
+            }
+            
+            my $sth = $dbh->prepare($statement);
+            my $off_target_score = defined $crRNA->off_target_hits ? $crRNA->off_target_score : undef;
+            $sth->execute($crRNA->crRNA_id, $crRNA->name,
+                $crRNA->chr, $crRNA->start, $crRNA->end, $crRNA->strand,
+                $crRNA->sequence, $crRNA->five_prime_Gs,
+                $crRNA->score, $off_target_score,
+                $crRNA->coding_score || undef,
+                $crRNA->target_id, $plate_id, $well_id,
+            );
+            
+            my $last_id;
+            $last_id = $dbh->last_insert_id( 'information_schema', $self->dbname(), 'crRNA', 'crRNA_id' );
+            $crRNA->crRNA_id( $last_id );
+            $sth->finish();
+            
+            $self->target_adaptor->update_designed( $crRNA->target );
+            
         }
-	} );
+    } );
     
     return 1;
 }
@@ -250,7 +251,7 @@ sub store_crRNAs {
 =cut
 
 sub store_restriction_enzyme_info {
-	my ( $self, $crRNA, $primer_pair ) = @_;
+    my ( $self, $crRNA, $primer_pair ) = @_;
     my $dbh = $self->connection->dbh();
     
     # check inputs
@@ -276,46 +277,46 @@ sub store_restriction_enzyme_info {
     }
     
     # get enzyme info
-	my $enzyme_info = $crRNA->unique_restriction_sites;
-	
-	# will need to check that enzymes already exist in the db
-	my $check_re_st = "select count(*) from enzyme where name = ?;";
-	# insert values into table restriction_enzymes
+    my $enzyme_info = $crRNA->unique_restriction_sites;
+    
+    # will need to check that enzymes already exist in the db
+    my $check_re_st = "select count(*) from enzyme where name = ?;";
+    # insert values into table restriction_enzymes
     my $statement = <<"END_ST";
 insert into restriction_enzymes values( ?, ?,
 (select enzyme_id from enzyme where name = ?), ?, ? );
 END_ST
-	
-	my $add_enzyme_st = "insert into enzyme values(?, ?, ?);";
-	
+    
+    my $add_enzyme_st = "insert into enzyme values(?, ?, ?);";
+    
     $self->connection->txn(  fixup => sub {
-		my $sth = $dbh->prepare($statement);
-		foreach my $enzyme ( $enzyme_info->uniq_in_both->each_enzyme ){
-			if( !$self->check_entry_exists_in_db( $check_re_st, [ $enzyme->name ] ) ){
-				# complain
-				warn q{Couldn't find enzyme:}, $enzyme->name, " in the database!\nAdding...";
-				my $add_sth = $dbh->prepare($add_enzyme_st);
-				$add_sth->execute(
-					undef,
-					$enzyme->name,
-					$enzyme->site,
-				);
-				$add_sth->finish();
-			}
-			
+        my $sth = $dbh->prepare($statement);
+        foreach my $enzyme ( $enzyme_info->uniq_in_both->each_enzyme ){
+            if( !$self->check_entry_exists_in_db( $check_re_st, [ $enzyme->name ] ) ){
+                # complain
+                warn q{Couldn't find enzyme:}, $enzyme->name, " in the database!\nAdding...";
+                my $add_sth = $dbh->prepare($add_enzyme_st);
+                $add_sth->execute(
+                    undef,
+                    $enzyme->name,
+                    $enzyme->site,
+                );
+                $add_sth->finish();
+            }
+            
             # get fragments sizes. returns an array of sizes in bp sorted from largest to smallest
             my @fragments = $enzyme_info->amplicon_analysis->sizes($enzyme, 0, 1);
-			$sth->execute(
+            $sth->execute(
                 $primer_pair->primer_pair_id,
-				$crRNA->crRNA_id,
-				$enzyme->name,
+                $crRNA->crRNA_id,
+                $enzyme->name,
                 $enzyme_info->proximity_to_cut_site( $enzyme ),
-				join(',', @fragments ),
-			);
-		}
-		$sth->finish();
+                join(',', @fragments ),
+            );
+        }
+        $sth->finish();
     } );
-	
+    
     return 1;
 }
 
@@ -331,24 +332,24 @@ END_ST
 =cut
 
 sub store_coding_scores {
-	my ( $self, $crRNA ) = @_;
+    my ( $self, $crRNA ) = @_;
     my $dbh = $self->connection->dbh();
-	
-	# insert values into table coding_scores
+    
+    # insert values into table coding_scores
     my $statement = "insert into coding_scores values( ?, ?, ? );";
-	
+    
     $self->connection->txn(  fixup => sub {
-		my $sth = $dbh->prepare($statement);
-		foreach my $transcript ( sort keys %{$crRNA->coding_scores} ){
-			$sth->execute(
-				$crRNA->crRNA_id,
-				$transcript,
-				$crRNA->coding_scores->{$transcript},
-			);
-		}
-		$sth->finish();
+        my $sth = $dbh->prepare($statement);
+        foreach my $transcript ( sort keys %{$crRNA->coding_scores} ){
+            $sth->execute(
+                $crRNA->crRNA_id,
+                $transcript,
+                $crRNA->coding_scores->{$transcript},
+            );
+        }
+        $sth->finish();
     } );
-	
+    
     return 1;
 }
 
@@ -366,11 +367,11 @@ sub store_coding_scores {
 sub store_off_target_info {
     my ( $self, $crRNA ) = @_;
     my $dbh = $self->connection->dbh();
-	
+    
     # check object is a crRNA and that the OffTarget attribute is defined
-	if( !$crRNA ){
-		confess "A crRNA object must be supplied to add off-targets to the database!\n";
-	}
+    if( !$crRNA ){
+        confess "A crRNA object must be supplied to add off-targets to the database!\n";
+    }
     else{
         if( !ref $crRNA || !$crRNA->isa('Crispr::crRNA') ){
             confess "The supplied arguments must be a Crispr::crRNA object, not a ",
@@ -390,19 +391,19 @@ sub store_off_target_info {
         confess "Supplied Crispr::crRNA does not have a database id.\n";
     }
     my $check_statement = 'select count(*) from crRNA where crRNA_id = ?;';
-	if( !$self->check_entry_exists_in_db( $check_statement, [ $crRNA->crRNA_id ] ) ){
+    if( !$self->check_entry_exists_in_db( $check_statement, [ $crRNA->crRNA_id ] ) ){
         confess "crRNA, ", $crRNA->name, "does not exists in the database\n";
-	}
+    }
     
-	# insert values into table off_target_info
+    # insert values into table off_target_info
     my $statement = "insert into off_target_info values( ?, ?, ?, ? );";
-	## check warnings TO DO reinstate this comply with sqlite
-	#my $warning_st = "show warnings;";
+    ## check warnings TO DO reinstate this comply with sqlite
+    #my $warning_st = "show warnings;";
     
     $self->connection->txn(  fixup => sub {
         my $sth = $dbh->prepare($statement);
-		foreach my $off_target ( $crRNA->off_target_hits->all_off_targets ){
-    		$sth->execute(
+        foreach my $off_target ( $crRNA->off_target_hits->all_off_targets ){
+            $sth->execute(
                 $crRNA->crRNA_id,
                 $off_target->position,
                 $off_target->mismatches,
@@ -426,63 +427,63 @@ sub store_off_target_info {
 =cut
 
 sub store_expression_construct_info {
-	my ( $self, $well ) = @_;
+    my ( $self, $well ) = @_;
     my $dbh = $self->connection->dbh();
-	
-	my $crRNA = $well->contents;
-	if( !$crRNA ){
-		confess "A crRNA object must be supplied to add to the database!\n";
-	}
-	else{
-		# check $crRNA is a Crispr::crRNA object
-		if( !ref $crRNA || !$crRNA->isa('Crispr::crRNA') ){
-			confess "The supplied object must be a Crispr::crRNA object, not ", ref $crRNA, "!\n";
-		}
-	}
-	if( !$well ){
-		confess "A Labware::Well object must be supplied in order to add oligos to the database!\n";
-	}
-	else{
-		# check $well is a Labware::Well object
-		if( !ref $well || !$well->isa('Labware::Well') ){
-			confess "The supplied object must be a Labware::Well object, not ", ref $well, "!\n";
-		}
-	}
-	
-	# check plate exists - check_entry_exists_in_db inherited from BaseAdaptor.
-	my $plate_id;
-	my $check_plate_st = 'select count(*) from plate where plate_name = ?';
-	if( !$self->check_entry_exists_in_db( $check_plate_st, [ $well->plate->plate_name ] ) ){
-		# add plate to database
-		$self->plate_adaptor->store( $well->plate );
-	}
-	
-	if( !$well->plate->plate_id ){
-		# fetch plate id from db
-		$plate_id = $self->plate_adaptor->get_plate_id_from_name( $well->plate->plate_name );
-	}
-	else{
-		$plate_id = $well->plate->plate_id;
-	}
-	
+    
+    my $crRNA = $well->contents;
+    if( !$crRNA ){
+        confess "A crRNA object must be supplied to add to the database!\n";
+    }
+    else{
+        # check $crRNA is a Crispr::crRNA object
+        if( !ref $crRNA || !$crRNA->isa('Crispr::crRNA') ){
+            confess "The supplied object must be a Crispr::crRNA object, not ", ref $crRNA, "!\n";
+        }
+    }
+    if( !$well ){
+        confess "A Labware::Well object must be supplied in order to add oligos to the database!\n";
+    }
+    else{
+        # check $well is a Labware::Well object
+        if( !ref $well || !$well->isa('Labware::Well') ){
+            confess "The supplied object must be a Labware::Well object, not ", ref $well, "!\n";
+        }
+    }
+    
+    # check plate exists - check_entry_exists_in_db inherited from BaseAdaptor.
+    my $plate_id;
+    my $check_plate_st = 'select count(*) from plate where plate_name = ?';
+    if( !$self->check_entry_exists_in_db( $check_plate_st, [ $well->plate->plate_name ] ) ){
+        # add plate to database
+        $self->plate_adaptor->store( $well->plate );
+    }
+    
+    if( !$well->plate->plate_id ){
+        # fetch plate id from db
+        $plate_id = $self->plate_adaptor->get_plate_id_from_name( $well->plate->plate_name );
+    }
+    else{
+        $plate_id = $well->plate->plate_id;
+    }
+    
     my $backbone_id = $self->check_plasmid_backbone_exists( $dbh, $crRNA );
     
-	my $construct_st = "insert into expression_construct values( ?, ?, ?, ?, ?, ? );";
-	
-	$self->connection->txn(  fixup => sub {
-		my $sth = $dbh->prepare($construct_st);
-		$sth->execute(
-			$crRNA->crRNA_id,
-			$plate_id,
-			$well->position,
-			undef,
-			undef,
-			$backbone_id,
-		);
-		$sth->finish();
-	} );
+    my $construct_st = "insert into expression_construct values( ?, ?, ?, ?, ?, ? );";
     
-	return 1;
+    $self->connection->txn(  fixup => sub {
+        my $sth = $dbh->prepare($construct_st);
+        $sth->execute(
+            $crRNA->crRNA_id,
+            $plate_id,
+            $well->position,
+            undef,
+            undef,
+            $backbone_id,
+        );
+        $sth->finish();
+    } );
+    
+    return 1;
 }
 
 =method store_construction_oligos
@@ -497,22 +498,22 @@ sub store_expression_construct_info {
 =cut
 
 sub store_construction_oligos {
-	my ( $self, $well, $oligo_type ) = @_;
+    my ( $self, $well, $oligo_type ) = @_;
     my $dbh = $self->connection->dbh();
-	
-	my $crRNA = $well->contents;
-	if( !$crRNA ){
-		confess "A crRNA object must be supplied to add to the database!\n";
-	}
+    
+    my $crRNA = $well->contents;
+    if( !$crRNA ){
+        confess "A crRNA object must be supplied to add to the database!\n";
+    }
     else{
         #check $crRNA is a Crispr::crRNA object
         if( !ref $crRNA || !$crRNA->isa('Crispr::crRNA') ){
             confess "The supplied object must be a Crispr::crRNA object, not a ", ref $crRNA, " one.\n";
         }
     }
-	if( !$well ){
-		confess "A Labware::Well object must be supplied in order to add oligos to the database!\n";
-	}
+    if( !$well ){
+        confess "A Labware::Well object must be supplied in order to add oligos to the database!\n";
+    }
     else{
         # check $well is a Labware::Well object
         if( !ref $well || ( ref $well && !$well->isa('Labware::Well') ) ){
@@ -523,7 +524,7 @@ sub store_construction_oligos {
     my ( $oligo1, $oligo2, $backbone_id );
     if( $oligo_type eq 'cloning_oligos' ){
         $oligo1 = $crRNA->forward_oligo;
-		$oligo2 = $crRNA->reverse_oligo;
+        $oligo2 = $crRNA->reverse_oligo;
         $backbone_id = $self->check_plasmid_backbone_exists( $dbh, $crRNA );
     }
     elsif( $oligo_type eq 't7_hairpin_oligos' ){
@@ -537,37 +538,37 @@ sub store_construction_oligos {
             $oligo_type, "\n";
     }
     
-	# check plate exists - check_entry_exists_in_db inherited from BaseAdaptor.
+    # check plate exists - check_entry_exists_in_db inherited from BaseAdaptor.
     my $plate_id;
-	my $check_plate_st = 'select count(*) from plate where plate_name = ?';
-	if( !$self->check_entry_exists_in_db( $check_plate_st, [ $well->plate->plate_name ] ) ){
-	    # add plate to database
-		$self->plate_adaptor->store( $well->plate );
-	}
+    my $check_plate_st = 'select count(*) from plate where plate_name = ?';
+    if( !$self->check_entry_exists_in_db( $check_plate_st, [ $well->plate->plate_name ] ) ){
+        # add plate to database
+        $self->plate_adaptor->store( $well->plate );
+    }
     if( !$well->plate->plate_id ){
         # fetch plate id from db
         $plate_id = $self->plate_adaptor->get_plate_id_from_name( $well->plate->plate_name );
     }
-	else{
-		$plate_id = $well->plate->plate_id;
-	}
-	
-	my $insert_oligos_st = "insert into construction_oligos values( ?, ?, ?, ?, ?, ? );";
-	
+    else{
+        $plate_id = $well->plate->plate_id;
+    }
+    
+    my $insert_oligos_st = "insert into construction_oligos values( ?, ?, ?, ?, ?, ? );";
+    
     $self->connection->txn(  fixup => sub {
-		my $sth = $dbh->prepare($insert_oligos_st);
-		$sth->execute(
-			$crRNA->crRNA_id,
-			$oligo1,
-			$oligo2,
+        my $sth = $dbh->prepare($insert_oligos_st);
+        $sth->execute(
+            $crRNA->crRNA_id,
+            $oligo1,
+            $oligo2,
             $backbone_id,
-			$plate_id,
-			$well->position,
-		);
-		$sth->finish();
+            $plate_id,
+            $well->position,
+        );
+        $sth->finish();
     } );
     
-	return 1;
+    return 1;
 }
 
 =method check_plasmid_backbone_exists
@@ -583,24 +584,24 @@ sub store_construction_oligos {
 
 sub check_plasmid_backbone_exists {
     my ( $self, $dbh, $crRNA ) = @_;
-	# check plasmid backbone exists in plasmid_backbone table
-	my $check_backbone_st = "select plasmid_backbone_id from plasmid_backbone where plasmid_backbone = ?;";
-	my $sth = $dbh->prepare( $check_backbone_st );
-	$sth->execute( $crRNA->plasmid_backbone );
-	my $backbone_id;
-	while( my @fields = $sth->fetchrow_array ){
-		$backbone_id = $fields[0];
-	}
+    # check plasmid backbone exists in plasmid_backbone table
+    my $check_backbone_st = "select plasmid_backbone_id from plasmid_backbone where plasmid_backbone = ?;";
+    my $sth = $dbh->prepare( $check_backbone_st );
+    $sth->execute( $crRNA->plasmid_backbone );
+    my $backbone_id;
+    while( my @fields = $sth->fetchrow_array ){
+        $backbone_id = $fields[0];
+    }
     # if it doesn't add and record the backbone id
-	if( !$backbone_id ){
-		warn join(q{ }, 'Plasmid backbone', $crRNA->plasmid_backbone, "doesn't exist in the database - Adding...\n", );
-		# add plasmid backbone to db
-		my $add_backbone_st = "insert into plasmid_backbone values( ?, ? );";
-		my $sth = $dbh->prepare($add_backbone_st);
-		$sth->execute( undef, $crRNA->plasmid_backbone );
-		$backbone_id = $dbh->last_insert_id( 'information_schema', $self->dbname(), 'plasmid_backbone', 'plasmid_backbone_id' );
-		$sth->finish();
-	}
+    if( !$backbone_id ){
+        warn join(q{ }, 'Plasmid backbone', $crRNA->plasmid_backbone, "doesn't exist in the database - Adding...\n", );
+        # add plasmid backbone to db
+        my $add_backbone_st = "insert into plasmid_backbone values( ?, ? );";
+        my $sth = $dbh->prepare($add_backbone_st);
+        $sth->execute( undef, $crRNA->plasmid_backbone );
+        $backbone_id = $dbh->last_insert_id( 'information_schema', $self->dbname(), 'plasmid_backbone', 'plasmid_backbone_id' );
+        $sth->finish();
+    }
     return $backbone_id;
 }
 
@@ -630,7 +631,7 @@ sub fetch_by_id {
     }
     else{
         my @crRNA_fields = @{ $results->[0]->[14..24] };
-		$crRNA = $self->_make_new_crRNA_from_db( \@crRNA_fields, );
+        $crRNA = $self->_make_new_crRNA_from_db( \@crRNA_fields, );
         my @target_fields = @{ $results->[0]->[0..13] };
         $crRNA->target( $self->target_adaptor->_make_new_target_from_db( \@target_fields ) );
     }
@@ -652,13 +653,13 @@ sub fetch_by_id {
 sub fetch_by_ids {
     my ( $self, $ids ) = @_;
     my $dbh = $self->connection->dbh();
-	my @crRNAs;
+    my @crRNAs;
     
-	foreach my $id ( @{$ids} ){
-		my $crRNA = $self->fetch_by_id( $id );
-		push @crRNAs, $crRNA;
-	}
-	
+    foreach my $id ( @{$ids} ){
+        my $crRNA = $self->fetch_by_id( $id );
+        push @crRNAs, $crRNA;
+    }
+    
     return \@crRNAs;
 }
 
@@ -693,7 +694,7 @@ END_ST
     my @crRNAs;
     foreach my $row ( @{$results} ){
         my @crRNA_fields = @{ $row }[0..13];
-		push @crRNAs, $self->_make_new_crRNA_from_db( \@crRNA_fields, );
+        push @crRNAs, $self->_make_new_crRNA_from_db( \@crRNA_fields, );
     }
     
     return @crRNAs;
@@ -728,7 +729,7 @@ END_ST
     }
     else{
         my @crRNA_fields = @{ $results }[14..24];
-		$crRNA = $self->_make_new_crRNA_from_db( \@crRNA_fields, );
+        $crRNA = $self->_make_new_crRNA_from_db( \@crRNA_fields, );
         my @target_fields = @{ $results }[0..13];
         $crRNA->target( $self->target_adaptor->_make_new_target_from_db( \@target_fields ) );
     }
@@ -750,12 +751,12 @@ END_ST
 sub fetch_by_names_and_targets {
     my ( $self, $info ) = @_;
     my $dbh = $self->connection->dbh();
-	my @crRNAs;
-	
-	foreach my $name_and_target ( @{$info} ){
-		push @crRNAs, $self->fetch_by_name( @{$name_and_target} );
-	}
-	
+    my @crRNAs;
+    
+    foreach my $name_and_target ( @{$info} ){
+        push @crRNAs, $self->fetch_by_name( @{$name_and_target} );
+    }
+    
     return \@crRNAs;
 }
 
@@ -771,26 +772,26 @@ sub fetch_by_names_and_targets {
 =cut
 
 sub fetch_all_by_target {
-	my ( $self, $target, ) = @_;
+    my ( $self, $target, ) = @_;
     my $dbh = $self->connection->dbh();
-	
-	# retrieve crRNAs by target id
+    
+    # retrieve crRNAs by target id
     my $statement = "select * from crRNA where target_id = ?;";
     my $sth = $dbh->prepare($statement);
     $sth->execute( $target->target_id );
     
     my $crRNAs;
-	my $num_rows = 0;
-	while( my @fields = $sth->fetchrow_array ){
-		$num_rows++;
-		my $crRNA = $self->_make_new_crRNA_from_db( \@fields, );
-		push @{$crRNAs}, $crRNA;
-	}
+    my $num_rows = 0;
+    while( my @fields = $sth->fetchrow_array ){
+        $num_rows++;
+        my $crRNA = $self->_make_new_crRNA_from_db( \@fields, );
+        push @{$crRNAs}, $crRNA;
+    }
     if( $num_rows == 0 ){
-		die "Couldn't retrieve crRNAs for target, ", $target->name, " from database.\n";
+        die "Couldn't retrieve crRNAs for target, ", $target->name, " from database.\n";
     }
     $target->crRNAs( $crRNAs );
-	
+    
     return $crRNAs;
 }
 
@@ -922,21 +923,21 @@ END_ST
 sub _make_new_crRNA_from_db {
     my ( $self, $fields ) = @_;
     my $crRNA;
-	
-	my %args = (
-		crRNA_id => $fields->[0],
+    
+    my %args = (
+        crRNA_id => $fields->[0],
         name => $fields->[1],
-		start => $fields->[3],
-		end => $fields->[4],
-		strand => $fields->[5],
-		sequence => $fields->[6],
+        start => $fields->[3],
+        end => $fields->[4],
+        strand => $fields->[5],
+        sequence => $fields->[6],
         five_prime_Gs => $fields->[7],
-	);
-	$args{ 'chr' } = $fields->[2] if( defined $fields->[2] );
-	
-	$crRNA = Crispr::crRNA->new( %args );
-	$crRNA->crRNA_adaptor( $self );
-	
+    );
+    $args{ 'chr' } = $fields->[2] if( defined $fields->[2] );
+    
+    $crRNA = Crispr::crRNA->new( %args );
+    $crRNA->crRNA_adaptor( $self );
+    
     return $crRNA;
 }
 
@@ -951,20 +952,20 @@ sub _make_new_crRNA_from_db {
 #    my @primer_pairs;
 #    my $num_rows = $sth->execute( $crRNA->crRNA_id );
 #    if( $sth->{'Executed'} ){
-#	if( $num_rows > 0 ){
-#	    while( my @fields = $sth->fetchrow_array ){
-#		my $primer_pair = Crispr::Primer_pair->new(
-#		    primer_pair_id => $fields[0],
-#		    primer_left => $fields[2],
-#		    primer_right => $fields[3],
-#		    type => $fields[4],
-#		    plate_id => $fields[5],
-#		    well_left => $fields[6],
-#		    well_right => $fields[7],
-#		);
-#		push @primer_pairs, $primer_pair;
-#	    }
-#	}
+#   if( $num_rows > 0 ){
+#       while( my @fields = $sth->fetchrow_array ){
+#       my $primer_pair = Crispr::Primer_pair->new(
+#           primer_pair_id => $fields[0],
+#           primer_left => $fields[2],
+#           primer_right => $fields[3],
+#           type => $fields[4],
+#           plate_id => $fields[5],
+#           well_left => $fields[6],
+#           well_right => $fields[7],
+#       );
+#       push @primer_pairs, $primer_pair;
+#       }
+#   }
 #    }
 #    $sth->finish();
 #    return \@primer_pairs;
@@ -983,18 +984,18 @@ sub _make_new_crRNA_from_db {
 =cut
 
 sub delete_crRNA_from_db {
-#	my ( $self, $crRNA ) = @_;
-#	
-#	# first check crRNA exists in db
-#	
-#	# delete primers and primer pairs
-#	
-#	# delete transcripts
-#	
-#	# if crRNA has talen pairs, delete tale and talen pairs
-#	
-#	
-#	
+#   my ( $self, $crRNA ) = @_;
+#   
+#   # first check crRNA exists in db
+#   
+#   # delete primers and primer pairs
+#   
+#   # delete transcripts
+#   
+#   # if crRNA has talen pairs, delete tale and talen pairs
+#   
+#   
+#   
 }
 
 =method exists_in_db
@@ -1029,27 +1030,27 @@ sub _check_well_and_contents {
     my ( $self, $well, $type, ) = @_;
     
     $type = !defined $type  ?   'stuff'  :   $type;
-	if( !$well ){
-		confess "A Labware::Well object must be supplied in order to add $type to the database!\n";
-	}
-	else{
-		# check $well is a Labware::Well object
-		if( !ref $well || !$well->isa('Labware::Well') ){
-			confess "The supplied object must be a Labware::Well object, not ", ref $well, "!\n";
-		}
-	}
+    if( !$well ){
+        confess "A Labware::Well object must be supplied in order to add $type to the database!\n";
+    }
+    else{
+        # check $well is a Labware::Well object
+        if( !ref $well || !$well->isa('Labware::Well') ){
+            confess "The supplied object must be a Labware::Well object, not ", ref $well, "!\n";
+        }
+    }
     
-	my $crRNA = $well->contents;
-	if( !$crRNA ){
-		confess "The supplied well must contain a crRNA object to add to the database!\n";
-	}
-	else{
-		# check $crRNA is a Crispr::crRNA object
-		if( !ref $crRNA || !$crRNA->isa('Crispr::crRNA') ){
-			confess "The contents of the supplied well must be a Crispr::crRNA object, not ", ref $crRNA, "!\n";
-		}
-	}
-	return 1;
+    my $crRNA = $well->contents;
+    if( !$crRNA ){
+        confess "The supplied well must contain a crRNA object to add to the database!\n";
+    }
+    else{
+        # check $crRNA is a Crispr::crRNA object
+        if( !ref $crRNA || !$crRNA->isa('Crispr::crRNA') ){
+            confess "The contents of the supplied well must be a Crispr::crRNA object, not ", ref $crRNA, "!\n";
+        }
+    }
+    return 1;
 }
 
 #_get_plate_id
@@ -1069,12 +1070,12 @@ sub _get_plate_id {
     
     my $plate_adaptor = $self->get_adaptor( 'plate' );
     if( !$well->plate->plate_id ){
-		# fetch plate id from db
-		return $plate_adaptor->get_plate_id_from_name( $well->plate->plate_name );
-	}
-	else{
-		return $well->plate->plate_id;
-	}
+        # fetch plate id from db
+        return $plate_adaptor->get_plate_id_from_name( $well->plate->plate_name );
+    }
+    else{
+        return $well->plate->plate_id;
+    }
 }
 
 #_build_target_adaptor
@@ -1119,12 +1120,12 @@ __END__
     
     # make a new db adaptor
     my $db_adaptor = Crispr::DB::DBAdaptor->new(
-		host => 'HOST',
-		port => 'PORT',
-		dbname => 'DATABASE',
-		user => 'USER',
-		pass => 'PASS',
-		connection => $dbc,
+        host => 'HOST',
+        port => 'PORT',
+        dbname => 'DATABASE',
+        user => 'USER',
+        pass => 'PASS',
+        connection => $dbc,
     );
     
     # get a crRNA adaptor using the get_adaptor method
