@@ -109,7 +109,7 @@ sub get_and_check_options {
     
     # Documentation
     if( $options{help} ) {
-        pod2usage(1);
+        pod2usage( -verbose => 0, -exitval => 1, );
     }
     elsif( $options{man} ) {
         pod2usage( -verbose => 2 );
