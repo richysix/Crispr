@@ -208,7 +208,7 @@ sub off_target_counts {
         $self->number_intron_hits,
         $self->number_nongenic_hits,
     );
-    return join('/', @exo_hit_numbers );
+    return join('|', @exo_hit_numbers );
 }
 
 =method off_target_hits_by_annotation

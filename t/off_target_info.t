@@ -85,7 +85,7 @@ is( $off_target->number_exon_hits, 1, 'check number of exon hits' );
 is( $off_target->number_intron_hits, 1, 'check number of intron hits' );
 is( $off_target->number_nongenic_hits, 2, 'check number of nongenic hits' );
 
-is( $off_target->off_target_counts, '1/1/2', 'check off target counts' );
+is( $off_target->off_target_counts, '1|1|2', 'check off target counts' );
 my @hits = $off_target->off_target_hits_by_annotation;
 my $hits = join('|',
                 join('/', @{$hits[0]} ),
@@ -94,7 +94,7 @@ my $hits = join('|',
             );
 is( $hits, 'test_chr1:201-123:1|test_chr3:101-123|test_chr1:1-23/test_chr1:1-23', 'check off target hits');
 
-like( join("\t", $off_target->info), qr/0.81\t1\/1\/2\ttest_chr1:201-123:1\|test_chr3:101-123\|test_chr1:1-23\/test_chr1:1-23/xms, 'check off target info' );
+like( join("\t", $off_target->info), qr/0.81\t1|1|2\ttest_chr1:201-123:1|test_chr3:101-123|test_chr1:1-23\/test_chr1:1-23/xms, 'check off target info' );
 
 # check all_off_targets - 4 tests
 my @off_targets = $off_target->all_off_targets;
