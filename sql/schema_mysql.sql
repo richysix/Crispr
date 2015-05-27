@@ -241,7 +241,7 @@ create table sample (
     sample_number INT UNSIGNED NOT NULL,
     injection_id INT UNSIGNED NOT NULL,
     generation ENUM('G0', 'F1', 'F2') NOT NULL,
-    type ENUM('sperm', 'embryo', 'finclip') NOT NULL,
+    type ENUM('sperm', 'embryo', 'finclip', 'earclip' ) NOT NULL,
     species VARCHAR(50) NOT NULL,
     FOREIGN KEY (injection_id) REFERENCES injection(injection_id)
 ) ENGINE = InnoDB;

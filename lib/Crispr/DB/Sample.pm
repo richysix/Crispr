@@ -100,7 +100,7 @@ has 'generation' => (
 
 has 'sample_type' => (
     is => 'ro',
-    isa => enum( [ qw{ sperm embryo finclip } ] ),
+    isa => enum( [ qw{ sperm embryo finclip earclip } ] ),
 );
 
 =method sample_number
