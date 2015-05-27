@@ -218,11 +218,13 @@ sub store_crRNAs {
             
             my $sth = $dbh->prepare($statement);
             my $off_target_score = defined $crRNA->off_target_hits ? $crRNA->off_target_score : undef;
+            my $coding_score = defined $crRNA->coding_score ?
+                $crRNA->coding_score : undef;
             $sth->execute($crRNA->crRNA_id, $crRNA->name,
                 $crRNA->chr, $crRNA->start, $crRNA->end, $crRNA->strand,
                 $crRNA->sequence, $crRNA->five_prime_Gs,
                 $crRNA->score, $off_target_score,
-                $crRNA->coding_score || undef,
+                $coding_score,
                 $crRNA->target_id, $plate_id, $well_id,
             );
             
