@@ -66,14 +66,14 @@ while( my $line = <$in_fh>){
 
 # check some attributes of crRNA:test_chr1:101-123:1 - 3 tests
 is( abs($output_for{'crRNA:test_chr1:101-123:1'}{crRNA_score} - 0.76) < 0.001, 1, 'check score 1' );
-is( $output_for{'crRNA:test_chr1:101-123:1'}{crRNA_off_target_counts}, '1/2/2', 'check off_target_counts 1' );
+is( $output_for{'crRNA:test_chr1:101-123:1'}{crRNA_off_target_counts}, '1|2|2', 'check off_target_counts 1' );
 is( $output_for{'crRNA:test_chr1:101-123:1'}{crRNA_off_target_hits},
    'test_chr1:201-223:1|test_chr3:101-123:1/test_chr2:101-123:1|test_chr1:1-23:1/test_chr3:201-223:1',
    'check off_target_hits 1' );
 
 # check some attributes of crRNA:test_chr2:41-63:1 - 3 tests
 is( abs($output_for{'crRNA:test_chr2:41-63:1'}{crRNA_score} - 1) < 0.001, 1, 'check score 2' );
-is( $output_for{'crRNA:test_chr2:41-63:1'}{crRNA_off_target_counts}, '0/0/0', 'check off_target_counts 2' );
+is( $output_for{'crRNA:test_chr2:41-63:1'}{crRNA_off_target_counts}, '0|0|0', 'check off_target_counts 2' );
 is( $output_for{'crRNA:test_chr2:41-63:1'}{crRNA_off_target_hits},
    '||', 'check off_target_hits 2' );
 
