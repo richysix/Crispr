@@ -292,7 +292,6 @@ __END__
         pool_name => 'inj01',
         cas9_prep => $cas9_prep,
         cas9_conc => 200,
-        guideRNA_conc => 20,
         date => '2014-09-30',
         line_injected => 'line1',
         line_raised => 'line2',
