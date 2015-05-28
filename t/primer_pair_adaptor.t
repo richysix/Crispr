@@ -13,7 +13,7 @@ use Getopt::Long;
 use Readonly;
 use File::Spec;
 
-Readonly my $TESTS_FOREACH_DBC => 1 + 13 + 9 + 2 + 2;
+Readonly my $TESTS_FOREACH_DBC => 1 + 13 + 9 + 22 + 22;
 plan tests => 2 * $TESTS_FOREACH_DBC;
 
 use Crispr::DB::DBConnection;
@@ -243,18 +243,18 @@ foreach my $db_connection ( @db_connections ){
         qr/Supplied object must be a Crispr::crRNA object/, 'calling store with crRNA ids in empty ArrayRef';
     
     # test fetch methods
-    # _fetch - 2 tests
+    # _fetch - 22 tests
     my $where_clause = 'pp.primer_pair_id = ?';
     my $primer_pair_from_db;
     ok( $primer_pair_from_db = $primer_pair_ad->_fetch( $where_clause, [ 1 ] ), 'Test _fetch method' );
-    check_attributes( $primer_pair_from_db->[0], $mock_primer_pair, $driver, '_fetch' );
+    check_primer_pair_attributes( $primer_pair_from_db->[0], $mock_primer_pair, $driver, '_fetch' );
     
-    # fetch_by_plate_and_well - 2 tests
+    # fetch_by_plate_and_well - 22 tests
     ok( $primer_pair_from_db = $primer_pair_ad->fetch_by_plate_name_and_well( $mock_plate->plate_name, 'A01' ), 'Test fetch_by_plate_name_and_well method' );
     SKIP: {
         skip 'No primer pair returned from db', 1 if !defined $primer_pair_from_db;
         
-        check_attributes( $primer_pair_from_db, $mock_primer_pair, $driver, 'fetch_by_plate_name_and_well' );
+        check_primer_pair_attributes( $primer_pair_from_db, $mock_primer_pair, $driver, 'fetch_by_plate_name_and_well' );
     }
 }
 
@@ -263,8 +263,30 @@ foreach my $driver ( keys %test_db_connections ){
     $test_db_connections{$driver}->destroy();
 }
 
-sub check_attributes {
+# 5 + 16 tests per call
+sub check_primer_pair_attributes {
     my ( $obj_1, $obj_2, $driver, $method, ) = @_;
     is( $obj_1->primer_pair_id, $obj_2->primer_pair_id, "$driver: object from db $method - check primer pair db_id" );
+    is( $obj_1->seq_region, $obj_2->seq_region, "$driver: object from db $method - check chr" );
+    is( $obj_1->seq_region_start, $obj_2->seq_region_start, "$driver: object from db $method - check start" );
+    is( $obj_1->seq_region_end, $obj_2->seq_region_end, "$driver: object from db $method - check end" );
+    is( $obj_1->seq_region_strand, $obj_2->seq_region_strand, "$driver: object from db $method - check strand" );
+    
+    check_primer_attributes( $obj_1->left_primer, $obj_2->left_primer, $driver, $method, );
+    check_primer_attributes( $obj_1->right_primer, $obj_2->right_primer, $driver, $method, );
 }
 
+sub check_primer_attributes {
+    my ( $obj_1, $obj_2, $driver, $method, ) = @_;
+    my $seq = $obj_2->tail
+        ? $obj_2->tail . $obj_2->sequence
+        : $obj_2->sequence;
+    is( $obj_1->sequence, $seq, "$driver: object from db $method - check primer seq" );
+    is( $obj_1->primer_id, $obj_2->primer_id, "$driver: object from db $method - check primer id" );
+    is( $obj_1->seq_region, $obj_2->seq_region, "$driver: object from db $method - check primer chr" );
+    is( $obj_1->seq_region_start, $obj_2->seq_region_start, "$driver: object from db $method - check primer start" );
+    is( $obj_1->seq_region_end, $obj_2->seq_region_end, "$driver: object from db $method - check primer end" );
+    is( $obj_1->seq_region_strand, $obj_2->seq_region_strand, "$driver: object from db $method - check primer strand" );
+    is( $obj_1->primer_name, $obj_2->primer_name, "$driver: object from db $method - check primer name" );
+    is( $obj_1->well_id, $obj_2->well_id, "$driver: object from db $method - check primer well id" );
+}

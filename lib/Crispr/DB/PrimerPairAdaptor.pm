@@ -303,24 +303,24 @@ sub _fetch {
     my ( $self, $where_clause, $where_parameters ) = @_;
     my $dbh = $self->connection->dbh();
     
-    # need to change query depending on whether driver is MySQL or SQLite
-    my ( $left_p_concat_statement, $right_p_concat_statement );
-    if( ref $self->connection->driver eq 'DBIx::Connector::Driver::mysql' ){
-        $left_p_concat_statement = 'concat( p1.primer_tail, p1.primer_sequence )';
-        $right_p_concat_statement = 'concat( p2.primer_tail, p2.primer_sequence )';
-    }else{
-        $left_p_concat_statement = 'p1.primer_tail || p1.primer_sequence';
-        $right_p_concat_statement = 'p2.primer_tail || p2.primer_sequence';
-    }
+    ## need to change query depending on whether driver is MySQL or SQLite
+    #my ( $left_p_concat_statement, $right_p_concat_statement );
+    #if( ref $self->connection->driver eq 'DBIx::Connector::Driver::mysql' ){
+    #    $left_p_concat_statement = 'concat( p1.primer_tail, p1.primer_sequence )';
+    #    $right_p_concat_statement = 'concat( p2.primer_tail, p2.primer_sequence )';
+    #}else{
+    #    $left_p_concat_statement = 'p1.primer_tail || p1.primer_sequence';
+    #    $right_p_concat_statement = 'p2.primer_tail || p2.primer_sequence';
+    #}
     
     my $sql = <<"END_SQL";
         SELECT
 			pp.primer_pair_id, pp.type, pp.chr,
             pp.start, pp.end, pp.strand, pp.product_size,
-            p1.primer_id, $left_p_concat_statement as left_sequence,
+            p1.primer_id, p1.primer_tail, p1.primer_sequence,
             p1.primer_chr, p1.primer_start, p1.primer_end, p1.primer_strand,
             p1.plate_id, p1.well_id,
-            p2.primer_id, $right_p_concat_statement as right_sequence,
+            p2.primer_id, p2.primer_tail, p2.primer_sequence,
             p2.primer_chr, p2.primer_start, p2.primer_end, p2.primer_strand,
             p2.plate_id, p2.well_id
         FROM primer_pair pp, primer p1, primer p2, amplicon_to_crRNA amp
@@ -336,18 +336,18 @@ END_SQL
     $sth->execute();
 
     my ( $primer_pair_id, $type, $chr, $start, $end, $strand, $product_size,
-            $left_primer_id, $left_sequence, $left_primer_chr,
+            $left_primer_id, $left_tail, $left_sequence, $left_primer_chr,
             $left_primer_start, $left_primer_end, $left_primer_strand,
             $left_primer_plate_id, $left_primer_well_id,
-            $right_primer_id, $right_sequence, $right_primer_chr,
+            $right_primer_id, $right_tail, $right_sequence, $right_primer_chr,
             $right_primer_start, $right_primer_end, $right_primer_strand,
             $right_primer_plate_id, $right_primer_well_id, );
     
     $sth->bind_columns( \( $primer_pair_id, $type, $chr, $start, $end, $strand, $product_size,
-            $left_primer_id, $left_sequence, $left_primer_chr,
+            $left_primer_id, $left_tail, $left_sequence, $left_primer_chr,
             $left_primer_start, $left_primer_end, $left_primer_strand,
             $left_primer_plate_id, $left_primer_well_id,
-            $right_primer_id, $right_sequence, $right_primer_chr,
+            $right_primer_id, $right_tail, $right_sequence, $right_primer_chr,
             $right_primer_start, $right_primer_end, $right_primer_strand,
             $right_primer_plate_id, $right_primer_well_id, ) );
 
@@ -355,11 +355,15 @@ END_SQL
     while ( $sth->fetch ) {
         my $primer_pair;
         if( !exists $primer_pair_cache{ $primer_pair_id } ){
+            $left_sequence = $left_tail ? $left_tail . $left_sequence
+                : $left_sequence;
             my $left_primer = $self->primer_adaptor->_make_new_primer_from_db(
                 [ $left_primer_id, $left_sequence, $left_primer_chr,
                     $left_primer_start, $left_primer_end, $left_primer_strand,
                     $left_primer_plate_id, $left_primer_well_id, ]
             );
+            $right_sequence = $right_tail ? $right_tail . $right_sequence
+                : $right_sequence;
             my $right_primer = $self->primer_adaptor->_make_new_primer_from_db(
                 [ $right_primer_id, $right_sequence, $right_primer_chr,
                     $right_primer_start, $right_primer_end, $right_primer_strand,

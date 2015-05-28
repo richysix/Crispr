@@ -21,7 +21,7 @@ my $count_output = qx/wc -l $test_data/;
 chomp $count_output;
 $count_output =~ s/\s$test_data//mxs;
 
-Readonly my $TESTS_FOREACH_DBC => 1 + 14 + $count_output * 2 + 2 + 2;
+Readonly my $TESTS_FOREACH_DBC => 1 + 14 + $count_output * 2 + 2 + 9;
 plan tests => 2 * $TESTS_FOREACH_DBC;
 
 use Crispr::DB::DBConnection;
@@ -204,6 +204,8 @@ foreach my $db_connection ( @db_connections ){
     $mock_left_primer->mock( 'seq_region_start', sub { return 60341090 } );
     $mock_left_primer->mock( 'seq_region_end', sub { return 60341110 } );
     $mock_left_primer->mock( 'seq_region_strand', sub { return '1' } );
+    $mock_left_primer->mock( 'well_id', sub { return undef } );
+    $mock_left_primer->mock( 'primer_name', sub { return '4:60341090-60341110:1' } );
     $mock_left_primer->set_isa('Crispr::Primer');
     $mock_left_primer->mock('primer_id', sub { my @args = @_; if( $_[1]){ return $_[1] }else{ return $l_p_id} } );
     
@@ -214,6 +216,8 @@ foreach my $db_connection ( @db_connections ){
     $mock_right_primer->mock( 'seq_region_start', sub { return 60341311 } );
     $mock_right_primer->mock( 'seq_region_end', sub { return 60341333 } );
     $mock_right_primer->mock( 'seq_region_strand', sub { return '-1' } );
+    $mock_right_primer->mock( 'primer_name', sub { return '4:60341311-60341333:-1' } );
+    $mock_right_primer->mock( 'well_id', sub { return undef } );
     $mock_right_primer->set_isa('Crispr::Primer');
     $mock_right_primer->mock('primer_id', sub { my @args = @_; if( $_[1]){ return $_[1] }else{ return $r_p_id} } );
     
@@ -255,7 +259,7 @@ foreach my $db_connection ( @db_connections ){
     }
     
     # test fetch methods
-    # _fetch - 2 tests
+    # _fetch - 9 tests
     my $primer;
     ok( $primers = $primer_ad->_fetch( 'primer_id = ?',
         [ $mock_left_primer->primer_id, ] ), "$driver: Test _fetch method" );
@@ -264,8 +268,16 @@ foreach my $db_connection ( @db_connections ){
     $db_connection->destroy();
 }
 
+# 8 tests per call
 sub check_attributes {
     my ( $obj_1, $obj_2, $driver, $method, ) = @_;
-    is( $obj_1->primer_id, $obj_2->primer_id, "$driver: object from db $method - check primer db_id" );
+    is( $obj_1->sequence, $obj_2->sequence, "$driver: object from db $method - check primer seq" );
+    is( $obj_1->primer_id, $obj_2->primer_id, "$driver: object from db $method - check primer id" );
+    is( $obj_1->seq_region, $obj_2->seq_region, "$driver: object from db $method - check primer chr" );
+    is( $obj_1->seq_region_start, $obj_2->seq_region_start, "$driver: object from db $method - check primer start" );
+    is( $obj_1->seq_region_end, $obj_2->seq_region_end, "$driver: object from db $method - check primer end" );
+    is( $obj_1->seq_region_strand, $obj_2->seq_region_strand, "$driver: object from db $method - check primer strand" );
+    is( $obj_1->primer_name, $obj_2->primer_name, "$driver: object from db $method - check primer primer_name" );
+    is( $obj_1->well_id, $obj_2->well_id, "$driver: object from db $method - check primer well id" );
 }
 

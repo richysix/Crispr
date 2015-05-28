@@ -269,17 +269,9 @@ sub _fetch {
     my ( $self, $where_clause, $where_parameters ) = @_;
     my $dbh = $self->connection->dbh();
     
-    # need to change query depending on whether driver is MySQL or SQLite
-    my $p_concat_statement;
-    if( ref $self->connection->driver eq 'DBIx::Connector::Driver::mysql' ){
-        $p_concat_statement = 'concat( p.primer_tail, p.primer_sequence )';
-    }else{
-        $p_concat_statement = 'p.primer_tail || p.primer_sequence';
-    }
-    
     my $sql = <<"END_SQL";
         SELECT
-            p.primer_id, $p_concat_statement as left_sequence,
+            p.primer_id, p.primer_tail, p.primer_sequence,
             p.primer_chr, p.primer_start, p.primer_end, p.primer_strand,
             p.plate_id, p.well_id
         FROM primer p
@@ -292,12 +284,12 @@ END_SQL
     my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
     $sth->execute();
 
-    my ( $primer_id, $primer_sequence, $primer_chr,
-        $primer_start, $primer_end, $primer_strand,
+    my ( $primer_id, $primer_tail, $primer_sequence,
+        $primer_chr, $primer_start, $primer_end, $primer_strand,
         $plate_id, $well_id, );
     
-    $sth->bind_columns( \( $primer_id, $primer_sequence, $primer_chr,
-        $primer_start, $primer_end, $primer_strand,
+    $sth->bind_columns( \( $primer_id, $primer_tail, $primer_sequence,
+        $primer_chr, $primer_start, $primer_end, $primer_strand,
         $plate_id, $well_id, ) );
 
     my @primers = ();
@@ -307,6 +299,8 @@ END_SQL
             my $primer_name = join(":", $primer_chr,
                                    join("-", $primer_start, $primer_end, ),
                                    $primer_strand, );
+            $primer_sequence = $primer_tail ? $primer_tail . $primer_sequence
+                : $primer_sequence;
             $primer = Crispr::Primer->new(
                     primer_id => $primer_id,
                     plate_id => $plate_id,
