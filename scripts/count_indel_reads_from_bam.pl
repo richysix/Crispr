@@ -64,8 +64,15 @@ Hash::Merge::specify_behavior(
 my $hash_merge_consensus = Hash::Merge->new('consensus');
 
 # make new Crispr object
-my $crispr_design = Crispr->new();
-
+my $crispr_design;
+if( exists $options{reference} ){
+    $crispr_design = Crispr->new(
+        target_genome => $options{reference},
+    );
+}
+else{
+    $crispr_design = Crispr->new();
+}
 # make new genomic trees for crisprs and regions
 my $crispr_tree = Tree::GenomicIntervalTree->new();
 my $crispr_pair_tree = Tree::GenomicIntervalTree->new();
