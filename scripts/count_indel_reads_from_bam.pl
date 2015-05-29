@@ -1871,12 +1871,12 @@ sub parse_yaml_file {
     
     my $plex_info;
     if( -e $options{yaml_file} ){
-        $plex_info = $crispr_design->parse_yaml_plex_file( $options{yaml_file} );
+        $plex_info = parse_yaml_plex_file( $options{yaml_file} );
     }
     else{
         my $yaml_file =  File::Spec->catfile( $options{output_directory}, $options{yaml_file});
         if( -e $yaml_file ){
-            $plex_info = $crispr_design->parse_yaml_plex_file( $yaml_file );
+            $plex_info = parse_yaml_plex_file( $yaml_file );
         }
         else{
             die "Couldn't find YAML file!\n";
@@ -2004,6 +2004,21 @@ sub parse_yaml_file {
     }
     
     return $plex_info;
+}
+
+sub parse_yaml_plex_file {
+    my ( $yaml_file, ) = @_;
+    my $yaml = YAML::Tiny->read($yaml_file);
+    
+    if ( !$yaml ) {
+        confess sprintf 'YAML file (%s) is invalid: %s', $yaml_file,
+          YAML::Tiny->errstr;
+    }
+    
+    if( scalar @{$yaml} > 1 ){
+        confess "More than one plex in YAML file!";
+    }
+    return $yaml->[0];
 }
 
 sub make_new_plate {
