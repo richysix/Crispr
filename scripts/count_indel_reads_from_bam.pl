@@ -81,7 +81,10 @@ my $crispr_pair_tree = Tree::GenomicIntervalTree->new();
 # open and parse regions/crisprs file
 my %crisprs_for_groups;
 my %groups_for_crisprs;
-my $plex_info = parse_yaml_file();
+my $yaml_file = shift @ARGV;
+my $err_msg = "No YAML file has been supplied!\n";
+pod2usage( $err_msg ) if( !$yaml_file );
+my $plex_info = parse_yaml_file( $yaml_file );
 
 # open output file
 if( !-e $options{output_directory} ){
@@ -1875,18 +1878,18 @@ END_HEADER
 }
 
 sub parse_yaml_file {
-    
+    my ( $yaml_file, ) = @_;
     my $plex_info;
-    if( -e $options{yaml_file} ){
-        $plex_info = parse_yaml_plex_file( $options{yaml_file} );
+    if( -e $yaml_file ){
+        $plex_info = parse_yaml_plex_file( $yaml_file );
     }
     else{
-        my $yaml_file =  File::Spec->catfile( $options{output_directory}, $options{yaml_file});
+        my $yaml_file =  File::Spec->catfile( $options{output_directory}, $yaml_file, );
         if( -e $yaml_file ){
             $plex_info = parse_yaml_plex_file( $yaml_file );
         }
         else{
-            die "Couldn't find YAML file!\n";
+            die "Couldn't find YAML file: $yaml_file!\n";
         }
     }
     
