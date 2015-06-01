@@ -2054,7 +2054,6 @@ sub get_and_check_options {
     
     GetOptions(
         \%options,
-        'yaml_file=s',
         'output_directory=s',
         'output_file=s',
         'sample_directory=s',
@@ -2077,14 +2076,14 @@ sub get_and_check_options {
     
     # Documentation
     if( $options{help} ) {
-        pod2usage(1);
+        pod2usage( -verbose => 0, exitval => 1, );
     }
     elsif( $options{man} ) {
         pod2usage( -verbose => 2 );
     }
     
     if( !$options{output_directory} ){
-        $options{output_directory} = 'pc_indels';
+        $options{output_directory} = 'results';
     }
     
     # CHECK SAMPLE DIRECTORY EXISTS
@@ -2103,10 +2102,10 @@ sub get_and_check_options {
     
     # SET DEFAULT FOR FILTERING
     if( !$options{pc_filter} ){
-        $options{pc_filter} = 0
+        $options{pc_filter} = 0.01
     }
     if( !defined $options{consensus_filter} ){
-        $options{consensus_filter} = 0;
+        $options{consensus_filter} = 50;
     }
     
     # SET VCFTOOLS PATH TO DEFAULT IF NOT SET AND CHECK IT EXISTS
@@ -2193,16 +2192,15 @@ Description
 
 =head1 SYNOPSIS
 
-    count_indel_reads_from_sam.pl [options] input file | STDIN
-        --yaml_file             YAML file with sample, well and crispr information
-        --output_directory      directory for output files                  default: pc_indels
+    count_indel_reads_from_sam.pl [options] YAML file
+        --output_directory      directory for output files                  default: results
         --output_file           name for the output file
         --sample_directory      directory to find sample bam files          default: sample-bams
         --pindel_directory      directory to find pindel output files       default: pindel
         --pc_filter             threshold for the percentage of reads
-                                that a variant has to achieve for output    default: 0
+                                that a variant has to achieve for output    default: 0.01
         --consensus_filter      threshold for the length of the consensus
-                                alt read                                    default: 0
+                                alt read                                    default: 50
         --pindel_path           file path for the pindel program            
         --no_pindel             option to skip using pindel
         --no_dindel             option to skip using dindel
@@ -2219,13 +2217,88 @@ Description
 
 =over
 
+=item B<YAML file>
+
+Configuration YAML file which tells the script which samples to process and which regions to look at.
+An example is shown below.
+
+    ---
+    lane: 1
+    name: ex_plex
+    plates:
+      -
+        name: 1
+        wells:
+          -
+            indices: 1,2,3,4,5,6,7,8
+            plexes:
+              -
+                name: 1
+                region_info:
+                  -
+                    crisprs:
+                      - crRNA:CHR:START-END:STRAND
+                    gene_name: gene
+                    region: CHR:START-END:STRAND
+            sample_names: 1_A01,1_B01,1_C01,1_D01,1_E01,1_F01,1_G01,1_H01
+            well_ids: A01,B01,C01,D01,E01,F01,G01,H01
+    run_id: 100
 
 
 =back
 
 =head1 OPTIONS
 
-**Same for optional arguments.
+=item B<--output_directory>
+
+Directory for output files [default: results]
+
+=item B<--output_file>
+
+name for the output file. If not specified the file name is Plex_name.txt
+
+=item B<--sample_directory>
+
+Directory in which to find the sample bam files [default: sample-bams]
+
+=item B<--pindel_directory>
+
+Directory in which to find the pindel output files [default: pindel]
+
+=item B<--pc_filter>
+
+A threshold for the percentage of reads that a variant has to achieve for output
+
+[default: 0.01 (1%)]
+
+=item B<--consensus_filter>
+
+A threshold for the length of the consensus alt read to
+filter out primer-dimer artifacts [default: 50]
+
+=item B<--pindel_path>
+
+Path for the pindel program
+
+=item B<--no_pindel>
+
+option to skip running pindel
+
+=item B<--no_dindel>
+
+option to skip using Dindel
+
+=item B<--vcftools_path>
+
+file path for vcftools
+
+=item B<--reference>
+
+Path to the genome reference file.
+
+=item B<--assembly>
+
+Name for the genome assembly
 
 =over
 
@@ -2245,7 +2318,7 @@ Print this script's manual page and exit.
 
 =head1 DEPENDENCIES
 
-None
+Crispr
 
 =head1 AUTHOR
 
