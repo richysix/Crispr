@@ -183,6 +183,8 @@ if( !$data_object ){
     $no_cigar = 1;
 }
 
+Readonly my $DOWNSAMPLE_LIMIT => 200;
+
 if( $no_combined ){
     if( $no_cigar_pindel ){
         if( $no_cigar ){
@@ -482,8 +484,8 @@ if( $no_combined ){
                                                             },
                                                         );
                                         # add read name to read_names hash
-                                        if( $results_hash->{indels}->{$crispr_name}->{$variant}->{count} > 1000 ){
-                                            my $fraction = 1000 / $results_hash->{indels}->{$crispr_name}->{$variant}->{count};
+                                        if( $results_hash->{indels}->{$crispr_name}->{$variant}->{count} > $DOWNSAMPLE_LIMIT ){
+                                            my $fraction = $DOWNSAMPLE_LIMIT / $results_hash->{indels}->{$crispr_name}->{$variant}->{count};
                                             if( rand() < $fraction ){
                                                 $read_names{ $variant }{ $align->query->name } = 1;
                                             }
@@ -2108,53 +2110,118 @@ sub get_and_check_options {
         $options{consensus_filter} = 50;
     }
     
-    # SET VCFTOOLS PATH TO DEFAULT IF NOT SET AND CHECK IT EXISTS
-    if( !$options{vcftools_path} ){
-        $options{vcftools_path} = '/software/team31/packages/vcftools/bin';
-    }
-    if( ! -d $options{vcftools_path} || ! -r $options{vcftools_path} ||
-        ! -x $options{vcftools_path} ){
-        my $err_msg = join(q{ }, "Vcftools directory: ", $options{vcftools_path}, " does not exist or is not readable/executable!\n" );
-        pod2usage( $err_msg );
-    }
-    # check vcf-concat and vcf-sort
-    $options{vcfconcat} = File::Spec->catfile($options{vcftools_path}, 'vcf-concat' );
-    if( ! -e $options{vcfconcat} || ! -x $options{vcfconcat} ){
-        my $err_msg = join(q{ }, "vcf-concat: ", $options{vcfconcat}, " does not exist or is not executable!\n" );
-        pod2usage( $err_msg );
-    }
-    $options{vcfsort} = File::Spec->catfile($options{vcftools_path}, 'vcf-sort' );
-    if( ! -e $options{vcfsort} || ! -x $options{vcfsort} ){
-        my $err_msg = join(q{ }, "vcf-sort: ", $options{vcfsort}, " does not exist or is not executable!\n" );
-        pod2usage( $err_msg );
-    }
-    
     # CHECK PINDEL PATH EXISTS
-    if( ! $options{pindel_path} ){
-        $options{pindel_path} = '/software/team31/packages/pindel';
-    }
     if( !$options{no_pindel} ){
-        if( !-d $options{pindel_path} || !-r $options{pindel_path} || !-x $options{pindel_path} ){
-            my $err_msg = join(q{ }, "Pindel directory:", $options{pindel_path}, "does not exist or is not readable/executable!\n" );
-            pod2usage( $err_msg );
+        if( $options{pindel_path} ){
+            if( !-d $options{pindel_path} || !-r $options{pindel_path} || !-x $options{pindel_path} ){
+                my $err_msg = join(q{ }, "Pindel directory:",
+                    $options{pindel_path},
+                    "does not exist or is not readable/executable!\n" );
+                pod2usage( $err_msg );
+            }
+            $options{pindel_bin} = File::Spec->catfile( $options{pindel_path}, 'pindel' );
+            
+            # Check pindel can be run
+            my $pindel_test_cmd = join(q{ }, $options{pindel_bin}, '-h', );
+            open my $pindel_fh, '-|', $pindel_test_cmd;
+            my @lines;
+            while(<$pindel_fh>){
+                chomp;
+                push @lines, $_;
+            }
+            if( $lines[1] !~ m/\A Pindel\sversion/xms ){
+                my $msg = join("\n", 'Could not run pindel', @lines, ) . "\n";
+                pod2usage( $msg );
+            }
+        }
+        else{
+            $options{pindel_bin} = which( 'pindel' );
+            if( !$options{pindel_bin} ){
+                my $msg = join("\n", 'Could not find pindel in the current path:',
+                    join(q{ }, 'Either install pindel in the current path,',
+                        'alter the path to include the pindel directory',
+                        'or supply the path to pindel as --pindel_path.', ),
+                    ) . "\n";
+                pod2usage( $msg );
+            }
+        }
+        
+        # CHECK VCFTOOLS PATH
+        if( $options{vcftools_path} ){
+            if( ! -d $options{vcftools_path} || ! -r $options{vcftools_path} ||
+                ! -x $options{vcftools_path} ){
+                my $err_msg = join(q{ }, "Vcftools directory: ", $options{vcftools_path}, " does not exist or is not readable/executable!\n" );
+                pod2usage( $err_msg );
+            }
+            # concat dir and names
+            $options{vcfconcat} = File::Spec->catfile($options{vcftools_path}, 'vcf-concat' );
+            $options{vcfsort} = File::Spec->catfile($options{vcftools_path}, 'vcf-sort' );
+        }
+        else{
+            $options{vcfconcat} = which( 'vcf-concat' );
+            $options{vcfsort} = which( 'vcf-sort' );
+        }
+        # check vcf-concat and vcf-sort
+        my $vcf_concat_test = join(q{ }, $options{vcfconcat}, '-h', '2>&1' );
+        open my $vcf_fh, '-|', $vcf_concat_test;
+        my @lines = ();
+        while(<$vcf_fh>){
+            chomp;
+            push @lines, $_;
+        }
+        if( $lines[0] ne 'About: Convenience tool for concatenating VCF files (e.g. VCFs split by chromosome).' ){
+            my $msg = join("\n", 'Could not run vcf-concat: ', @lines, ) . "\n";
+            pod2usage( $msg );
+        }
+        
+        my $vcf_sort_test = join(q{ }, $options{vcfsort}, '-h', '2>&1' );
+        open $vcf_fh, '-|', $vcf_sort_test;
+        @lines = ();
+        while(<$vcf_fh>){
+            chomp;
+            push @lines, $_;
+        }
+        if( $lines[0] ne 'Usage: vcf-sort > out.vcf' ){
+            my $msg = join("\n", 'Could not run vcf-sort: ', @lines, ) . "\n";
+            pod2usage( $msg );
         }
     }
     
     # CHECK DINDEL PATHS
-    if( ! $options{dindel_bin} ){
-        $options{dindel_bin} = '/software/team31/bin/dindel';
-    }
-    if( !-x $options{dindel_bin} ){
-        my $err_msg = join(q{ }, "Dindel binary:", $options{dindel_bin}, "does not exist or is not executable!\n" );
-        pod2usage( $err_msg );
-    }
-
-    if( ! $options{dindel_scripts} ){
-        $options{dindel_scripts} = '/software/team31/packages/dindel-python/';
-    }
-    if( !-d $options{dindel_scripts} || !-r $options{dindel_scripts} || !-x $options{dindel_scripts} ){
-        my $err_msg = join(q{ }, "Pindel directory:", $options{dindel_scripts}, "does not exist or is not readable/executable!\n" );
-        pod2usage( $err_msg );
+    if( !$options{no_dindel}){
+        if( !$options{dindel_bin} ){
+            $options{dindel_bin} = which( 'dindel' );
+        }
+        else{
+            # Check dindel can be run
+            my $dindel_test_cmd = join(q{ }, $options{dindel_bin}, '-h', );
+            open my $dindel_fh, '-|', $dindel_test_cmd;
+            my @lines;
+            while(<$dindel_fh>){
+                chomp;
+                push @lines, $_;
+            }
+            if( $lines[1] !~ m/\A Pindel\sversion/xms ){
+                my $msg = join("\n", 'Could not run dindel: ', @lines, ) . "\n";
+                pod2usage( $msg );
+            }
+        }
+        
+        if( !$options{dindel_scripts} ){
+            my $err_msg = join(q{ }, 'Option --dindel_scripts',
+                'must be specified unless the --no_dindel option is set.',
+                ) . "\n";
+            pod2usage( $err_msg );
+        }
+        else{
+            if( !-d $options{dindel_scripts} || !-r $options{dindel_scripts} ||
+               !-x $options{dindel_scripts} ){
+                my $err_msg = join(q{ }, "Dindel scripts directory:",
+                    $options{dindel_scripts},
+                    "does not exist or is not readable/executable!\n" );
+                pod2usage( $err_msg );
+            }
+        }
     }
     
     # CHECK REFERENCE EXISTS
