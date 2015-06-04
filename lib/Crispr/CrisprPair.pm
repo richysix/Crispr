@@ -153,6 +153,7 @@ has [ 'crRNA_1', 'crRNA_2' ] => (
 has 'paired_off_targets' => (
     is => 'ro',
     isa => 'Int',
+    default => 0,
     writer => '_set_paired_off_targets',
 );
 
