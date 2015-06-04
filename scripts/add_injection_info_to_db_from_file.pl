@@ -110,7 +110,7 @@ while(<>){
                         "is not unique. Try using plate number and well.", ), "\n";
             }
             else{
-                $crRNA = $crRNA->[0];
+                $crRNA = $crRNAs->[0];
             }
         }
         else{
