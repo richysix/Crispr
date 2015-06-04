@@ -177,28 +177,33 @@ while(<>){
     push @guide_rna_preps, $guide_rna_prep;
 }
 
-if( $options{debug} > 1 ){
-    warn Dumper( @guide_rna_preps );
-}
-
-# Add Guide RNA preps to db
-eval {
-    $guide_rna_prep_adaptor->store_guideRNA_preps( \@guide_rna_preps );    
-};
-
-if( $EVAL_ERROR ){
-    die "There was a problem storing one of the crRNAs in the database.\n",
-            "ERROR MSG:", $EVAL_ERROR, "\n";
+if( @guide_rna_preps ){
+    if( $options{debug} > 1 ){
+        warn Dumper( @guide_rna_preps );
+    }
+    
+    # Add Guide RNA preps to db
+    eval {
+        $guide_rna_prep_adaptor->store_guideRNA_preps( \@guide_rna_preps );    
+    };
+    
+    if( $EVAL_ERROR ){
+        die "There was a problem storing one of the crRNAs in the database.\n",
+                "ERROR MSG:", $EVAL_ERROR, "\n";
+    }
+    else{
+        print join("\n",
+                map { join(q{ }, 'Guide RNA prep for',
+                            $_->crRNA->name,
+                            'was stored correctly in the database with id:',
+                            $_->db_id, ) } @guide_rna_preps,
+        ), "\n";
+    }
 }
 else{
-    print join("\n",
-            map { join(q{ }, 'Guide RNA prep for',
-                        $_->crRNA->name,
-                        'was stored correctly in the database with id:',
-                        $_->db_id, ) } @guide_rna_preps,
-    ), "\n";
+    my $err_msg = "There aren't any guideRNA preps to add to the database.\n";
+    pod2usage( $err_msg );
 }
-
 sub get_and_check_options {
     
     GetOptions(
