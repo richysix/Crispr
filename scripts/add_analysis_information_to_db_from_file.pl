@@ -129,11 +129,18 @@ while(<>){
             my $primer_pair =
                 $primer_pair_adaptor->fetch_by_plate_name_and_well(
                                         $plate_name, $well_id );
-            push @primer_pairs, $primer_pair;
+            if( defined $primer_pair ){
+                push @primer_pairs, $primer_pair;
+                $primer_pair_cache{$amplicon_info} = $primer_pair;
+            }
         }
         else{
             push @primer_pairs, $primer_pair_cache{$amplicon_info};
         }
+    }
+    if( !@primer_pairs ){
+        die "Primer pairs for the given plate and well don't exist in the database.\n",
+            $_;
     }
 
     my @well_ids = parse_wells( $args{wells} );
