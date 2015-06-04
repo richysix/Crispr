@@ -836,9 +836,9 @@ sub add_crisprs {
 		my $crispr_ref = $self->all_crisprs;
 		$crispr_ref = {} if( !defined $crispr_ref );
 		foreach my $crRNA ( @{$crRNAs} ){
-            $target_name = !$target_name    ?   $crRNA->target->target_name
+            my $crispr_target_name = !$target_name    ?   $crRNA->target->target_name
                 :                               $target_name;
-			$crispr_ref->{$crRNA->name . q{_} . $target_name} = $crRNA;
+			$crispr_ref->{$crRNA->name . q{_} . $crispr_target_name} = $crRNA;
 		}
 		$self->_set_all_crisprs( $crispr_ref );
 	}
