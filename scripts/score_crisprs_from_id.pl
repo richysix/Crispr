@@ -80,8 +80,10 @@ $basename =~ s/\A/$options{file_base}_/xms if( $options{file_base} );
 my $output_filename = $basename . '.scored.txt';
 open my $out_fh_1, '>', $output_filename or die "Couldn't open file, $output_filename:$!\n";
 
+my %crisprs;
 my @crisprs;
 my @crispr_pairs;
+my %targets;
 if( $options{singles} ){
     while(<>){
         chomp;
@@ -92,15 +94,28 @@ if( $options{singles} ){
                             \z/xms ){ # matches a single crRNA name
             die "Supplied id does not match a crRNA name: $name\n";
         }
-        my $crRNA = $crispr_design->create_crRNA_from_crRNA_name( $name, $options{species}, );
-        $crRNA->five_prime_Gs( $options{num_five_prime_Gs} ) if exists $options{num_five_prime_Gs};
-        $crRNA->target(
-            Crispr::Target->new(
-                target_name => $target_name,
-                requestor => $requestor,
-                species => $options{species},
-            ),
-        );
+        my $crRNA;
+        if( exists $crisprs{$name} ){
+            $crRNA = $crisprs{$name};
+        }
+        else{
+            $crRNA = $crispr_design->create_crRNA_from_crRNA_name( $name, $options{species}, );
+            $crRNA->five_prime_Gs( $options{num_five_prime_Gs} ) if exists $options{num_five_prime_Gs};
+            my $target;
+            if( exists $targets{$target_name} ){
+                $target = $targets{$target_name};
+            }
+            else{
+                $target = Crispr::Target->new(
+                    target_name => $target_name,
+                    requestor => $requestor,
+                    species => $options{species},
+                ),
+                $targets{$target_name} = $target;
+            }
+            $crRNA->target( $target );
+            $crisprs{$name} = $crRNA;
+        }
         push @crisprs, $crRNA;
     }
 }
@@ -116,29 +131,46 @@ else{
             die "Supplied id does not match a crispr pair name: $name\n";
         }
         else{
-            my ( $name1, $name2 ) = split /\./, $name;
+            my @names = split /\./, $name;
             # make crRNA for each name and then Crispr pair
-            my $crRNA_1 = $crispr_design->create_crRNA_from_crRNA_name( $name1, $options{species}, );
-            my $crRNA_2 = $crispr_design->create_crRNA_from_crRNA_name( $name2, $options{species}, );
-            my $target = Crispr::Target->new(
-                target_name => $target_name,
-                requestor => $requestor,
-                species => $options{species},
-            );
-            $crRNA_1->target( $target );
-            $crRNA_1->five_prime_Gs( $options{num_five_prime_Gs} ) if exists $options{num_five_prime_Gs};
-            $crRNA_2->target( $target );
-            $crRNA_2->five_prime_Gs( $options{num_five_prime_Gs} ) if exists $options{num_five_prime_Gs};
+            my $target;
+            if( exists $targets{$target_name} ){
+                $target = $targets{$target_name};
+            }
+            else{
+                $target = Crispr::Target->new(
+                    target_name => $target_name,
+                    requestor => $requestor,
+                    species => $options{species},
+                );
+            }
+            
+            my @crRNAs;
+            for( my $i = 0; $i < 2; $i++ ){
+                my $crRNA;
+                if( exists $crisprs{ $names[$i] } ){
+                    $crRNA = $crisprs{ $names[$i] };
+                }
+                else{
+                    $crRNA = $crispr_design->create_crRNA_from_crRNA_name( $names[$i], $options{species}, );
+                    $crisprs{ $names[$i] } = $crRNA;
+                }
+                $crRNA->target( $target );
+                $crRNA->five_prime_Gs( $options{num_five_prime_Gs} ) if exists $options{num_five_prime_Gs};
+                $crRNAs[$i] = $crRNA;
+            }
+            
             my $crispr_pair = Crispr::CrisprPair->new(
-                crRNA_1 => $crRNA_1,
-                crRNA_2 => $crRNA_2,
+                crRNA_1 => $crRNAs[0],
+                crRNA_2 => $crRNAs[1],
             );
-            push @crisprs, $crRNA_1, $crRNA_2;
+            push @crisprs, $crRNAs[0], $crRNAs[1];
             push @crispr_pairs, $crispr_pair;
         }
     }
 }
 
+warn Dumper( @crisprs, @crispr_pairs );
 $crispr_design->add_crisprs( \@crisprs );
 
 # score off targets using bwa
@@ -154,6 +186,9 @@ if( $options{pairs} ){
         # hash of paired targets already seen
         my %pair_off_targets_seen;
         foreach my $crRNA ( @{$cr_pair->crRNAs} ){
+            #my $id = $crRNA->name . "_" . $crRNA->target->target_name;
+            #my $crRNA = $crispr_design->all_crisprs->{$id};
+            warn Dumper( $crRNA ) if $options{debug} > 1;
             if( $crRNA->off_target_hits->all_off_targets ){
                 foreach my $off_target_obj ( $crRNA->off_target_hits->all_off_targets ){
                     my $results = $crispr_design->off_targets_interval_tree->fetch_overlapping_intervals(
@@ -217,6 +252,11 @@ if( $options{pairs} ){
     }
 }
 
+sub cut_site {
+    my ( $start, $end, $strand ) = @_;
+    return $strand == 1 ? $end - 6 : $start + 5;
+}
+
 if( $options{singles} ){
     my @header_columns = (
         '#target_name', qw{ species requestor
@@ -275,7 +315,7 @@ sub get_and_check_options {
         'num_five_prime_Gs=i',
         'max_off_target_separation=i',
         'file_base=s',
-        'debug',
+        'debug+',
         'verbose',
         'help',
         'man',
