@@ -23,7 +23,12 @@ option_list <- list(
               dest="verbose", help="Print little output")
 )
 
-cmd_line_args <- parse_args(OptionParser(option_list=option_list), positional_arguments = 1 )
+cmd_line_args <- parse_args(
+	OptionParser(
+		option_list=option_list, prog = 'crispr_results_tile_plots.R',
+		usage = "Usage: %prog [options] input_file" ),
+		positional_arguments = 1
+)
 
 if( cmd_line_args$options[['directory']] == 'cwd' ){
 	cmd_line_args$options[['directory']] <- getwd()
