@@ -89,7 +89,7 @@ my @required_attributes = qw{ target_name requestor crRNA_start crRNA_end crRNA_
 
 my $comment_regex = qr/#/;
 my $has_well_ids;
-my %well_id_for;
+my @well_ids;
 my @columns;
 my @crisprs;
 #my $primers;
@@ -199,7 +199,7 @@ while(<>){
     }
     warn join("\t", $crRNA->info ), "\n" if $options{debug};
     
-    $well_id_for{$crRNA->name} = $args{well_id};
+    push @well_ids, $args{well_id};
     push @crisprs, $crRNA;
 }
 
@@ -244,8 +244,11 @@ if( scalar @crisprs <= $crispr_plate->plate_type ){
     }
     # fill wells of the plate
     if( $has_well_ids ){
+        my $i = 0;
         foreach my $crRNA ( @crisprs ){
-            $crispr_plate->fill_well( $crRNA, $well_id_for{$crRNA->name} );
+            my $well_id = $well_ids[$i];
+            $crispr_plate->fill_well( $crRNA, $well_id );
+            $i++;
         }
     }
     else{
@@ -311,8 +314,11 @@ if( $options{construction_oligos} ){
         }
         # fill wells of the plate
         if( $has_well_ids ){
+            my $i = 0;
             foreach my $crRNA ( @crisprs ){
-                $oligo_plate->fill_well( $crRNA, $well_id_for{$crRNA->name} );
+                my $well_id = $well_ids[$i];
+                $oligo_plate->fill_well( $crRNA, $well_id );
+                $i++;
             }
         }
         else{
@@ -355,8 +361,11 @@ if( $options{expression_constructs} ){
         
         # fill wells of the plate
         if( $has_well_ids ){
+            my $i = 0;
             foreach my $crRNA ( @crisprs ){
-                $construct_plate->fill_well( $crRNA, $well_id_for{$crRNA->name} );
+                my $well_id = $well_ids[$i];
+                $construct_plate->fill_well( $crRNA, $well_id );
+                $i++;
             }
         }
         else{
@@ -565,7 +574,7 @@ Takes Information on crispr target sites and enter guide RNA info into a MySQL o
         --fill_direction                row or column [default:column]
         --registry_file                 a registry file for connecting to the Ensembl database
         --construction_oligos           turns on adding construction oligos to the database for each crispr
-                                        Also can dictate which type of oligos are added [default: cloning oligos]
+                                        Also can dictate which type of oligos are added [default: cloning_oligos]
         --expression_constructs         turns on adding expression constructs to the database for each crispr
         --designed                      date on which the crisprs were designed
         --ordered                       date on which the crisprs were ordered
