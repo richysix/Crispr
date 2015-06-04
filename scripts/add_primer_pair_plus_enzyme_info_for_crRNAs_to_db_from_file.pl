@@ -61,12 +61,12 @@ my $primer_pair_adaptor = $db_connection->get_adaptor( 'primer_pair' );
 my $plate_adaptor = $db_connection->get_adaptor( 'plate' );
 
 my @attributes = (
-    qw{ well_id product_size crRNA_names 
+    qw{ well_id product_size crisprs 
         left_primer_info right_primer_info enzyme_info }
 );
 
 my @required_attributes = (
-    qw{ product_size crRNA_names left_primer_info right_primer_info }
+    qw{ product_size crisprs left_primer_info right_primer_info }
 );
 
 my $complete_collection;
@@ -150,8 +150,43 @@ while(<>){
     
     # get crRNAs from db
     my @crRNAs;
-    foreach ( split /,/, $args{'crRNA_names'} ){
-        push @crRNAs, $crRNA_adaptor->fetch_by_name( $_ );
+    foreach my $crispr ( split /,/, $args{'crisprs'} ){
+        my $crRNA;
+        
+        if( $crispr =~ m/\A ([0-9]+)            # plate_number
+                            _                   # literal underscore 
+                            ([A-P])([0-9]+)     # well_id
+                            \z/xms ){
+            # check column number is possible
+            my $col_num = $3;
+            if( $col_num > 24 ){
+                die join(q{ }, "Column number of well id is too large,",
+                        $1, $args{crisprs}, ), "\n";
+            }
+            $col_num = length $col_num == 1 ? '0' . $col_num : $col_num;
+            my $well_id = $2 . $col_num;
+            my $plate_num = $1;
+            $crRNA = $crRNA_adaptor->fetch_by_plate_num_and_well( $plate_num, $well_id, );
+        }
+        elsif( $crispr =~ m/\A crRNA:           # prefix
+                                \w+:            # chr name
+                                \d+ - \d+       # start-end
+                                :\-*1           # strand
+                                \z/xms ){
+            my $crRNAs = $crRNA_adaptor->fetch_by_name( $args{crispr}, );
+            if( scalar @{$crRNAs} > 1 ){
+                die join(q{ }, "Crispr name,", $args{crispr},
+                        "is not unique. Try using plate number and well.", ), "\n";
+            }
+            else{
+                $crRNA = $crRNAs->[0];
+            }
+        }
+        else{
+            die join(q{ }, "Could not parse crispr guide names,",
+                    $args{crisprs}, ), "\n";
+        }
+        push @crRNAs, $crRNA;
     }
     
     # parse primer info
@@ -506,7 +541,9 @@ Information on primer pairs.
 Should contain the following columns:
 
  * product_size       - size of PCR product (Int)
- * crRNA_names        - comma-separated list of crRNAs covered by amplicon
+ * crisprs            - comma-separated list of crRNAs covered by amplicon
+                        EITHER  crispr names    (crRNA:CHR:START-END:STRAND)
+                        OR      plate position  (PLATE_NUMBER_WELLID)
  * left_primer_info   - comma-separated list (primer_name,sequence)
  * right_primer_info  - comma-separated list (primer_name,sequence)
 
