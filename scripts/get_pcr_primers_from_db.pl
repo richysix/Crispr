@@ -1,14 +1,13 @@
 #!/usr/bin/env perl
 
 # PODNAME: get_pcr_primers_from_db.pl
-# ABSTRACT: Script to create a sequence analysis YAML config file for a specific sequencing run from a CRISPR SQL database.
+# ABSTRACT: print PCR primers to file for ordering
 
 use warnings;
 use strict;
 use Getopt::Long;
 use autodie;
 use Pod::Usage;
-use YAML::Tiny;
 
 use Crispr::DB::DBConnection;
 
