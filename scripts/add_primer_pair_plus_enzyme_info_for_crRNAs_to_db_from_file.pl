@@ -149,10 +149,10 @@ while(<>){
     
     # get crRNAs from db
     my @crRNAs;
-    foreach my $crispr ( split /,/, $args{'crisprs'} ){
+    foreach my $crispr_name ( split /,/, $args{'crisprs'} ){
         my $crRNA;
         
-        if( $crispr =~ m/\A ([0-9]+)            # plate_number
+        if( $crispr_name =~ m/\A ([0-9]+)            # plate_number
                             _                   # literal underscore 
                             ([A-P])([0-9]+)     # well_id
                             \z/xms ){
@@ -167,14 +167,14 @@ while(<>){
             my $plate_num = $1;
             $crRNA = $crRNA_adaptor->fetch_by_plate_num_and_well( $plate_num, $well_id, );
         }
-        elsif( $crispr =~ m/\A crRNA:           # prefix
+        elsif( $crispr_name =~ m/\A crRNA:           # prefix
                                 \w+:            # chr name
                                 \d+ - \d+       # start-end
                                 :\-*1           # strand
                                 \z/xms ){
-            my $crRNAs = $crRNA_adaptor->fetch_by_name( $args{crispr}, );
+            my $crRNAs = $crRNA_adaptor->fetch_all_by_name( $crispr_name, );
             if( scalar @{$crRNAs} > 1 ){
-                die join(q{ }, "Crispr name,", $args{crispr},
+                die join(q{ }, "Crispr name,", $crispr_name,
                         "is not unique. Try using plate number and well.", ), "\n";
             }
             else{
