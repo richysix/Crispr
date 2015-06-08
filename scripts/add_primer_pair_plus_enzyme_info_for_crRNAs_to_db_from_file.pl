@@ -84,9 +84,8 @@ else{
 my $has_well_ids;
 my $has_enzyme_info;
 my %well_id_for;
-my %crRNAs_for;
+my @crRNAs_for_primers;
 my @primer_pairs;
-my @crisprs;
 my @columns;
 
 my @primer_plates;
@@ -308,12 +307,12 @@ while(<>){
     }
     
     push @primer_pairs, $primer_pair;
-    push @{ $crRNAs_for{ $primer_pair->pair_name } }, @crRNAs;
+    push @crRNAs_for_primers, \@crRNAs;
     
 }
 
 if( $options{debug} > 2 ){
-    print "crRNAs_for: \n", Dumper( %crRNAs_for );
+    print "crRNAs_for: \n", Dumper( @crRNAs_for_primers );
     print "primer_pairs: \n", Dumper( @primer_pairs );
     print "plates: \n", Dumper( @primer_plates );
     exit;
@@ -381,8 +380,9 @@ else{
 
 # add primer pairs to db
 foreach my $primer_pair ( @primer_pairs ){
+    my $crRNAs_for_pair = shift @crRNAs_for_primers;
     eval{
-        $primer_pair_adaptor->store( $primer_pair, $crRNAs_for{ $primer_pair->pair_name }, );
+        $primer_pair_adaptor->store( $primer_pair, $crRNAs_for_pair, );
     };
     if( $EVAL_ERROR ){
         die "There was a problem storing one of the primer pairs in the database.\n",
@@ -395,7 +395,7 @@ foreach my $primer_pair ( @primer_pairs ){
     
     # add enzyme info if it exists
     if( $has_enzyme_info ){
-        foreach my $crRNA ( @{ $crRNAs_for{ $primer_pair->pair_name } } ){
+        foreach my $crRNA ( @{ $crRNAs_for_pair } ){
             if( !$crRNA->unique_restriction_sites ){
                 warn "No Enzyme Info for ", $crRNA->name, ".\n";
                 next;

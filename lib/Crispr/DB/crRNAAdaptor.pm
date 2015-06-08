@@ -665,18 +665,18 @@ sub fetch_by_ids {
     return \@crRNAs;
 }
 
-=method fetch_by_name
+=method fetch_all_by_name
 
     Usage       : $crRNAs = $crRNA_adaptor->fetch_by_name( $crRNA_name, );
-    Purpose     : Fetch a crRNA given a crRNA name
-    Returns     : Crispr::crRNA object
+    Purpose     : Fetch crRNAs given a crRNA name
+    Returns     : ArrayRef of Crispr::crRNA objects
     Parameters  : crispr-db crRNA name
     Throws      : If no rows are returned
     Comments    : None
 
 =cut
 
-sub fetch_by_name {
+sub fetch_all_by_name {
     my ( $self, $name, ) = @_;
     
     my $statement = <<END_ST;
@@ -699,7 +699,7 @@ END_ST
         push @crRNAs, $self->_make_new_crRNA_from_db( \@crRNA_fields, );
     }
     
-    return @crRNAs;
+    return \@crRNAs;
 }
 
 =method fetch_by_name_and_target
