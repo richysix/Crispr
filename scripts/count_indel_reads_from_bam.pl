@@ -38,7 +38,7 @@ my %options;
 get_and_check_options();
 
 if( $options{debug} ){ use Data::Dumper; }
-Readonly my $INTERVAL_EXTENDER => 10;
+Readonly my $INTERVAL_EXTENDER => $options{overlap_threshold} ? $options{overlap_threshold} : 10;
 
 # For merging calls
 Hash::Merge::specify_behavior(
@@ -2062,6 +2062,7 @@ sub get_and_check_options {
         'pindel_directory=s',
         'pc_filter=f',
         'consensus_filter=i',
+        'overlap_threshold=i',
         'pindel_path=s',
         'no_pindel',
         'no_dindel',
@@ -2268,6 +2269,8 @@ Description
                                 that a variant has to achieve for output    default: 0.01
         --consensus_filter      threshold for the length of the consensus
                                 alt read                                    default: 50
+        --overlap_threshold     distance from the predicted cut-site that
+                                a variant must be within to be counted      default: 10
         --pindel_path           file path for the pindel program            
         --no_pindel             option to skip using pindel
         --no_dindel             option to skip using dindel
@@ -2342,6 +2345,14 @@ A threshold for the percentage of reads that a variant has to achieve for output
 
 A threshold for the length of the consensus alt read to
 filter out primer-dimer artifacts [default: 50]
+
+=item B<--overlap_threshold>
+
+A threshold for the distance from the predicted guideRNA cut-site that a indel must be within to be counted.
+[default: 10]
+A range is constructed and the cut-site must fall within this range.
+The range is:
+    variant_start - overlap_threshold  TO  variant_end + overlap_threshold
 
 =item B<--pindel_path>
 
