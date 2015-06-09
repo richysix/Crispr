@@ -39,6 +39,9 @@ get_and_check_options();
 
 if( $options{debug} ){ use Data::Dumper; }
 Readonly my $INTERVAL_EXTENDER => $options{overlap_threshold} ? $options{overlap_threshold} : 10;
+Readonly my $COVERAGE_FILTER => !defined $options{overlap_threshold} ? 0
+    :   $options{overlap_threshold} == 0 ? 10
+    :   $options{overlap_threshold};
 
 # For merging calls
 Hash::Merge::specify_behavior(
@@ -441,7 +444,10 @@ if( $no_combined ){
                             # Remove variants that are below threshold
                             my @variants;
                             foreach my $variant ( keys %{ $results_hash->{indels}->{$crispr_name} } ){
-                                if( $results_hash->{indels}->{$crispr_name}->{$variant}->{count}/$results_hash->{read_count} < $options{pc_filter} ){
+                                if( $results_hash->{indels}->{$crispr_name}->{$variant}->{count} < $COVERAGE_FILTER ){
+                                    delete $results_hash->{indels}->{$crispr_name}->{$variant};
+                                }
+                                elsif( $results_hash->{indels}->{$crispr_name}->{$variant}->{count}/$results_hash->{read_count} < $options{pc_filter} ){
                                     delete $results_hash->{indels}->{$crispr_name}->{$variant};
                                 }
                                 else{
@@ -2063,6 +2069,7 @@ sub get_and_check_options {
         'pc_filter=f',
         'consensus_filter=i',
         'overlap_threshold=i',
+        'low_coverage_filter:i',
         'pindel_path=s',
         'no_pindel',
         'no_dindel',
@@ -2271,6 +2278,8 @@ Description
                                 alt read                                    default: 50
         --overlap_threshold     distance from the predicted cut-site that
                                 a variant must be within to be counted      default: 10
+        --low_coverage_filter   turns on a filter to discard variants that
+                                fall below an absolute number of reads      default: 10
         --pindel_path           file path for the pindel program            
         --no_pindel             option to skip using pindel
         --no_dindel             option to skip using dindel
@@ -2353,6 +2362,11 @@ A threshold for the distance from the predicted guideRNA cut-site that a indel m
 A range is constructed and the cut-site must fall within this range.
 The range is:
     variant_start - overlap_threshold  TO  variant_end + overlap_threshold
+
+=item B<--low_coverage_filter>
+
+Turns on filtering of variants by depth.
+If no value is supplied the default level of filtering in 10 reads supporting the variant.
 
 =item B<--pindel_path>
 
