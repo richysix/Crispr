@@ -38,9 +38,8 @@ my %options;
 get_and_check_options();
 
 if( $options{debug} ){ use Data::Dumper; }
-Readonly my $INTERVAL_EXTENDER => $options{overlap_threshold} ? $options{overlap_threshold} : 10;
+Readonly my $INTERVAL_EXTENDER => defined $options{overlap_threshold} ? $options{overlap_threshold} : 10;
 Readonly my $COVERAGE_FILTER => !defined $options{overlap_threshold} ? 0
-    :   $options{overlap_threshold} == 0 ? 10
     :   $options{overlap_threshold};
 
 # For merging calls
@@ -299,7 +298,7 @@ if( $no_combined ){
             %variants_seen = %{ $data_object->{variants_seen} };
         }
         
-        warn Dumper( $results, $outliers, ) if( $options{debug} > 1 );
+        #warn Dumper( $results, $outliers, ) if( $options{debug} > 1 );
         
         if( $options{no_pindel} ){
             warn "Option no_pindel specified. Skipping Pindel...\n";
@@ -490,20 +489,21 @@ if( $no_combined ){
                                                             },
                                                         );
                                         # add read name to read_names hash
+                                        my $read_name = join(":", $align->query->name, $align->strand, );
                                         if( $results_hash->{indels}->{$crispr_name}->{$variant}->{count} > $DOWNSAMPLE_LIMIT ){
                                             my $fraction = $DOWNSAMPLE_LIMIT / $results_hash->{indels}->{$crispr_name}->{$variant}->{count};
                                             if( rand() < $fraction ){
-                                                $read_names{ $variant }{ $align->query->name } = 1;
+                                                $read_names{ $variant }{ $read_name } = 1;
                                             }
                                         } else {
-                                            $read_names{ $variant }{ $align->query->name } = 1;
+                                            $read_names{ $variant }{ $read_name } = 1;
                                         }
                                     }
                                 }
                             }
                         }
                         
-                        warn Dumper( %read_names ) if $options{debug} > 1;
+                        warn Dumper( %read_names ) if $options{debug} > 2;
                         
                         # open bam file and get header
                         my $in_bam = Bio::DB::Bam->open($infile, "r");
@@ -522,7 +522,8 @@ if( $no_combined ){
                                 if( exists $results_hash->{indels}->{$crispr_name}->{$variant} ){
                                     $results_hash->{indels}->{$crispr_name}->{$variant}->{var_num} = $var_num;
                                 }
-                                warn Dumper( $results_hash->{indels}->{$crispr_name}->{$variant} ) if $options{debug} > 1;
+                                warn "VAR_NUM:$var_num - $variant\n",
+                                    Dumper( $results_hash->{indels}->{$crispr_name}->{$variant} ) if $options{debug} > 1;
                             }
                             $var_num++;
                         }
@@ -536,7 +537,8 @@ if( $no_combined ){
                             my ( $bam, $read_names, $bam_fhs, ) = @{$data};
                             # write read to output bam file if the read name exists in the hash
                             foreach my $variant ( keys %{$read_names} ){
-                                if( exists $read_names->{ $variant}{ $alignment->qname } ){
+                                my $read_name = $alignment->qname . ":" . ($alignment->reversed ? "-1" : "1" );
+                                if( exists $read_names->{ $variant}{ $read_name } ){
                                     $bam_fhs->{ $variant }->write1($alignment);
                                 }
                             }
@@ -1445,6 +1447,8 @@ sub run_dindel {
                         my $var_nums_hash = set_up_dindel_directories( $name, $results_hash, );
                         
                         foreach my $var_num ( keys %{$var_nums_hash} ){
+                            my $match = 0;
+                            my $predicted_var = $var_nums_hash->{$var_num};
                             my $vcf_file;
                             # extract indels
                             my ( $selected_var_file, $lib_file ) = dindel_extract_indels( $name, $var_num, );
@@ -1490,7 +1494,6 @@ sub run_dindel {
                                     }
                                     next if( $overlap_type eq 'non-overlapping' );
                                     
-                                    my $predicted_var = $var_nums_hash->{$var_num};
                                     if( $predicted_var ne $vcf_var ){
                                         foreach my $crispr_name ( map { $_->name } @crisprs ){
                                             if( exists $results_hash->{indels}->{$crispr_name}->{$vcf_var} ){
@@ -1530,13 +1533,15 @@ sub run_dindel {
                                                     $pos++;
                                                 }
                                                 
-                                                warn "MERGED:\n", Dumper( $results_hash->{indels}->{$crispr_name}->{$vcf_var} ) if $options{debug} > 1;
-                                                delete $results_hash->{indels}->{$crispr_name}->{$predicted_var};
+                                                warn "MERGED: $var_num - $vcf_var | $predicted_var\n",
+                                                    Dumper( $results_hash->{indels}->{$crispr_name}->{$vcf_var} ) if $options{debug} > 1;
+                                                #delete $results_hash->{indels}->{$crispr_name}->{$predicted_var};
                                             }
                                             else{
                                                 # add vcf_var to hash and delete predicted var
                                                 $results_hash->{indels}->{$crispr_name}->{$vcf_var} = $results_hash->{indels}->{$crispr_name}->{$predicted_var};
-                                                delete $results_hash->{indels}->{$crispr_name}->{$predicted_var};
+                                                $results_hash->{indels}->{$crispr_name}->{$vcf_var}->{caller} = 'DINDEL';
+                                                #delete $results_hash->{indels}->{$crispr_name}->{$predicted_var};
                                             }
                                         }
                                     }
@@ -1544,6 +1549,7 @@ sub run_dindel {
                                         foreach my $crispr_name ( map { $_->name } @crisprs ){
                                             if( exists $results_hash->{indels}->{$crispr_name}->{$vcf_var} ){
                                                 $results_hash->{indels}->{$crispr_name}->{$vcf_var}->{caller} = 'DINDEL';
+                                                $match = 1;
                                             }
                                             else{
                                                 # warn and output some diagnostic info
@@ -1557,6 +1563,12 @@ sub run_dindel {
                                         }
                                     }
                                     
+                                    
+                                }
+                                if( !$match ){
+                                    foreach my $crispr_name ( keys %{ $results_hash->{indels} } ){
+                                        delete $results_hash->{indels}->{$crispr_name}->{$predicted_var};
+                                    }
                                 }
                             }
                             else{
@@ -1853,13 +1865,12 @@ sub output_vcf_header_for_subplex {
 ##source=Dindel
 $ref_line
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="Total number of reads in haplotype window">
-##INFO=<ID=AD,Number=2,Type=Integer,Description="Allele Depths">
 ##INFO=<ID=NF,Number=1,Type=Integer,Description="Number of reads covering non-ref variant on forward strand">
 ##INFO=<ID=NR,Number=1,Type=Integer,Description="Number of reads covering non-ref variant on reverse strand">
 ##INFO=<ID=NFS,Number=1,Type=Integer,Description="Number of reads covering non-ref variant site on forward strand">
 ##INFO=<ID=NRS,Number=1,Type=Integer,Description="Number of reads covering non-ref variant site on reverse strand">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
-##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype quality">
+##FORMAT=<ID=AD,Number=2,Type=Integer,Description="Allele Depths">
 ##ALT=<ID=DEL,Description="Deletion">
 ##FILTER=<ID=q20,Description="Quality below 20">
 ##FILTER=<ID=hp10,Description="Reference homopolymer length was longer than 10">
@@ -2116,6 +2127,10 @@ sub get_and_check_options {
     }
     if( !defined $options{consensus_filter} ){
         $options{consensus_filter} = 50;
+    }
+    if( defined $options{overlap_threshold} &&
+        $options{overlap_threshold} == 0 ){
+        $options{overlap_threshold} = 10;
     }
     
     # CHECK PINDEL PATH EXISTS
