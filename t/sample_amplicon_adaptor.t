@@ -587,7 +587,7 @@ foreach my $db_connection ( @db_connections ){
 #    ok( $sample_amplicon_adaptor->delete_sample_amplicon_from_db ( 'rna' ), 'delete_sample_amplicon_from_db');
 #
 #}
-    #$test_db_connections{$driver}->destroy();
+    $test_db_connections{$driver}->destroy();
 }
 
 # 5 tests

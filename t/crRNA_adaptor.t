@@ -575,7 +575,7 @@ foreach my $db_connection ( @db_connections ){
     check_attributes( $crRNAs_from_db->[0], $mock_crRNA1, $driver, 'fetch_all_by_primer_pair' );
     
     # destroy database
-#    $test_db_connections{$driver}->destroy();
+    $test_db_connections{$driver}->destroy();
 }
 
 sub increment {

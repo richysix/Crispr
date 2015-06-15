@@ -360,7 +360,7 @@ foreach my $db_connection ( @db_connections ){
        "$driver: fetch_gene_name_by_primer_pair - no gene name" );
     
     ## drop database
-    #$db_connection->destroy();
+    $db_connection->destroy();
 }
 
 
