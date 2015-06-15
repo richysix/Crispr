@@ -2223,19 +2223,22 @@ sub get_and_check_options {
         if( !$options{dindel_bin} ){
             $options{dindel_bin} = which( 'dindel' );
         }
-        else{
-            # Check dindel can be run
-            my $dindel_test_cmd = join(q{ }, $options{dindel_bin}, '-h', );
-            open my $dindel_fh, '-|', $dindel_test_cmd;
-            my @lines;
-            while(<$dindel_fh>){
-                chomp;
-                push @lines, $_;
-            }
-            if( $lines[1] !~ m/\A Pindel\sversion/xms ){
-                my $msg = join("\n", 'Could not run dindel: ', @lines, ) . "\n";
-                pod2usage( $msg );
-            }
+        if( !$defined options{dindel_bin} ){
+            my $msg = join(q{ }, "Couldn't find dindel in the current path!",
+                "Please change path or specify option --dindel_bin", );
+            pod2usage($msg);
+        }
+        # Check dindel can be run
+        my $dindel_test_cmd = join(q{ }, $options{dindel_bin}, '-h', );
+        open my $dindel_fh, '-|', $dindel_test_cmd;
+        my @lines;
+        while(<$dindel_fh>){
+            chomp;
+            push @lines, $_;
+        }
+        if( $lines[1] !~ m/\A Pindel\sversion/xms ){
+            my $msg = join("\n", 'Could not run dindel: ', @lines, ) . "\n";
+            pod2usage( $msg );
         }
         
         if( !$options{dindel_scripts} ){
