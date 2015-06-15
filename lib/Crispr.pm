@@ -1319,10 +1319,10 @@ sub _fetch_sequence {
     my ( $self, $chr, $pos, $end, $strand, ) = @_;
     
     # try Ensembl db first
-    my $off_target_slice;
+    my $slice;
     eval{
         if( defined $self->slice_adaptor ){
-            $off_target_slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $pos, $end, $strand, );
+            $slice = $self->slice_adaptor->fetch_by_region( 'toplevel', $chr, $pos, $end, $strand, );
         }
     };
     if( $EVAL_ERROR ){
@@ -1332,14 +1332,16 @@ sub _fetch_sequence {
     }
 
     # if slice is undef, try fasta file
-    if( !defined $off_target_slice && defined $self->target_genome ){
+    if( !defined $slice && defined $self->target_genome ){
         my $db = Bio::DB::Fasta->new( $self->target_genome );
         my $obj = $db->get_Seq_by_id($chr);
-        my $seq = $obj->seq;
-        my $subseq = $obj->subseq( $pos => $end );
-        $off_target_slice = $strand eq '-1' ?   $subseq->revcom :   $subseq;
+        if( defined $obj ){
+            my $seq = $obj->seq;
+            my $subseq = $obj->subseq( $pos => $end );
+            $slice = $strand eq '-1' ?   $subseq->revcom :   $subseq;
+        }
     }
-    return $off_target_slice;
+    return $slice;
 }
 
 =method calculate_all_pc_coding_scores
