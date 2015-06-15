@@ -39,8 +39,10 @@ get_and_check_options();
 
 if( $options{debug} ){ use Data::Dumper; }
 Readonly my $INTERVAL_EXTENDER => defined $options{overlap_threshold} ? $options{overlap_threshold} : 10;
-Readonly my $COVERAGE_FILTER => !defined $options{overlap_threshold} ? 0
-    :   $options{overlap_threshold};
+Readonly my $PER_VAR_COVERAGE_FILTER => !defined $options{low_coverage_per_variant_filter} ? 0
+    :   $options{low_coverage_per_variant_filter};
+Readonly my $PER_AMP_COVERAGE_FILTER => !defined $options{low_coverage_filter} ? 0
+    :   $options{low_coverage_filter};
 
 # For merging calls
 Hash::Merge::specify_behavior(
@@ -418,7 +420,7 @@ if( $no_combined ){
                     foreach my $region_hash ( @{ $plex->{region_info} } ){
                         my $region = $region_hash->{region};
                         my $results_hash = $results->{ $plate->{name} }{ $sample_name }{ $region };
-                        next if( !exists $results_hash->{read_count} || $results_hash->{read_count} == 0 );
+                        next if( !exists $results_hash->{read_count} || $results_hash->{read_count} <= $PER_AMP_COVERAGE_FILTER );
                         
                         my ( $chr, $start, $end, ) = split /[:-]/, $region;
                         # remove strand
@@ -443,7 +445,7 @@ if( $no_combined ){
                             # Remove variants that are below threshold
                             my @variants;
                             foreach my $variant ( keys %{ $results_hash->{indels}->{$crispr_name} } ){
-                                if( $results_hash->{indels}->{$crispr_name}->{$variant}->{count} < $COVERAGE_FILTER ){
+                                if( $results_hash->{indels}->{$crispr_name}->{$variant}->{count} < $PER_VAR_COVERAGE_FILTER ){
                                     delete $results_hash->{indels}->{$crispr_name}->{$variant};
                                 }
                                 elsif( $results_hash->{indels}->{$crispr_name}->{$variant}->{count}/$results_hash->{read_count} < $options{pc_filter} ){
@@ -1447,7 +1449,7 @@ sub run_dindel {
                         my $var_nums_hash = set_up_dindel_directories( $name, $results_hash, );
                         
                         foreach my $var_num ( keys %{$var_nums_hash} ){
-                            my $match = 0;
+                            my $match;
                             my $predicted_var = $var_nums_hash->{$var_num};
                             my $vcf_file;
                             # extract indels
@@ -1471,6 +1473,7 @@ sub run_dindel {
                                     my $var_end = length($ref) > length($alt)   ?
                                             $pos + length($ref)
                                         :   $pos;
+                                    $match = 0;
                                     
                                     # check whether this variant overlaps with a crispr
                                     my $overlapping_crisprs = $crispr_tree->fetch_overlapping_intervals( $chr, $pos - $INTERVAL_EXTENDER, $var_end + $INTERVAL_EXTENDER );
@@ -1565,7 +1568,7 @@ sub run_dindel {
                                     
                                     
                                 }
-                                if( !$match ){
+                                if( defined $match && $match == 0 ){
                                     foreach my $crispr_name ( keys %{ $results_hash->{indels} } ){
                                         delete $results_hash->{indels}->{$crispr_name}->{$predicted_var};
                                     }
@@ -2081,6 +2084,7 @@ sub get_and_check_options {
         'consensus_filter=i',
         'overlap_threshold=i',
         'low_coverage_filter:i',
+        'low_coverage_per_variant_filter:i',
         'pindel_path=s',
         'no_pindel',
         'no_dindel',
@@ -2128,9 +2132,13 @@ sub get_and_check_options {
     if( !defined $options{consensus_filter} ){
         $options{consensus_filter} = 50;
     }
-    if( defined $options{overlap_threshold} &&
-        $options{overlap_threshold} == 0 ){
-        $options{overlap_threshold} = 10;
+    if( defined $options{low_coverage_filter} &&
+        $options{low_coverage_filter} == 0 ){
+        $options{low_coverage_filter} = 100;
+    }
+    if( defined $options{low_coverage_per_variant_filter} &&
+        $options{low_coverage_per_variant_filter} == 0 ){
+        $options{low_coverage_per_variant_filter} = 10;
     }
     
     # CHECK PINDEL PATH EXISTS
@@ -2293,7 +2301,10 @@ Description
                                 alt read                                    default: 50
         --overlap_threshold     distance from the predicted cut-site that
                                 a variant must be within to be counted      default: 10
-        --low_coverage_filter   turns on a filter to discard variants that
+        --low_coverage_filter   turns on a filter to discard samples that
+                                fall below an absolute number of reads      default: 100
+        --low_coverage_per_variant_filter
+                                turns on a filter to discard variants that
                                 fall below an absolute number of reads      default: 10
         --pindel_path           file path for the pindel program            
         --no_pindel             option to skip using pindel
@@ -2380,8 +2391,13 @@ The range is:
 
 =item B<--low_coverage_filter>
 
+Turns on filtering of samples by depth.
+If no value is supplied the default level of filtering is 100 reads per amplicon.
+
+=item B<--low_coverage_per_variant_filter>
+
 Turns on filtering of variants by depth.
-If no value is supplied the default level of filtering in 10 reads supporting the variant.
+If no value is supplied the default level of filtering is 10 reads supporting the variant.
 
 =item B<--pindel_path>
 
