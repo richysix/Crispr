@@ -2223,20 +2223,20 @@ sub get_and_check_options {
         if( !$options{dindel_bin} ){
             $options{dindel_bin} = which( 'dindel' );
         }
-        if( !$defined options{dindel_bin} ){
+        if( !defined $options{dindel_bin} ){
             my $msg = join(q{ }, "Couldn't find dindel in the current path!",
                 "Please change path or specify option --dindel_bin", );
             pod2usage($msg);
         }
         # Check dindel can be run
-        my $dindel_test_cmd = join(q{ }, $options{dindel_bin}, '-h', );
+        my $dindel_test_cmd = join(q{ }, $options{dindel_bin}, '2>&1' );
         open my $dindel_fh, '-|', $dindel_test_cmd;
         my @lines;
         while(<$dindel_fh>){
             chomp;
             push @lines, $_;
         }
-        if( $lines[1] !~ m/\A Pindel\sversion/xms ){
+        if( $lines[0] ne 'Error: One of the following options was not specified:  --ref --tid or --outputFile' ){
             my $msg = join("\n", 'Could not run dindel: ', @lines, ) . "\n";
             pod2usage( $msg );
         }
