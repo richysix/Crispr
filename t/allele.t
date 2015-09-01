@@ -59,10 +59,10 @@ $tests++;
 
 # check attributes and methods - 9 tests
 my @attributes = (
-    qw{ db_id chr pos ref_allele alt_allele sa_number percent_of_reads kaspar_assay }
+    qw{ db_id crisprs chr pos ref_allele alt_allele sa_number percent_of_reads kaspar_assay }
 );
 
-my @methods = ( qw{ allele_name } );
+my @methods = ( qw{ allele_name add_crispr } );
 
 foreach my $attribute ( @attributes ) {
     can_ok( $allele, $attribute );
@@ -152,5 +152,22 @@ is( $allele->kaspar_rack_id, 1, 'check delegation of kaspar_rack_id attribute');
 is( $allele->kaspar_row_id, 4, 'check delegation of kaspar_row_id attribute');
 is( $allele->kaspar_col_id, 7, 'check delegation of kaspar_col_id attribute');
 $tests += 5;
+
+# test crisprs attribute
+# make mock crispr object
+my $mock_crispr_object = Test::MockObject->new();
+$mock_crispr_object->set_isa( 'Crispr::crRNA' );
+
+# test trying to set attribute directly
+throws_ok { $allele->crisprs( $mock_crispr_object ) }
+    qr/Cannot assign a value to a read-only accessor/, 'check throws because crispr attribute is read-only';
+
+# test add_crispr method
+ok( $allele->add_crispr( $mock_crispr_object ), 'add mock crispr object' );
+throws_ok { $allele->add_crispr( $mock_kaspar_object ) }
+    qr/Validation failed/, 'check add_crispr throws if argument is not a Crispr::crRNA object';
+
+$tests += 3;
+
 
 done_testing( $tests );

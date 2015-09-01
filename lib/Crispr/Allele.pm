@@ -36,7 +36,7 @@ subtype 'Crispr::Allele::DNA',
                     percent_of_reads => 10.5,
                     kaspar_assay => $kasp_assay,
                 );
-  Purpose     : Constructor for creating Sample objects
+  Purpose     : Constructor for creating Allele objects
   Returns     : Crispr::Allele object
   Parameters  : db_id => Int,
                 chr => Str,
@@ -54,7 +54,7 @@ subtype 'Crispr::Allele::DNA',
 =method db_id
 
   Usage       : $allele->db_id;
-  Purpose     : Getter/Setter for Sample db_id attribute
+  Purpose     : Getter/Setter for Allele db_id attribute
   Returns     : Int (can be undef)
   Parameters  : None
   Throws      : 
@@ -67,10 +67,27 @@ has 'db_id' => (
     isa => 'Maybe[Int]',
 );
 
+=method crisprs
+
+  Usage       : $allele->crisprs;
+  Purpose     : Getter for Allele crisprs attribute
+  Returns     : ArrayRef
+  Parameters  : None
+  Throws      : If input is given
+  Comments    : 
+
+=cut
+
+has 'crisprs' => (
+    is => 'ro',
+    isa => 'Maybe[ArrayRef[ Crispr::crRNA ]]',
+    writer => '_set_crisprs',
+);
+
 =method chr
 
   Usage       : $allele->chr;
-  Purpose     : Getter for Sample chr attribute
+  Purpose     : Getter for Allele chr attribute
   Returns     : Str
   Parameters  : None
   Throws      : If input is given
@@ -140,7 +157,7 @@ has 'alt_allele' => (
 =method sa_number
 
   Usage       : $allele->sa_number;
-  Purpose     : Getter for Sample sa_number attribute
+  Purpose     : Getter for Allele sa_number attribute
   Returns     : Str
   Parameters  : None
   Throws      : If input is given
@@ -156,7 +173,7 @@ has 'sa_number' => (
 =method percent_of_reads
 
   Usage       : $allele->percent_of_reads;
-  Purpose     : Getter for Sample percent_of_reads attribute
+  Purpose     : Getter for Allele percent_of_reads attribute
   Returns     : Num
   Parameters  : None
   Throws      : If input is given
@@ -172,7 +189,7 @@ has 'percent_of_reads' => (
 =method kaspar_assay
 
   Usage       : $allele->kaspar_assay;
-  Purpose     : Getter for Sample kaspar_assay attribute
+  Purpose     : Getter for Allele kaspar_assay attribute
   Returns     : Crispr::Kasp object
   Parameters  : None
   Throws      : If input is given
@@ -207,6 +224,25 @@ sub allele_name {
     return join(":", $self->chr, $self->pos, $self->ref_allele, $self->alt_allele, );
 }
 
+=method add_crispr
+
+  Usage       : $allele->add_crispr( $crRNA );
+  Purpose     : add crispr object to crisprs attribute
+  Returns     : 1 if successful
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
+sub add_crispr {
+    my ( $self, $crRNA ) = @_;
+    my $current_crisprs = $self->crisprs;
+    push @{$current_crisprs}, $crRNA;
+    $self->_set_crisprs( $current_crisprs );
+    return 1;
+}
+
 __PACKAGE__->meta->make_immutable;
 1;
 
@@ -225,6 +261,7 @@ __END__
         alt_allele => 'GACAG',
         sa_number => 'sa564',
         percent_of_reads => 10.5,
+        crisprs => [ $crRNA1, $crRNA2 ],
         kaspar_assay => $kasp_assay,
     );    
     
