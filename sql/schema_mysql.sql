@@ -1,4 +1,4 @@
-create table target (
+CREATE TABLE target (
     target_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     target_name VARCHAR(45) NOT NULL,
     assembly VARCHAR(20),
@@ -16,7 +16,7 @@ create table target (
 ) ENGINE = InnoDB;
 CREATE UNIQUE INDEX `target_target_name_requestor` ON target ( `target_name`, `requestor` );
 
-create table plate (
+CREATE TABLE plate (
     plate_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     plate_name CHAR(10) UNIQUE,
     plate_type ENUM('96', '384') NOT NULL,
@@ -26,7 +26,7 @@ create table plate (
 ) ENGINE = InnoDB;
 CREATE UNIQUE INDEX `plate_plate_name` ON plate (`plate_name` );
 
-create table crRNA (
+CREATE TABLE crRNA (
     crRNA_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     crRNA_name VARCHAR(50),
     chr VARCHAR(30),
@@ -47,7 +47,7 @@ create table crRNA (
 )  ENGINE = InnoDB;
 CREATE UNIQUE INDEX `crRNA_crRNA_name_target_id_plate_id` ON crRNA ( `crRNA_name`, `target_id`, `plate_id` );
 
-create table crRNA_pair (
+CREATE TABLE crRNA_pair (
     crRNA_pair_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     crRNA_1_id INT UNSIGNED NOT NULL,
     crRNA_2_id INT UNSIGNED NOT NULL,
@@ -56,7 +56,7 @@ create table crRNA_pair (
     FOREIGN KEY (crRNA_2_id) REFERENCES crRNA (crRNA_id)
 )  ENGINE = InnoDB;
 
-create table coding_scores (
+CREATE TABLE coding_scores (
     crRNA_id INT UNSIGNED NOT NULL,
     transcript_id VARCHAR(20) NOT NULL,
     score DECIMAL(4,3) NOT NULL,
@@ -64,7 +64,7 @@ create table coding_scores (
     FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id)
 ) ENGINE = InnoDB;
 
-create table off_target_info (
+CREATE TABLE off_target_info (
     crRNA_id INT UNSIGNED NOT NULL,
     off_target_hit VARCHAR(120) NOT NULL,
     mismatches TINYINT UNSIGNED NOT NULL,
@@ -73,12 +73,12 @@ create table off_target_info (
     FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id)
 ) ENGINE = InnoDB;
 
-create table plasmid_backbone (
+CREATE TABLE plasmid_backbone (
     plasmid_backbone_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     plasmid_backbone VARCHAR(50) NOT NULL
 ) ENGINE = InnoDB;
 
-create table construction_oligos (
+CREATE TABLE construction_oligos (
     crRNA_id INT UNSIGNED NOT NULL,
     forward_oligo VARCHAR(200) NOT NULL,
     reverse_oligo VARCHAR(30),
@@ -90,7 +90,7 @@ create table construction_oligos (
     FOREIGN KEY (plate_id) REFERENCES plate(plate_id)
 ) ENGINE = InnoDB;
 
-create table expression_construct (
+CREATE TABLE expression_construct (
     crRNA_id INT UNSIGNED NOT NULL,
     plate_id INT UNSIGNED,
     well_id CHAR(3),
@@ -103,7 +103,7 @@ create table expression_construct (
     FOREIGN KEY (plate_id) REFERENCES plate(plate_id)
 ) ENGINE = InnoDB;
 
-create table guideRNA_prep (
+CREATE TABLE guideRNA_prep (
     guideRNA_prep_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     crRNA_id INT UNSIGNED NOT NULL,
     guideRNA_type ENUM('sgRNA', 'tracrRNA') NOT NULL,
@@ -117,7 +117,7 @@ create table guideRNA_prep (
     FOREIGN KEY (plate_id) REFERENCES plate(plate_id)
 ) ENGINE = InnoDB;
 
-create table primer (
+CREATE TABLE primer (
     primer_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     primer_sequence VARCHAR(50) NOT NULL,
     primer_chr VARCHAR(30),
@@ -131,7 +131,7 @@ create table primer (
 ) ENGINE = InnoDB;
 CREATE INDEX `primer_plate_id_well_id` ON primer ( `plate_id`, `well_id` );
 
-create table primer_pair (
+CREATE TABLE primer_pair (
     primer_pair_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     type ENUM('ext','int','ext-illumina', 'int-illumina', 'int-illumina_tailed') NOT NULL,
     left_primer_id INT UNSIGNED NOT NULL,
@@ -145,7 +145,7 @@ create table primer_pair (
     FOREIGN KEY (right_primer_id) REFERENCES primer(primer_id)
 ) ENGINE = InnoDB;
 
-create table amplicon_to_crRNA (
+CREATE TABLE amplicon_to_crRNA (
     primer_pair_id INT UNSIGNED NOT NULL,
     crRNA_id INT UNSIGNED NOT NULL,
     CONSTRAINT `amplicon_to_crRNA_primer_pair_id_crRNA_id` PRIMARY KEY ( `primer_pair_id`, `crRNA_id` ),
@@ -153,14 +153,14 @@ create table amplicon_to_crRNA (
     FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id)
 ) ENGINE = InnoDB;
 
-create table enzyme (
+CREATE TABLE enzyme (
     enzyme_id SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(20) NOT NULL,
     site VARCHAR(20) NOT NULL,
     CONSTRAINT `enzyme_name` UNIQUE ( `name` )
 ) ENGINE = InnoDB;
 
-create table enzyme_ordering (
+CREATE TABLE enzyme_ordering (
     order_no VARCHAR(20) PRIMARY KEY,
     enzyme_id SMALLINT UNSIGNED NOT NULL,
     company VARCHAR(20) NOT NULL,
@@ -169,7 +169,7 @@ create table enzyme_ordering (
     FOREIGN KEY (enzyme_id) REFERENCES enzyme(enzyme_id)
 ) ENGINE = InnoDB;
 
-create table restriction_enzymes (
+CREATE TABLE restriction_enzymes (
     primer_pair_id INT UNSIGNED NOT NULL,
     crRNA_id INT UNSIGNED NOT NULL,
     enzyme_id SMALLINT UNSIGNED NOT NULL,
@@ -181,7 +181,7 @@ create table restriction_enzymes (
     FOREIGN KEY (enzyme_id) REFERENCES enzyme(enzyme_id)
 ) ENGINE = InnoDB;
 
-create table cas9 (
+CREATE TABLE cas9 (
     cas9_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     type VARCHAR(100) NOT NULL,
@@ -191,7 +191,7 @@ create table cas9 (
     CONSTRAINT `cas9_type_vector` UNIQUE ( `type`, `vector` )
 ) ENGINE = InnoDB;
 
-create table cas9_prep (
+CREATE TABLE cas9_prep (
     cas9_prep_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     cas9_id INT UNSIGNED NOT NULL,
     prep_type ENUM('dna', 'rna', 'protein') NOT NULL,
@@ -202,7 +202,7 @@ create table cas9_prep (
     FOREIGN KEY (cas9_id) REFERENCES cas9(cas9_id)
 ) ENGINE = InnoDB;
 
-create table injection (
+CREATE TABLE injection (
     injection_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     injection_name VARCHAR(30) NOT NULL,
     cas9_prep_id INT UNSIGNED NOT NULL,
@@ -215,7 +215,7 @@ create table injection (
     FOREIGN KEY (cas9_prep_id) REFERENCES cas9_prep(cas9_prep_id)
 ) ENGINE = InnoDB;
 
-create table injection_pool (
+CREATE TABLE injection_pool (
     injection_id INT UNSIGNED NOT NULL,
     crRNA_id INT UNSIGNED NOT NULL,
     guideRNA_prep_id INT UNSIGNED NOT NULL,
@@ -226,7 +226,7 @@ create table injection_pool (
     FOREIGN KEY (guideRNA_prep_id) REFERENCES guideRNA_prep(guideRNA_prep_id)
 ) ENGINE = InnoDB;
 
-create table plex (
+CREATE TABLE plex (
     plex_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     plex_name VARCHAR(10) NOT NULL,
     run_id INT UNSIGNED NOT NULL,
@@ -235,7 +235,7 @@ create table plex (
     CONSTRAINT `plex_plex_name` UNIQUE ( `plex_name` )
 ) ENGINE = InnoDB;
 
-create table sample (
+CREATE TABLE sample (
     sample_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     sample_name VARCHAR(20) NOT NULL,
     sample_number INT UNSIGNED NOT NULL,
@@ -247,7 +247,7 @@ create table sample (
 ) ENGINE = InnoDB;
 CREATE UNIQUE INDEX `sample_name` ON sample (`sample_name`);
 
-create table analysis (
+CREATE TABLE analysis (
     analysis_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     plex_id INT UNSIGNED NOT NULL,
     analysis_started DATE,
@@ -255,7 +255,7 @@ create table analysis (
     FOREIGN KEY (plex_id) REFERENCES plex(plex_id)
 ) ENGINE = InnoDB;
 
-create table analysis_information (
+CREATE TABLE analysis_information (
     analysis_id INT UNSIGNED NOT NULL,
     sample_id INT UNSIGNED NOT NULL,
     primer_pair_id INT UNSIGNED NOT NULL,
@@ -269,7 +269,7 @@ create table analysis_information (
 ) ENGINE = InnoDB;
 CREATE INDEX `analysis_analysis_id` ON analysis (`analysis_id`);
 
-create table sequencing_results (
+CREATE TABLE sequencing_results (
     sample_id INT UNSIGNED NOT NULL,
     crRNA_id INT UNSIGNED NOT NULL,
     fail BOOLEAN NOT NULL,
@@ -282,33 +282,43 @@ create table sequencing_results (
     FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id)
 ) ENGINE = InnoDB;
 
-create table allele (
+CREATE TABLE allele (
     allele_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     chr VARCHAR(30) NOT NULL,
     pos INT UNSIGNED NOT NULL,
     ref_allele VARCHAR(200) NOT NULL,
     alt_allele VARCHAR(200) NOT NULL,
     ref_seq VARCHAR(200),
-    alt_seq VARCHAR(200)
-) ENGINE = InnoDB;
-
-create table sample_allele (
-    sample_id INT UNSIGNED NOT NULL,
-    allele_id INT UNSIGNED NOT NULL,
+    alt_seq VARCHAR(200),
     primer_pair_id INT UNSIGNED NOT NULL,
     type ENUM("crispr", "crispr_pair" ),
-    crispr_id INT UNSIGNED NOT NULL,
-    percentage_of_reads DECIMAL(4,1) NOT NULL,
-    CONSTRAINT `sample_allele_sample_id_allele_id` PRIMARY KEY ( `sample_id`, `allele_id` ),
-    FOREIGN KEY (sample_id) REFERENCES sample(sample_id),
-    FOREIGN KEY (allele_id) REFERENCES allele(allele_id),
     FOREIGN KEY (primer_pair_id) REFERENCES primer_pair(primer_pair_id)
 ) ENGINE = InnoDB;
 
-create table kasp (
+CREATE TABLE allele_to_crispr (
+    allele_id INT UNSIGNED NOT NULL,
+    crRNA_id INT UNSIGNED NOT NULL,
+    FOREIGN KEY (allele_id) REFERENCES allele(allele_id),
+    FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id)
+) ENGINE = InnoDB;
+
+CREATE TABLE sample_allele (
+    sample_id INT UNSIGNED NOT NULL,
+    allele_id INT UNSIGNED NOT NULL,
+    percentage_of_reads DECIMAL(4,1) NOT NULL,
+    CONSTRAINT `sample_allele_sample_id_allele_id` PRIMARY KEY ( `sample_id`, `allele_id` ),
+    FOREIGN KEY (sample_id) REFERENCES sample(sample_id),
+    FOREIGN KEY (allele_id) REFERENCES allele(allele_id)
+) ENGINE = InnoDB;
+
+CREATE TABLE kasp (
     kasp_id VARCHAR(10) PRIMARY KEY,
     allele_id INT UNSIGNED NOT NULL,
     allele_number VARCHAR(10) NOT NULL,
+    allele_specific_primer_1 VARCHAR(50) NOT NULL,
+    allele_specific_primer_2 VARCHAR(50) NOT NULL,
+    common_primer_1 VARCHAR(50) NOT NULL,
+    common_primer_2 VARCHAR(50),
     plate_id INT UNSIGNED,
     well_id CHAR(3),
     CONSTRAINT `kasp_kasp_id_allele_id` UNIQUE ( `kasp_id`, `allele_id` ),
