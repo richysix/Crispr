@@ -89,10 +89,11 @@ my @primer_pairs;
 my @columns;
 
 my @primer_plates;
-if( $options{plate_num} ){
+if( $options{plate_num} || $options{plate_name} ){
     foreach my $direction ( qw{ left right } ){
         # make a new plate to fill with primers
-        my $plate_name = 'CR_' . sprintf("%06d", $options{plate_num}) . $plate_suffixes{ $options{type} };
+        my $plate_name = $options{plate_name} ? $options{plate_name} :
+            'CR_' . sprintf("%06d", $options{plate_num}) . $plate_suffixes{ $options{type} };
         my $primer_plate = Crispr::Plate->new(
             plate_id => undef,
             plate_name => $plate_name,
@@ -185,6 +186,12 @@ while(<>){
             die join(q{ }, "Could not parse crispr guide names,",
                     $args{crisprs}, ), "\n";
         }
+        
+        if( !defined $crRNA ){
+            die join(q{ }, "Crispr name,", $crispr_name,
+                    "does not exist in the database.", ), "\n";
+        }
+        
         push @crRNAs, $crRNA;
     }
     
@@ -205,7 +212,7 @@ while(<>){
             );
         $args{"${direction}_primer"} = $primer;
         
-        if( $options{plate_num} ){
+        if( $options{plate_num} || $options{plate_name} ){
             my $primer_plate = $direction eq 'left'  ?  $primer_plates[0]
                 :                                       $primer_plates[1];
             if( $has_well_ids ){
@@ -319,7 +326,7 @@ if( $options{debug} > 2 ){
 }
 
 # add primers to db
-if( $options{plate_num} ){
+if( $options{plate_num} || $options{plate_name} ){
     foreach my $primer_plate ( @primer_plates ){
         eval{
             $plate_adaptor->store( $primer_plate );
@@ -423,6 +430,7 @@ sub get_and_check_options {
         'crispr_db=s',
         'rebase_file=s',
         'plate_num=i',
+        'plate_name=s',
         'plate_type=s',
         'type=s',
         'fill_direction=s',
@@ -443,14 +451,8 @@ sub get_and_check_options {
         pod2usage( -verbose => 2 );
     }
     
-    # Check options
-    if( !defined $options{plate_num} ){
-        my $msg = "Option --plate_num is required." .
-            "If you don't want to add primers to a plate, set it to 0.\n";
-        pod2usage( $msg );
-    }
-    
-    # first check type is one of required ones
+    # Check options    
+    # check type is one of required ones
     if( !defined $options{type} ){
         die "option --type must be specified!\n";
     }
@@ -520,6 +522,7 @@ Takes information on primer pairs for crispr guides and enters it into a MySQL d
         --rebase_file           Rebase restriction enzyme file
         --type                  Primer type (ext, int, illumina, illumina_tailed )
         --plate_num             Plate number to add primers to
+        --plate_name            Name of plate to add primers to
         --plate_type            Plate type (96 or 384)
         --fill_direction        Direction in which to fill the plate (row or column) [default:column]
         --registry_file         a registry file for connecting to the Ensembl database
@@ -558,7 +561,6 @@ Optional columns are:
 =item B<--plate_num>
 
 Base plate number to put primers in. Integer.
-If no plate is required, set it to 0.
 A suffix is added to the plate_name depending on the type of primers.
 
   ext = d
@@ -567,6 +569,12 @@ A suffix is added to the plate_name depending on the type of primers.
   int-illumina => g
   int-illumina_tailed => h
   
+If neither plate_num or plate_name is set primers are added to the database without a plate.
+
+=item B<--plate_name>
+
+A name for a plate to add primers to (10 characters). Can't be specified with plate_num.
+
 =item B<--type>
 
 Type of primers. One of ext, int, illumina, illumina_tailed.
