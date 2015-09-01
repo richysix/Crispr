@@ -113,7 +113,7 @@ while(<>){
     if( $rv =~ m/\ACouldn't\smatch/xms ){
         die $rv;
     }
-    if( $rv == 0 ){
+    if( $rv == 0 && !$options{no_crRNA} ){
         warn "No crRNAs for ", $columns[0], ".\n";
     }
 }
