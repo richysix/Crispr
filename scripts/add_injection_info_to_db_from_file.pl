@@ -120,8 +120,11 @@ while(<>){
         push @crRNAs, $crRNA;
         
         my $guide_rna_preps = $guide_rna_prep_adaptor->fetch_all_by_crRNA_id( $crRNA->crRNA_id );
-        # complain if there's more than one guide RNA prep
-        if( scalar @{$guide_rna_preps} != 1 ){
+        # complain if there's more or less than one guide RNA prep
+        if( scalar @{$guide_rna_preps} == 0 ){
+            die join(q{ }, "No Guide RNA preps for crRNA,", $crRNA->name, ), "\n";
+        }
+        elsif( scalar @{$guide_rna_preps} > 1 ){
             die join(q{ }, "Got more than one Guide RNA prep for crRNA,", $crRNA->name, ), "\n";
         }
         $guide_rna_preps->[0]->injection_concentration( $injection_concentration );
