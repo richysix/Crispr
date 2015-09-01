@@ -60,36 +60,42 @@ while(<>){
     print join("\t", qw{ WellPosition Name Sequence Notes } ), "\n";
     foreach my $well_id ( @well_ids ){
         my $well = $primer_pair_plate->return_well( $well_id );
-        my $cr_well = $crispr_plate->return_well( $well_id );
-        my ( $primer_name, $primer_sequence, $crispr_name, );
+        #my $cr_well = $crispr_plate->return_well( $well_id );
+        my ( $primer_name, $primer_sequence, $crispr_names, );
         if( !defined $well->contents ){
             $primer_name = 'EMPTY';
             $primer_sequence = 'EMPTY';
-            $crispr_name = 'EMPTY';
+            $crispr_names = 'EMPTY';
         }
         else{
+            my $crRNAs = $crRNA_adaptor->fetch_all_by_primer_pair( $well->contents );
+            if( @{$crRNAs} ){
+                $crispr_names = join(q{,}, map { $_->name } @{$crRNAs} );
+            }
             $primer_name = $well->contents->left_primer->primer_name;
             $primer_sequence = $well->contents->left_primer->sequence;
-            $crispr_name = $cr_well->contents->name;
         }
-        print join("\t", $well->position, $primer_name, $primer_sequence, $crispr_name, ), "\n";
+        print join("\t", $well->position, $primer_name, $primer_sequence, $crispr_names, ), "\n";
     }
     
     foreach my $well_id ( @well_ids ){
         my $well = $primer_pair_plate->return_well( $well_id );
-        my $cr_well = $crispr_plate->return_well( $well_id );
-        my ( $primer_name, $primer_sequence, $crispr_name, );
+        #my $cr_well = $crispr_plate->return_well( $well_id );
+        my ( $primer_name, $primer_sequence, $crispr_names, );
         if( !defined $well->contents ){
             $primer_name = 'EMPTY';
             $primer_sequence = 'EMPTY';
-            $crispr_name = 'EMPTY';
+            $crispr_names = 'EMPTY';
         }
         else{
+            my $crRNAs = $crRNA_adaptor->fetch_all_by_primer_pair( $well->contents );
+            if( @{$crRNAs} ){
+                $crispr_names = join(q{,}, map { $_->name } @{$crRNAs} );
+            }
             $primer_name = $well->contents->right_primer->primer_name;
             $primer_sequence = $well->contents->right_primer->sequence;
-            $crispr_name = $cr_well->contents->name;
         }
-        print join("\t", $well->position, $primer_name, $primer_sequence, $crispr_name, ), "\n";
+        print join("\t", $well->position, $primer_name, $primer_sequence, $crispr_names, ), "\n";
     }
 }
 
