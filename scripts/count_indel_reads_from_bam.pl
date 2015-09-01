@@ -16,11 +16,13 @@ use YAML::Tiny;
 use Readonly;
 use English qw( -no_match_vars );
 use File::Spec;
+use File::Find::Rule;
 use File::Path qw(make_path);
 use List::Util qw(sum);
 use File::Which;
 use DateTime;
 use Storable;
+use Clone qw(clone);
 use IO::Handle;
 use Hash::Merge;
 
@@ -388,6 +390,17 @@ if( $no_combined ){
     foreach my $plate ( @{ $plex_info->{plates} } ){
         foreach my $well_block ( @{ $plate->{wells} } ){
             foreach my $plex ( @{ $well_block->{plexes} } ){
+                # make plex directory for bams
+                my $output_bam_dir = File::Spec->catfile( $options{output_directory}, 'bams', $plex->{name} );
+                # check whether directory already exists and create it if not
+                if( !-e $output_bam_dir ){
+                    my @created_dirs = make_path( $output_bam_dir );
+                    if( !@created_dirs ){
+                        die join(q{ }, "Could not create directory for ", $plex->{name}, "in",
+                                File::Spec->catfile( $options{output_directory}, 'bams'),
+                                "for output bam files!" ), "\n";
+                    }
+                }
                 # counter
                 my $i = 0;
                 my @indices;
@@ -396,6 +409,7 @@ if( $no_combined ){
                     @indices = split /,/, $well_block->{indices};
                 }
                 foreach my $sample ( @{ $well_block->{sample_names} } ){
+                    my $var_num = 1;
                     my $sample_name = join("_", $plex_info->{ name }, $plate->{ name }, $sample, );
                     print $sample_name, "\n" if( $options{verbose} );
                     warn $sample_name, "\n" if( $options{debug} );
@@ -513,9 +527,8 @@ if( $no_combined ){
                         
                         # open output bam file for each variant and write header
                         my %bam_fhs;
-                        my $var_num = 1;
                         foreach my $variant ( keys %read_names ){
-                            my $outfile = File::Spec->catfile( $options{output_directory}, 'bams', join(".", $name, $var_num, 'bam' ) );
+                            my $outfile = File::Spec->catfile( $options{output_directory}, 'bams', $plex->{name}, join(".", $name, $var_num, 'bam' ) );
                             my $out_bam = Bio::DB::Bam->open($outfile, "w");
                             $out_bam->header_write( $header );
                             $bam_fhs{ $variant } = $out_bam;
@@ -555,15 +568,15 @@ if( $no_combined ){
         }
     }
     
-    # index bam files with samtools
-    opendir(my $bam_dir_fh, $output_bam_dir);
-    foreach my $file (readdir($bam_dir_fh)) {
-        next if( $file !~ m/bam \z/xms );
-        my $bam_file = File::Spec->catfile( $output_bam_dir, $file, );
+    # find all bam files in the bams directory
+    my $rule = File::Find::Rule->file->name("*.bam")->start( $output_bam_dir );
+    while ( defined ( my $bam_file = $rule->match ) ) {
         warn $bam_file, "\n" if $options{debug};
+        # index bam file with samtools
         my $cmd = qq{ samtools index $bam_file };
         system( $cmd ) == 0 or die "system $cmd failed: $?";
     }
+
     
     warn Dumper( $results ) if $options{debug} > 1;
     
@@ -1416,10 +1429,23 @@ sub create_consensus {
 }
 
 sub run_dindel {
+    # set up base dindel directory
+    my $dindel_dir = File::Spec->catfile( $options{output_directory}, 'dindel' );
+    if( !-e $dindel_dir ){
+        make_path( $dindel_dir );
+    }
+    
     # for each sample
     foreach my $plate ( @{ $plex_info->{plates} } ){
         foreach my $well_block ( @{ $plate->{wells} } ){
             foreach my $plex ( @{ $well_block->{plexes} } ){
+                # make plex directory
+                my $plex_dir = File::Spec->catfile( $dindel_dir, $plex->{name} );
+                if( !-e $plex_dir ){
+                    make_path( $plex_dir );
+                }
+                my $output_bam_dir = File::Spec->catfile( $options{output_directory}, 'bams', $plex->{name} );
+                
                 # counter
                 my $i = 0;
                 my @indices;
@@ -1446,22 +1472,22 @@ sub run_dindel {
                         next if( !exists $results_hash->{read_count} || $results_hash->{read_count} == 0 );
                         
                         # set up directories
-                        my $var_nums_hash = set_up_dindel_directories( $name, $results_hash, );
+                        my $var_nums_hash = set_up_dindel_directories( $plex->{name}, $name, $results_hash, );
                         
                         foreach my $var_num ( keys %{$var_nums_hash} ){
                             my $match;
                             my $predicted_var = $var_nums_hash->{$var_num};
                             my $vcf_file;
                             # extract indels
-                            my ( $selected_var_file, $lib_file ) = dindel_extract_indels( $name, $var_num, );
+                            my ( $selected_var_file, $lib_file ) = dindel_extract_indels( $output_bam_dir, $plex->{name}, $name, $var_num, );
                             if( $selected_var_file ){
                                 #make windows
-                                my @window_files = dindel_make_windows( $name, $var_num, $selected_var_file, );
+                                my @window_files = dindel_make_windows( $plex->{name}, $name, $var_num, $selected_var_file, );
                                 
                                 #realign windows
-                                my @glf_files = dindel_realign_windows( $name, $var_num, \@window_files, $lib_file );
+                                my @glf_files = dindel_realign_windows( $output_bam_dir, $plex->{name}, $name, $var_num, \@window_files, $lib_file );
                                 
-                                $vcf_file = dindel_make_vcf_file( $name, $var_num, \@glf_files, );
+                                $vcf_file = dindel_make_vcf_file( $plex->{name}, $name, $var_num, \@glf_files, );
                                 
                                 # go through vcf_file and try to match it to one of the variants
                                 # open vcf file
@@ -1541,10 +1567,26 @@ sub run_dindel {
                                                 #delete $results_hash->{indels}->{$crispr_name}->{$predicted_var};
                                             }
                                             else{
-                                                # add vcf_var to hash and delete predicted var
-                                                $results_hash->{indels}->{$crispr_name}->{$vcf_var} = $results_hash->{indels}->{$crispr_name}->{$predicted_var};
-                                                $results_hash->{indels}->{$crispr_name}->{$vcf_var}->{caller} = 'DINDEL';
-                                                #delete $results_hash->{indels}->{$crispr_name}->{$predicted_var};
+                                                # add vcf_var to hash
+                                                if( exists $results_hash->{indels}->{$crispr_name}->{$predicted_var} ){
+                                                    # clone hash rather than referencing it.
+                                                    $results_hash->{indels}->{$crispr_name}->{$vcf_var} = clone( $results_hash->{indels}->{$crispr_name}->{$predicted_var} );
+                                                    $results_hash->{indels}->{$crispr_name}->{$vcf_var}->{caller} = 'DINDEL';
+                                                    $results_hash->{indels}->{$crispr_name}->{$vcf_var}->{overlap} = $overlap_type;
+                                                }
+                                                else{
+                                                    warn "POSSIBLE VAR SPLIT ACROSS sgRNAs: $sample_name, $name, $var_num, $region: $crispr_name - $vcf_var | $predicted_var", "\n";
+                                                    if( scalar @crisprs == 2 ){
+                                                        my @other_crisprs = grep $_->name ne $crispr_name, @crisprs;
+                                                        my $other_crispr_name = $other_crisprs[0]->name;
+                                                        if( exists $results_hash->{indels}->{$other_crispr_name}->{$predicted_var} ){
+                                                            # clone hash rather than referencing it.
+                                                            $results_hash->{indels}->{$crispr_name}->{$vcf_var} = clone( $results_hash->{indels}->{$other_crispr_name}->{$predicted_var} );
+                                                            $results_hash->{indels}->{$crispr_name}->{$vcf_var}->{caller} = 'DINDEL';
+                                                            $results_hash->{indels}->{$crispr_name}->{$vcf_var}->{overlap} = $overlap_type;
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -1588,13 +1630,8 @@ sub run_dindel {
 }
 
 sub set_up_dindel_directories {
-    my ( $name, $results_hash ) = @_;
+    my ( $plex_name, $name, $results_hash ) = @_;
     
-    #check base indel directory
-    my $dindel_dir = File::Spec->catfile( $options{output_directory}, 'dindel' );
-    if( !-e $dindel_dir ){
-        make_path( $dindel_dir );
-    }
     my %var_nums;
     foreach my $crispr_name ( keys %{ $results_hash->{indels} } ){
         foreach my $variant ( keys %{ $results_hash->{indels}->{$crispr_name} } ){
@@ -1606,7 +1643,7 @@ sub set_up_dindel_directories {
     foreach my $var_num ( keys %var_nums ){
         foreach my $dir ( 'extract_indels', 'windows' ){
             my $sample_dir = File::Spec->catfile(
-                $options{output_directory}, 'dindel',
+                $options{output_directory}, 'dindel', $plex_name, 
                 $name, join(q{.}, $name, $var_num, ), $dir );
             make_path( $sample_dir );
         }
@@ -1615,11 +1652,11 @@ sub set_up_dindel_directories {
 }
 
 sub dindel_extract_indels {
-    my ( $name, $var_num, ) = @_;
+    my ( $output_bam_dir, $plex_name, $name, $var_num, ) = @_;
     
     # first check if this has already been done
     my $output_dir = File::Spec->catfile(
-                $options{output_directory}, 'dindel',
+                $options{output_directory}, 'dindel', $plex_name, 
                 $name, join(q{.}, $name, $var_num, ), ); 
     my $selected_var_file = File::Spec->catfile(
         $output_dir, 'selected_variants.txt' );
@@ -1681,11 +1718,11 @@ sub dindel_extract_indels {
 }
 
 sub dindel_make_windows {
-    my ( $name, $var_num, $selected_var_file, ) = @_;
+    my ( $plex_name, $name, $var_num, $selected_var_file, ) = @_;
     
     # check for windows files
     my $output_dir = File::Spec->catfile(
-                $options{output_directory}, 'dindel',
+                $options{output_directory}, 'dindel', $plex_name,
                 $name, join(q{.}, $name, $var_num, ), ); 
     my $window_dir = File::Spec->catfile(
                 $output_dir, 'windows', );
@@ -1745,13 +1782,13 @@ sub dindel_make_windows {
 }
 
 sub dindel_realign_windows {
-    my ( $name, $var_num, $window_files, $lib_file ) = @_;
+    my ( $output_bam_dir, $plex_name, $name, $var_num, $window_files, $lib_file ) = @_;
     
     # check for glf files
     my @glf_files;
     my $all_glf_files = 1;
     my $output_dir = File::Spec->catfile(
-                $options{output_directory}, 'dindel',
+                $options{output_directory}, 'dindel', $plex_name,
                 $name, join(q{.}, $name, $var_num, ), );
     
     foreach my $window_file ( @{$window_files} ){
@@ -1816,10 +1853,10 @@ sub dindel_realign_windows {
 }
 
 sub dindel_make_vcf_file {
-    my ( $name, $var_num, $glf_files, ) = @_;
+    my ( $plex_name, $name, $var_num, $glf_files, ) = @_;
 
     my $output_dir = File::Spec->catfile(
-                $options{output_directory}, 'dindel',
+                $options{output_directory}, 'dindel', $plex_name,
                 $name, join(q{.}, $name, $var_num, ), );
     my $output_vcf_file = File::Spec->catfile(
         $output_dir, 'calls.vcf', );
