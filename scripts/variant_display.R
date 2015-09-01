@@ -1,12 +1,10 @@
 #!/usr/bin/env Rscript
 
-# usage statement
-usage <- "Usage: /software/bin/R-2.15.2 --slave --vanilla --args <basename> <working_directory> <top_30|no_pc> <png|pdf> < ./variant_display.R"
-
 # load packages
 library(ggplot2)
 library(optparse)
 
+# define options
 option_list <- list(
   make_option(c("-d", "--directory"), type="character", default='cwd',
               help="Working directory [default %default]" ),
@@ -16,12 +14,15 @@ option_list <- list(
               help = "Type of figures to generate - top_30 | no_pc [default %default]"),
   make_option("--basename", type="character", default='variants',
               help="A base name for all output files [default %default]"),
+  make_option("--variant_percentage", type="numeric", default=0.01,
+              help="Only displaying variants above this percentage [default %default]"),
   make_option(c("-v", "--verbose"), action="store_true", default=TRUE,
               help="Print extra output [default]"),
   make_option(c("-q", "--quietly"), action="store_false",
               dest="verbose", help="Print little output")
 )
 
+# parse command line for options and arguments
 cmd_line_args <- parse_args(
 	OptionParser(
 		option_list=option_list, prog = 'variant_display.R',
@@ -29,10 +30,14 @@ cmd_line_args <- parse_args(
 		positional_arguments = 1
 )
 
+# default is for working directory to be pwd
 if( cmd_line_args$options[['directory']] == 'cwd' ){
 	cmd_line_args$options[['directory']] <- getwd()
 }
+# set working directory
+setwd( cmd_line_args$options[['directory']] )
 
+# verbose output if set
 if( cmd_line_args$options[['verbose']] ){
 	cat( "Working directory:", cmd_line_args$options[['directory']], "\n", sep=" " )
 	cat( "File Type:", cmd_line_args$options[['file_type']], "\n", sep=" " )
@@ -40,14 +45,11 @@ if( cmd_line_args$options[['verbose']] ){
 	cat( "Output files basename:", cmd_line_args$options[['basename']], "\n", sep=" " )
 }
 
-# set working directory
-setwd( cmd_line_args$options[['directory']] )
-
 # open data file
 input_file <- cmd_line_args$args[1]
 
 data_types <- c("plex"="factor", "plate"="factor", "subplex"="factor", "well"="factor",
-               "sample_name"="factor", "gene_name"="factor", "group"="factor", 
+               "sample_name"="factor", "gene_name"="factor", "group_name"="factor", 
                "amplicon"="factor", "caller"="factor", "type"="factor",
                "crispr_name"="factor", 
                "chr"="character", "variant_position"="integer", 
@@ -56,11 +58,16 @@ data_types <- c("plex"="factor", "plate"="factor", "subplex"="factor", "well"="f
                "percentage_reads_with_indel"="numeric", "consensus_start"="integer", 
                "ref_seq"="character", "consensus_alt_seq"="character")
 
+# read in header line to check column names
 header <- read.table(file=input_file, sep="\t", comment.char="%", header=FALSE, nrows=1 )
+header <- as.character( unlist(header[1,]) )
+header[1] <- sub( "^#", "", header[1])
 
 # check required columns
-for( cols in c("reference_allele", "alternate_allele", "consensus_alt_seq", "crispr_name", 
-               "consensus_start", "ref_seq", "variant_position", "gene_name", "amplicon") ){
+for( cols in c( "sample_name", "gene_name", "amplicon", "caller", "crispr_name",
+				"chr", "variant_position", "reference_allele", "alternate_allele",
+				"percentage_reads_with_indel", "consensus_start", 
+               "ref_seq", "consensus_alt_seq" ) ){
   if( sum( header == cols ) == 0 ){
     stop( "One of the required columns isn't present.\n", 
           "Required columns are:\n",
@@ -68,9 +75,14 @@ for( cols in c("reference_allele", "alternate_allele", "consensus_alt_seq", "cri
   }
 }
 
-column_classes <- data_types[ as.character( unlist(header[1,]) ) ]
+# get classes for those columns that are present
+column_classes <- data_types[ header ]
 all_indels <- read.table(file=input_file, sep="\t", comment.char="%", 
                          header=TRUE, colClasses=column_classes )
+names(all_indels)[1] <- sub("^X\\.", "", names(all_indels)[1])
+
+# remove lines with caller as NA
+all_indels <- all_indels[ !is.na( all_indels$caller ), ]
 
 # subset data to remove PINDEL calls. No consensus.
 all_indels <- subset( all_indels, caller != "PINDEL" )
@@ -150,7 +162,11 @@ create_indel_line_info <- function( var_data, line_info_list ){
   start <- min(var_data$consensus_start, na.rm=TRUE)
   
   # remove duplicate rows in the same samples (crispr pair deletions)
-  var_data <- var_data[ !duplicated(var_data[c(5,11:14)]), ]
+  var_data <- var_data[ !duplicated(var_data[, c("sample_name", "chr", "variant_position", "reference_allele", "alternate_allele") ]), ]
+  
+  # remove alleles below the threshold percentage
+  var_data <- subset(var_data, percentage_reads_with_indel >= cmd_line_args$options[['variant_percentage']] )
+  
   # sort var_data by percentage
   var_data <- var_data[ order(-var_data$percentage_reads_with_indel), ]
   # if there are too many variants and the display type is top_30

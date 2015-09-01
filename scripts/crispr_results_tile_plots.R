@@ -10,7 +10,7 @@ option_list <- list(
   make_option(c("-d", "--directory"), type="character", default='cwd',
               help="Working directory [default %default]" ),
   make_option("--figure_type", type="character", default='pdf',
-              help = "Type of figures to generate - pdf | png [default %default]"),
+              help = "Type of figures to generate - pdf | png | eps [default %default]"),
   make_option("--scripts_directory", type="character",  default='/nfs/users/nfs_r/rw4/checkouts/Crispr/scripts',
               help="directory where plate_well_functions is located [default %default]"),
   make_option("--basename", type="character", default='mpx',
@@ -40,6 +40,14 @@ if( cmd_line_args$options[['verbose']] ){
 	cat( "Output files basename:", cmd_line_args$options[['basename']], "\n", sep=" " )
 	cat( "Plate Type:", cmd_line_args$options[['plate_type']], "\n", sep=" " )
 }
+# check figure type option
+accepted_output_types <- c("pdf", "png", "eps")
+if( sum( accepted_output_types == cmd_line_args$options[['figure_type']] ) == 0 ){
+	accepted_type_string <- paste(accepted_output_types, collapse = ", " )
+	error_msg <- paste("Option --figure_type is not an accepted type\n",
+						"It must be one of ", accepted_type_string, "\n" )
+	stop( error_msg )
+}
 
 plate_well_file <- file.path( cmd_line_args$options[['scripts_directory']], 'plate_well_functions.R' )
 if( !file.exists(plate_well_file) ){
@@ -68,7 +76,7 @@ data_types <- c("factor","factor","factor","factor","factor","factor","factor","
 "numeric", "character", "character" )
 
 all_indels <- read.table(file=input_file, sep="\t", comment.char="%", col.names=col_names, colClasses=data_types )
-all_indels$group_name <- factor( all_indels$group_name, levels= order( levels( all_indels$group_name ) ) )
+all_indels$group_name <- factor( all_indels$group_name, levels= levels( all_indels$group_name )[ order( levels( all_indels$group_name ) ) ] )
 
 # remove non-overlapping
 indels <- subset( all_indels, ( is.na( all_indels$indel_position ) | all_indels$indel_position == 'crispr' | all_indels$indel_position == 'crispr_pair' ) )
@@ -181,9 +189,30 @@ if( cmd_line_args$options[['figure_type']] == 'pdf' ){
 		dev.off()
 	}
 	
-	for( group in 1:length(plot_list) ){
+	for( plot_number in 1:length(plot_list) ){
+		group <- levels(levels( all_indels$group_name ))[plot_number]
 		file_name <- paste( cmd_line_args$options[['basename']], paste('group', group, sep='_' ), 'png', sep='.' )
 		png(filename=file_name, width=720, height=480 )
+		print(plot_list[[group]])
+		dev.off()
+	}
+}else if( cmd_line_args$options[['figure_type']] == 'eps' ){
+	file_name <- paste( cmd_line_args$options[['basename']], 'coverage', 'eps', sep='.' )
+	postscript(file=file_name, onefile=FALSE, width=9, height=6, horizontal = FALSE, paper = "special", colormodel="cmyk" )
+	print(coverage_plot)
+	dev.off()
+	
+	if( plot_on_target_plot ){
+		file_name <- paste( cmd_line_args$options[['basename']], 'on_target', 'eps', sep='.' )
+		postscript(file=file_name, onefile=FALSE, width=9, height=6, horizontal = FALSE, paper = "special", colormodel="cmyk" )
+		print(ON_target_boxplot)
+		dev.off()
+	}
+	
+	for( plot_number in 1:length(plot_list) ){
+		group <- levels( all_indels$group_name )[plot_number]
+		file_name <- paste( cmd_line_args$options[['basename']], paste('group', group, sep='_' ), 'eps', sep='.' )
+		postscript(file=file_name, onefile=FALSE, width=9, height=6, horizontal = FALSE, paper = "special", colormodel="cmyk" )
 		print(plot_list[[group]])
 		dev.off()
 	}
