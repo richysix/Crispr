@@ -13,7 +13,6 @@ use Crispr::CrisprPair;
 #use Bio::Seq;
 #use Bio::SeqIO;
 use Getopt::Long;
-use Data::Dumper;
 use List::MoreUtils qw( any none uniq );
 use Readonly;
 use Number::Format;
@@ -27,6 +26,10 @@ my $todays_date = $date_obj->ymd;
 # Get and check command line options
 my %options;
 get_and_check_options();
+
+if( $options{debug} ){
+    use Data::Dumper;
+}
 
 # check registry file
 if( $options{registry_file} ){
@@ -170,7 +173,7 @@ else{
     }
 }
 
-warn Dumper( @crisprs, @crispr_pairs );
+warn Dumper( @crisprs, @crispr_pairs ) if $options{debug};
 $crispr_design->add_crisprs( \@crisprs );
 
 # score off targets using bwa
