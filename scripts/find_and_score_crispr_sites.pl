@@ -67,6 +67,12 @@ if( !$options{no_db} ){
 my $basename = $todays_date;
 $basename =~ s/\A/$options{file_base}_/xms if( $options{file_base} );
 
+my $bed_fh;
+if( $options{bed_file} ){
+    my $bed_file_name = $basename . '.bed';
+    open $bed_fh, '>', $bed_file_name;
+}
+
 # make new design object
 my $crispr_design;
 if( !$options{no_db} ){
@@ -184,6 +190,27 @@ if( $options{no_crRNA} ){
 else{
     print join("\t", @columns ), "\n";    
 }
+
+if( $options{bed_file} ){
+    # print track lines
+    my $target = $crispr_design->targets->[0];
+    my $posn = 'chr' . $target->chr . ":"  . join("-", $target->start, $target->end );
+    print $bed_fh "browser position $posn\n";
+    print $bed_fh join(q{ },
+                    join(q{=}, "track name", "crRNAs-" . $todays_date ),
+                    join(q{=}, "description", "crRNA designs" ),
+                    join(q{=}, "track type", "BED" ),
+                    join(q{=}, "visibility", "2" ),
+                    join(q{=}, "useScore", "2" ),
+                    join(q{=}, "cgGrades", "20" ),
+                    join(q{=}, "cgColour1", "254,240,217" ),
+                    join(q{=}, "cgColour2", "253,204,138" ),
+                    join(q{=}, "cgColour3", "252,141,89" ),
+                    join(q{=}, "cgColour4", "227,74,51" ),
+                    join(q{=}, "cgColour5", "179,0,0" ),
+                ), "\n";
+}
+
 foreach my $target ( @{ $crispr_design->targets } ){
     if( $options{no_crRNA} ){
         print join("\t", $target->info ), "\n";
@@ -219,6 +246,17 @@ foreach my $target ( @{ $crispr_design->targets } ){
                 push @notes, "base20 is a G";
             }
             print join(';', @notes, ), "\n";
+            
+            # print bed file line if necessary
+            if( $options{bed_file} ){
+                print $bed_fh join("\t", "chr" . $crRNA->chr,
+                                $crRNA->start - 1,
+                                $crRNA->end,
+                                $crRNA->name,
+                                sprintf('%.0f', $crRNA->score * 1000 ),
+                                $crRNA->strand eq '1' ? "+" : "-",
+                               ), "\n";
+            }
         }
     }
 }
@@ -666,6 +704,7 @@ sub get_and_check_options {
         'num_five_prime_Gs=i',
         'coding',
         'file_base=s',
+        'bed_file+',
         'requestor=s',
         'no_crRNA',
         'no_db',
@@ -795,6 +834,7 @@ possible off-target effects and optionally for its position in coding transcript
         --enzyme                Sets the requires_enzyme attribute of targets [default: n]
         --coding                turns on scoring of position of site within target gene
         --file_base             a prefix for all output files
+        --bed_file              outputs the CRISPR sites as a BED file as well as the usual output
         --requestor             A requestor to use for all targets
         --no_db                 option to stop script using Ensembl database and using genome fasta file instead
         --no_crRNA              option to supress finding and scoring crispr target sites
@@ -880,6 +920,11 @@ switch to indicate whether or not to score crRNAs for position in coding transcr
 =item B<--file_base >
 
 A prefix for all output files. This is added to output filenames with a '_' as separator.
+
+=item B<--bed_file >
+
+Switch to turn on production of a BED file containing the CRISPR target sites.
+The file is named using the file_base if defined and today's date.
 
 =item B<--requestor >
 
