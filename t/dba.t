@@ -6,6 +6,7 @@ use Readonly;
 Readonly my $TESTS_FOREACH_DBC => 1 + 1 + 8;    # Number of tests in the loop
 plan tests => 2 * $TESTS_FOREACH_DBC;
 
+use lib 't/lib';
 use TestDB;
 
 # check environment variables have been set

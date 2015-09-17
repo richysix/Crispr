@@ -25,6 +25,7 @@ plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
 ##  database tests  ##
 # Module with a function for creating an empty test database
 # and returning a database connection
+use lib 't/lib';
 use TestDB;
 
 # check environment variables have been set
