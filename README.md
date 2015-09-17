@@ -31,8 +31,10 @@ At each step there are scripts to add the information to an SQL database.
 *   [BioPerl](www.bioperl.org/) and [Ensembl API](http://www.ensembl.org/info/docs/api/index.html)
 *   [Number::Format](http://search.cpan.org/~wrw/Number-Format-1.73/Format.pm)
 *   [Set::Interval](http://search.cpan.org/~benbooth/Set-IntervalTree-0.01/lib/Set/IntervalTree.pm)
+*   [DBIx::Connector](http://search.cpan.org/~dwheeler/DBIx-Connector-0.53/lib/DBIx/Connector.pm)
 *   [PCR](http://github.com/richysix/PCR)
 *   [Tree](http://github.com/richysix/Tree)
+*   [Labware](http://github.com/richysix/Labware)
 
 ---
 

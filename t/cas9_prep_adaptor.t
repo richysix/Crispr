@@ -35,6 +35,7 @@ my @methods = (
 # DB tests
 # Module with a function for creating an empty test database
 # and returning a database connection
+use lib 't/lib';
 use TestDB;
 
 my %db_connection_params = (
