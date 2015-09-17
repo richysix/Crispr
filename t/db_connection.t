@@ -15,12 +15,17 @@ use Readonly;
 use Crispr::DB::DBConnection;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 11 + 1 + 5 + 2 + ( 6 * 14 ) + 1;
+Readonly my $TESTS_IN_COMMON => 1 + 11 + 1 + 3 + 2 + ( 6 * 14 ) + 1;
 Readonly my %TESTS_FOREACH_DBC => (
-    mysql => $TESTS_IN_COMMON + 5,
+    mysql => $TESTS_IN_COMMON + 7,
     sqlite => $TESTS_IN_COMMON + 2,
 );
-plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
+if( $ENV{NO_DB} ) {
+    plan skip_all => 'Not testing database';
+}
+else {
+    plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
+}
 
 ##  database tests  ##
 # Module with a function for creating an empty test database
@@ -28,27 +33,29 @@ plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
 use lib 't/lib';
 use TestDB;
 
-# check environment variables have been set
-if( !$ENV{MYSQL_DBNAME} || !$ENV{MYSQL_DBUSER} || !$ENV{MYSQL_DBPASS} ){
-    die "The following environment variables need to be set for connecting to the database!\n",
-        "MYSQL_DBNAME, MYSQL_DBUSER, MYSQL_DBPASS"; 
-}
-
+# check environment variables
 my %db_connection_params = (
-    mysql => {
-        driver => 'mysql',
-        dbname => $ENV{MYSQL_DBNAME},
-        host => $ENV{MYSQL_DBHOST} || '127.0.0.1',
-        port => $ENV{MYSQL_DBPORT} || 3306,
-        user => $ENV{MYSQL_DBUSER},
-        pass => $ENV{MYSQL_DBPASS},
-    },
     sqlite => {
         driver => 'sqlite',
         dbfile => 'test.db',
         dbname => 'test',
     }
 );
+if( !$ENV{MYSQL_DBUSER} || !$ENV{MYSQL_DBPASS} ){
+    warn "The following environment variables need to be set for testing connections to a MySQL database!\n",
+        q{$MYSQL_DBUSER, $MYSQL_DBPASS};
+}
+else{
+    $db_connection_params{mysql} =
+        {
+            driver => 'mysql',
+            dbname => $ENV{MYSQL_DBNAME} || 'crispr_test',
+            host => $ENV{MYSQL_DBHOST} || '127.0.0.1',
+            port => $ENV{MYSQL_DBPORT} || 3306,
+            user => $ENV{MYSQL_DBUSER},
+            pass => $ENV{MYSQL_DBPASS},
+        };
+}
 
 # TestDB creates test database, connects to it and gets db handle
 my %test_db_connections;
@@ -94,12 +101,14 @@ foreach my $db_connection ( @db_connections ){
     # 1 test
     is( $db_connection->driver, $driver, "$driver: check value of driver attribute" );
     if( $driver eq 'mysql' ){
-        # 5 tests
+        # 7 tests
         is( $db_connection->dbname, $db_connection_params{mysql}->{dbname}, "$driver: check value of dbname attribute" );
         is( $db_connection->host, $db_connection_params{mysql}->{host}, "$driver: check value of host attribute" );
         is( $db_connection->port, $db_connection_params{mysql}->{port}, "$driver: check value of port attribute" );
         is( $db_connection->user, $db_connection_params{mysql}->{user}, "$driver: check value of user attribute" );
         is( $db_connection->pass, $db_connection_params{mysql}->{pass}, "$driver: check value of pass attribute" );
+        ok( Crispr::DB::DBConnection->new(), "$driver: env variables" );
+        ok( Crispr::DB::DBConnection->new( undef ), "$driver: env variables with undef parameter" );
     }
     else{
         # 2 tests
@@ -107,7 +116,7 @@ foreach my $db_connection ( @db_connections ){
         is( $db_connection->dbfile, $db_connection_params{sqlite}->{dbfile}, "$driver: check value of dbfile attribute" );
     }
     
-    # test BUILDARGS method in constructor - 5 tests
+    # test BUILDARGS method in constructor - 3 tests
     # create tmp config file
     open my $fh, '>', 'config.tmp';
     print $fh join("\n", map {
@@ -120,8 +129,6 @@ foreach my $db_connection ( @db_connections ){
         qr/Assumed\sthat.+is\sa\sconfig\sfile,\sbut\sfile\sdoes\snot\sexist./, "$driver: config file does not exist";
     throws_ok{ Crispr::DB::DBConnection->new( [] ) }
         qr/Could\snot\sparse\sarguments\sto\sBUILD\smethod/, "$driver: ArrayRef";
-    ok( Crispr::DB::DBConnection->new(), "$driver: env variables" );
-    ok( Crispr::DB::DBConnection->new( undef ), "$driver: env variables with undef parameter" );
     
     # check that BUILD method throws properly if driver is undefined or not mysql or sqlite- 2 tests
     $db_connection_params{ $driver }{ 'driver' } = undef;
