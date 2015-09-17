@@ -38,6 +38,7 @@ my $slice_ad = Bio::EnsEMBL::Registry->get_adaptor( $species, 'core', 'slice' );
 
 # Module with a function for creating an empty test database
 # and returning a database connection
+use lib 't/lib';
 use TestDB;
 
 if( !$ENV{MYSQL_DBNAME} || !$ENV{MYSQL_DBUSER} || !$ENV{MYSQL_DBPASS} ){

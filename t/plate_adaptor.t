@@ -25,6 +25,7 @@ my $todays_date = $date_obj->ymd;
 
 # Module with a function for creating an empty test database
 # and returning a database connection
+use lib 't/lib';
 use TestDB;
 
 # check environment variables have been set
