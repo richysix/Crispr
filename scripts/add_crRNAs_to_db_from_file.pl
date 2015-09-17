@@ -1,5 +1,4 @@
 #!/usr/bin/env perl
-# add_crRNAs_to_db_from_file.pl
 
 # PODNAME: add_crRNAs_to_db_from_file.pl
 # ABSTRACT: Add crRNAs into CRISPR SQL database.

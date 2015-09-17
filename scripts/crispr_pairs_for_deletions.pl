@@ -1,4 +1,8 @@
 #!/usr/bin/env perl
+
+# PODNAME: crispr_pairs_for_deletions.pl
+# ABSTRACT: Design crispr pairs to create deletions.
+
 use warnings; use strict;
 use Getopt::Long;
 use autodie;

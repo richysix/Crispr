@@ -1,4 +1,8 @@
 #!/usr/bin/env perl
+
+# PODNAME: find_and_score_crispr_sites.pl
+# ABSTRACT: Find and score CRISPR/Cas9 target sites given a gene/region.
+
 use warnings; use strict;
 # use MODULES
 use autodie;

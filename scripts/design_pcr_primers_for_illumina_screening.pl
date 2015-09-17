@@ -1,5 +1,7 @@
 #!/usr/bin/env perl
-# design_pcr_primers_for_illumina_screening.pl
+
+# PODNAME: design_pcr_primers_for_illumina_screening.pl
+# ABSTRACT: Design PCR primers for screening by Illumina Sequencing.
 
 use warnings; use strict;
 
