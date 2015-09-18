@@ -52,15 +52,25 @@ my $primer_design_settings =
         );
 
 my ( $primer_file, $primer_fh, );
-if( $options{file_prefix} ){
-    $primer_file = $options{file_prefix} . '_primers.tsv';
+if( $options{output_file} ){
+    $primer_file = $options{output_file};
 }
 else{
-    $primer_file = $todays_date . '_primers.tsv'; 
+    $primer_file = $todays_date . '-primers.tsv'; 
 }
 
 open $primer_fh, '>', $primer_file;
-print {$primer_fh } join("\t", $primer_design_settings->primers_header, ), "\n";
+print {$primer_fh} join("\t", qw{ crispr_pair_name crRNA_name
+                        ext_primer_pair_id
+                        left_ext_primer_id left_ext_primer_seq
+                        right_ext_primer_id right_ext_primer_seq
+                        int_primer_pair_id
+                        left_int_primer_id left_int_primer_seq
+                        right_int_primer_id right_int_primer_seq
+                        int-illumina_tailed_primer_pair_id
+                        left_int-illumina_tailed_primer_id left_int-illumina_tailed_primer_seq
+                        right_int-illumina_tailed_primer_id right_int-illumina_tailed_primer_seq
+                        ext_sizes int_sizes }, ), "\n";
 
 # remove previously existing primer3 output files
 my @files = qw{ int_6_primer3.out int_2_primer3.out int_6_primer3.out RM_int.fa RM_ext.fa };
@@ -231,7 +241,7 @@ while(<>){
 }
 
 if( $options{debug} == 2 ){
-    print Dumper( $targets );
+    warn Dumper( $targets );
 }
 
 # design PCR primers
@@ -331,9 +341,9 @@ foreach my $id ( @ids ){
             if( $options{restriction_enzymes} ){
                 @enzyme_information = get_enzyme_information( $crRNA, );
             }
-            print join("\t", $crispr_pair->pair_name, $crRNA->name,
-                        @primer_info, join(q{,}, @enzyme_information, ),
-                        $ext_product_size, $sizes || '', ), "\n";
+            print {$primer_fh} join("\t", $crispr_pair->pair_name, $crRNA->name,
+                                @primer_info, join(q{,}, @enzyme_information, ),
+                                $ext_product_size, $sizes || '', ), "\n";
         }
     }
     elsif( exists $target_info->{crRNA} ){
@@ -348,15 +358,20 @@ foreach my $id ( @ids ){
             $product_size = $target_info->{int_primers}->product_size;
         }
         push @info, 'NULL', $crRNA->name;
-        print join("\t", @info, @primer_info, join(q{,}, @enzyme_information, ), $ext_product_size, $product_size || 'NULL', ), "\n";
+        print {$primer_fh} join("\t", @info, @primer_info, join(q{,},
+                                @enzyme_information, ), $ext_product_size,
+                                $product_size || 'NULL', ), "\n";
     }
     else{
         die "This shouldn't happen. There is no crispr_pair or crRNA!\n";
     }
+    
+    # output primer info including Tm etc. to STDOUT
+    print join("\t", $target_info->{ext_primers}->primer_pair_info,
+               $target_info->{int_primers}->primer_pair_info, ), "\n";
 }
 
-# output primer info to file
-$primer_design_settings->print_primers_to_file( \@targets_to_print, 'int', $primer_fh, );
+
 
 
 ###   SUBROUTINES   ###
@@ -704,7 +719,7 @@ sub get_and_check_options {
         'ext_product_size=s',
         'int_product_size=s',
         'target_offset=i@',
-        'file_prefix=s',
+        'output_file=s',
         'restriction_enzymes!',
         'primer3_settings=f%',
         'debug+',
@@ -806,8 +821,9 @@ Design PCR primers for screening by Illumina Sequencing.
 =head1 SYNOPSIS
 
     design_pcr_primers_for_illumina_screening.pl [options] crRNA names | crispr_pair names
-        --registry                  a registry file for connecting to the Ensembl database
+        --output_file               name for primer output file [default: date-primers.tsv]
         --primer3file               configuration file for primer3
+        --registry                  a registry file for connecting to the Ensembl database
         --species                   A species to use for all input
         --left_adaptor              option to change the default left primer adaptor
         --right_adaptor             option to change the default right primer adaptor
@@ -816,7 +832,6 @@ Design PCR primers for screening by Illumina Sequencing.
         --target_offset             distance away from the crispr cut site that the primers must end
                                     can be specified multiple times
                                     offsets are tried in the order specified [default: 60,40]
-        --file_prefix               a common prefix for primer output files
         --restriction_enzymes       output unique restriction enzyme info for each crRNA
         --norestriction_enzymes     turn off restriction enzyme output
         --help                      prints help message and exits
@@ -852,14 +867,19 @@ This can also be supplied on STDIN.
 
 =over
 
-=item B<--registry>
+=item B<--output_file>
 
-A registry file for connecting to the Ensembl database.
-If no file is supplied the script connects anonymously to the current version of the database.
+File name for the primer output file.
+The default is to use the current date (date-primers.tsv)
 
 =item B<--primer3file>
 
 configuration file for Primer3
+
+=item B<--registry>
+
+A registry file for connecting to the Ensembl database.
+If no file is supplied the script connects anonymously to the current version of the database.
 
 =item B<--species>
 
@@ -899,10 +919,6 @@ Can be specified multiple times in which case they are used sequentially in the 
 If primers for some of the targets cannot be designed using the first offset the remainder will be designed using the next offset and so on.
 Therefore it makes sense for the offsets to get smaller.
 Default: 60,40.
-
-=item B<--file_prefix>
-
-a common file prefix for all output files.
 
 =item B<--restriction_enzymes>
 
