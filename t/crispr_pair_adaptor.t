@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 # crispr_pair_adaptor.t
 use strict; use warnings;
+
 use Test::More;
 use Test::Exception;
 use Test::Warn;
@@ -9,6 +10,7 @@ use Data::Dumper;
 use Test::DatabaseRow;
 use Readonly;
 use File::Spec;
+use English qw( -no_match_vars );
 
 use Crispr::DB::DBConnection;
 #use Crispr::CrisprPair;
@@ -19,25 +21,25 @@ Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
 );
-plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
+if( $ENV{NO_DB} ) {
+    plan skip_all => 'Not testing database';
+}
+else {
+    plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
+}
 
 ##  database tests  ##
 # Module with a function for creating an empty test database
 # and returning a database connection
 use lib 't/lib';
 use TestDB;
-# check environment variables have been set
-if( !$ENV{MYSQL_DBNAME} || !$ENV{MYSQL_DBUSER} || !$ENV{MYSQL_DBPASS} ){
-    die "The following environment variables need to be set for connecting to the database!\n",
-        "MYSQL_DBNAME, MYSQL_DBUSER, MYSQL_DBPASS"; 
-}
 
 my %db_connection_params = (
     mysql => {
         driver => 'mysql',
         dbname => $ENV{MYSQL_DBNAME},
-        host => $ENV{MYSQL_DBHOST} || '127.0.0.1',
-        port => $ENV{MYSQL_DBPORT} || 3306,
+        host => $ENV{MYSQL_DBHOST},
+        port => $ENV{MYSQL_DBPORT},
         user => $ENV{MYSQL_DBUSER},
         pass => $ENV{MYSQL_DBPASS},
     },
@@ -49,16 +51,22 @@ my %db_connection_params = (
 );
 
 # TestDB creates test database, connects to it and gets db handle
-# TestDB creates test database, connects to it and gets db handle
-my %test_db_connections;
-foreach my $driver ( keys %db_connection_params ){
-    $test_db_connections{$driver} = TestDB->new( $db_connection_params{$driver} );
-}
-
-# make a proper DB_Connection
 my @db_connections;
-foreach my $driver ( keys %db_connection_params ){
-    push @db_connections, Crispr::DB::DBConnection->new( $db_connection_params{$driver} );
+foreach my $driver ( 'mysql', 'sqlite' ){
+    my $adaptor;
+    eval {
+        $adaptor = TestDB->new( $driver );
+    };
+    if( $EVAL_ERROR ){
+        if( $EVAL_ERROR =~ m/ENVIRONMENT VARIABLES/ ){
+            warn "The following environment variables need to be set for testing connections to a MySQL database!\n",
+                    q{$MYSQL_DBNAME, $MYSQL_DBHOST, $MYSQL_DBPORT, $MYSQL_DBUSER, $MYSQL_DBPASS}, "\n";
+        }
+    }
+    if( defined $adaptor ){
+        # reconnect to db using DBConnection
+        push @db_connections, $adaptor;
+    }
 }
 
 SKIP: {
@@ -77,8 +85,10 @@ foreach my $db_connection ( @db_connections ){
     # $dbh is a DBI database handle
     local $Test::DatabaseRow::dbh = $dbh;
     
+    # make a real DBConnection object
+    my $db_conn = Crispr::DB::DBConnection->new( $db_connection_params{$driver} );
     # make a new real CrisprPair Adaptor
-    my $crispr_pair_ad = Crispr::DB::CrisprPairAdaptor->new( db_connection => $db_connection, );
+    my $crispr_pair_ad = Crispr::DB::CrisprPairAdaptor->new( db_connection => $db_conn, );
     # 1 test
     isa_ok( $crispr_pair_ad, 'Crispr::DB::CrisprPairAdaptor' );
     
@@ -261,6 +271,6 @@ foreach my $db_connection ( @db_connections ){
     throws_ok { $crispr_pair_ad->store_crispr_pair( $mock_crispr_pair_2 ) } qr/$error_message/, 'undefined crRNAs';
     
     # destroy database
-    $test_db_connections{$driver}->destroy();    
+    $db_connection->destroy();    
 }
 

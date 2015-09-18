@@ -11,6 +11,7 @@ use Test::DatabaseRow;
 use Data::Dumper;
 use DateTime;
 use Readonly;
+use English qw( -no_match_vars );
 
 use Crispr::DB::InjectionPoolAdaptor;
 use Crispr::DB::DBConnection;
@@ -21,7 +22,12 @@ Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
 );
-plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
+if( $ENV{NO_DB} ) {
+    plan skip_all => 'Not testing database';
+}
+else {
+    plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
+}
 
 # check attributes and methods - 3 + 13 tests
 my @attributes = ( qw{ dbname db_connection connection } );
@@ -38,17 +44,12 @@ my @methods = (
 use lib 't/lib';
 use TestDB;
 
-if( !$ENV{MYSQL_DBNAME} || !$ENV{MYSQL_DBUSER} || !$ENV{MYSQL_DBPASS} ){
-    die "The following environment variables need to be set for connecting to the database!\n",
-        "MYSQL_DBNAME, MYSQL_DBUSER, MYSQL_DBPASS"; 
-}
-
 my %db_connection_params = (
     mysql => {
         driver => 'mysql',
         dbname => $ENV{MYSQL_DBNAME},
-        host => $ENV{MYSQL_DBHOST} || '127.0.0.1',
-        port => $ENV{MYSQL_DBPORT} || 3306,
+        host => $ENV{MYSQL_DBHOST},
+        port => $ENV{MYSQL_DBPORT},
         user => $ENV{MYSQL_DBUSER},
         pass => $ENV{MYSQL_DBPASS},
     },
@@ -60,15 +61,22 @@ my %db_connection_params = (
 );
 
 # TestDB creates test database, connects to it and gets db handle
-my %test_db_connections;
-foreach my $driver ( keys %db_connection_params ){
-    $test_db_connections{$driver} = TestDB->new( $db_connection_params{$driver} );
-}
-
-# make a proper DB_Connection
 my @db_connections;
-foreach my $driver ( keys %db_connection_params ){
-    push @db_connections, Crispr::DB::DBConnection->new( $db_connection_params{$driver} );
+foreach my $driver ( 'mysql', 'sqlite' ){
+    my $adaptor;
+    eval {
+        $adaptor = TestDB->new( $driver );
+    };
+    if( $EVAL_ERROR ){
+        if( $EVAL_ERROR =~ m/ENVIRONMENT VARIABLES/ ){
+            warn "The following environment variables need to be set for testing connections to a MySQL database!\n",
+                    q{$MYSQL_DBNAME, $MYSQL_DBHOST, $MYSQL_DBPORT, $MYSQL_DBUSER, $MYSQL_DBPASS}, "\n";
+        }
+    }
+    if( defined $adaptor ){
+        # reconnect to db using DBConnection
+        push @db_connections, $adaptor;
+    }
 }
 
 SKIP: {
@@ -86,11 +94,8 @@ foreach my $db_connection ( @db_connections ){
     # $dbh is a DBI database handle
     local $Test::DatabaseRow::dbh = $dbh;
     
-    ## make a mock DBConnection object
-    #my $mock_db_connection = Test::MockObject->new();
-    #$mock_db_connection->set_isa( 'Crispr::DB::DBConnection' );
-    #$mock_db_connection->mock( 'dbname', sub { return $db_connection->dbname } );
-    #$mock_db_connection->mock( 'connection', sub { return $db_connection->connection } );
+    # make a real DBConnection object
+    my $db_conn = Crispr::DB::DBConnection->new( $db_connection_params{$driver} );
     
     # make mock Cas9 and Cas9Prep objects
     my $type = 'ZfnCas9n';
@@ -229,7 +234,7 @@ foreach my $db_connection ( @db_connections ){
                                                 ) } );
     
     # make a new real InjectionPool Adaptor
-    my $injection_pool_adaptor = Crispr::DB::InjectionPoolAdaptor->new( db_connection => $db_connection, );
+    my $injection_pool_adaptor = Crispr::DB::InjectionPoolAdaptor->new( db_connection => $db_conn, );
     # 1 test
     isa_ok( $injection_pool_adaptor, 'Crispr::DB::InjectionPoolAdaptor', "$driver: check object class is ok" );
     
@@ -435,7 +440,7 @@ TODO: {
     ok( $injection_pool_adaptor->delete_injection_pool_from_db ( 'rna' ), 'delete_injection_pool_from_db');
 
 }
-    $test_db_connections{$driver}->destroy();
+    $db_connection->destroy();
 }
 
 # 12 + 6 * number of guideRNAs per call

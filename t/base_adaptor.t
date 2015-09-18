@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 # base_adaptor.t
+use warnings;
+use strict;
+
 use Test::More;
 use Test::Exception;
 use Test::Warn;
@@ -11,6 +14,7 @@ use Getopt::Long;
 use List::MoreUtils qw( any );
 use DateTime;
 use Readonly;
+use English qw( -no_match_vars );
 
 use Crispr::DB::BaseAdaptor;
 
@@ -20,7 +24,12 @@ Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
 );
-plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
+if( $ENV{NO_DB} ) {
+    plan skip_all => 'Not testing database';
+}
+else {
+    plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
+}
 
 ##  database tests  ##
 # Module with a function for creating an empty test database
@@ -28,18 +37,12 @@ plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
 use lib 't/lib';
 use TestDB;
 
-# check environment variables have been set
-if( !$ENV{MYSQL_DBNAME} || !$ENV{MYSQL_DBUSER} || !$ENV{MYSQL_DBPASS} ){
-    die "The following environment variables need to be set for connecting to the database!\n",
-        "MYSQL_DBNAME, MYSQL_DBUSER, MYSQL_DBPASS"; 
-}
-
 my %db_connection_params = (
     mysql => {
         driver => 'mysql',
         dbname => $ENV{MYSQL_DBNAME},
-        host => $ENV{MYSQL_DBHOST} || '127.0.0.1',
-        port => $ENV{MYSQL_DBPORT} || 3306,
+        host => $ENV{MYSQL_DBHOST},
+        port => $ENV{MYSQL_DBPORT},
         user => $ENV{MYSQL_DBUSER},
         pass => $ENV{MYSQL_DBPASS},
     },
@@ -51,10 +54,22 @@ my %db_connection_params = (
 );
 
 # TestDB creates test database, connects to it and gets db handle
-my %test_db_connections;
-foreach my $driver ( keys %db_connection_params ){
-    $test_db_connections{$driver} = TestDB->new( $db_connection_params{$driver} );
-    push @db_connections, $test_db_connections{$driver};
+my @db_connections;
+foreach my $driver ( 'mysql', 'sqlite' ){
+    my $adaptor;
+    eval {
+        $adaptor = TestDB->new( $driver );
+    };
+    if( $EVAL_ERROR ){
+        if( $EVAL_ERROR =~ m/ENVIRONMENT VARIABLES/ ){
+            warn "The following environment variables need to be set for testing connections to a MySQL database!\n",
+                    q{$MYSQL_DBNAME, $MYSQL_DBHOST, $MYSQL_DBPORT, $MYSQL_DBUSER, $MYSQL_DBPASS}, "\n";
+        }
+    }
+    if( defined $adaptor ){
+        # reconnect to db using DBConnection
+        push @db_connections, $adaptor;
+    }
 }
 
 SKIP: {
@@ -66,8 +81,8 @@ SKIP: {
     }
 }
 
-foreach my $driver ( keys %test_db_connections ){
-    my $db_connection = $test_db_connections{$driver};
+foreach my $db_connection ( @db_connections ){
+    my $driver = $db_connection->driver;
     my $dbh = $db_connection->connection->dbh;
     # $dbh is a DBI database handle
     local $Test::DatabaseRow::dbh = $dbh;
@@ -91,7 +106,6 @@ foreach my $driver ( keys %test_db_connections ){
     
     foreach my $method ( @methods ) {
         ok( $base_adaptor->can( $method ), "$driver: $method method test" );
-        $tests++;
     }
     
     # insert some data directly into db
@@ -119,7 +133,7 @@ foreach my $driver ( keys %test_db_connections ){
         qr/TOO\sMANY\sITEMS/xms, "$driver: check entry exists in db throws on too many items returned";
     
     # fetch_rows_for_generic_select_statement - 2 tests
-    $results = $base_adaptor->fetch_rows_for_generic_select_statement( $select_statement, [ 'pCS2', ] );
+    my $results = $base_adaptor->fetch_rows_for_generic_select_statement( $select_statement, [ 'pCS2', ] );
     is( scalar @{$results}, 2, "$driver: check number of rows returned by fetch_rows_for_generic_select_statement" );
     
     $select_statement = 'select * from cas9 where cas9_id = ?;';
@@ -171,6 +185,6 @@ foreach my $driver ( keys %test_db_connections ){
         qr/too many rows/, "$driver: _db_error_handling - error message not in caps";
     
     # drop database
-    $test_db_connections{$driver}->destroy();
+    $db_connection->destroy();
 }
 

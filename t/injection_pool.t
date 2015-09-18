@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 # injection_pool.t
+use warnings;
+use strict;
+
 use Test::More;
 use Test::Exception;
 use Test::Warn;
@@ -64,6 +67,24 @@ $mock_cas9_prep_object->mock( 'cas9', sub{ return $mock_cas9_object } );
 $mock_cas9_prep_object->mock( 'prep_type', sub{ return $prep_type } );
 $mock_cas9_prep_object->mock( 'made_by', sub{ return $made_by } );
 $mock_cas9_prep_object->mock( 'date', sub{ return $todays_date_obj->ymd } );
+
+# mock target
+my $mock_target = Test::MockObject->new();
+$mock_target->set_isa( 'Crispr::Target' );
+$mock_target->mock('target_id', sub { return 1; } );
+$mock_target->mock('target_name', sub { return 'target' } );
+$mock_target->mock('assembly', sub { return 'Zv9' } );
+$mock_target->mock('chr', sub { return '5' } );
+$mock_target->mock('start', sub { return 50000 } );
+$mock_target->mock('end', sub { return 51000 } );
+$mock_target->mock('strand', sub { return '1' } );
+$mock_target->mock('species', sub { return 'zebrafish' } );
+$mock_target->mock('requires_enzyme', sub { return 0 } );
+$mock_target->mock('gene_id', sub { return 'ENSDARG' } );
+$mock_target->mock('gene_name', sub { return 'gene' } );
+$mock_target->mock('requestor', sub { return 'requestor' } );
+$mock_target->mock('ensembl_version', sub { return 71 } );
+$mock_target->mock('designed', sub { return undef } );
 
 # crRNAs
 my $mock_crRNA_1 = Test::MockObject->new();

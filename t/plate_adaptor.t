@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 # target_adaptor.t
+use warnings;
+use strict;
+
 use Test::More;
 use Test::Exception;
 use Test::Warn;
@@ -7,6 +10,7 @@ use Test::DatabaseRow;
 use Test::MockObject;
 use Data::Dumper;
 use Readonly;
+use English qw( -no_match_vars );
 
 use Crispr::DB::PlateAdaptor;
 use Crispr::DB::PrimerPairAdaptor;
@@ -16,7 +20,12 @@ Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
 );
-plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
+if( $ENV{NO_DB} ) {
+    plan skip_all => 'Not testing database';
+}
+else {
+    plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
+}
 
 use DateTime;
 #get current date
@@ -28,18 +37,12 @@ my $todays_date = $date_obj->ymd;
 use lib 't/lib';
 use TestDB;
 
-# check environment variables have been set
-if( !$ENV{MYSQL_DBNAME} || !$ENV{MYSQL_DBUSER} || !$ENV{MYSQL_DBPASS} ){
-    die "The following environment variables need to be set for connecting to the database!\n",
-        "MYSQL_DBNAME, MYSQL_DBUSER, MYSQL_DBPASS"; 
-}
-
 my %db_connection_params = (
     mysql => {
         driver => 'mysql',
         dbname => $ENV{MYSQL_DBNAME},
-        host => $ENV{MYSQL_DBHOST} || '127.0.0.1',
-        port => $ENV{MYSQL_DBPORT} || 3306,
+        host => $ENV{MYSQL_DBHOST},
+        port => $ENV{MYSQL_DBPORT},
         user => $ENV{MYSQL_DBUSER},
         pass => $ENV{MYSQL_DBPASS},
     },
@@ -51,10 +54,22 @@ my %db_connection_params = (
 );
 
 # TestDB creates test database, connects to it and gets db handle
-# TestDB creates test database, connects to it and gets db handle
 my @db_connections;
-foreach my $driver ( keys %db_connection_params ){
-    push @db_connections, TestDB->new( $db_connection_params{$driver} );
+foreach my $driver ( 'mysql', 'sqlite' ){
+    my $adaptor;
+    eval {
+        $adaptor = TestDB->new( $driver );
+    };
+    if( $EVAL_ERROR ){
+        if( $EVAL_ERROR =~ m/ENVIRONMENT VARIABLES/ ){
+            warn "The following environment variables need to be set for testing connections to a MySQL database!\n",
+                    q{$MYSQL_DBNAME, $MYSQL_DBHOST, $MYSQL_DBPORT, $MYSQL_DBUSER, $MYSQL_DBPASS}, "\n";
+        }
+    }
+    if( defined $adaptor ){
+        # reconnect to db using DBConnection
+        push @db_connections, $adaptor;
+    }
 }
 
 SKIP: {
@@ -261,14 +276,14 @@ foreach my $db_connection ( @db_connections ){
     $mock_r_primer->set_isa('Crispr::Primer');
     
     my $primer_statement = 'insert into primer values( ?, ?, ?, ?, ?, ?, ?, ?, ? );';
-    $sth = $dbh->prepare($primer_statement);
+    my $sth = $dbh->prepare($primer_statement);
     foreach my $primer ( $mock_l_primer, $mock_r_primer ){
         $sth->execute(
             $primer->primer_id, $primer->sequence,
             $primer->seq_region,
             $primer->seq_region_start, $primer->seq_region_end,
             $primer->seq_region_strand,
-            $primer_tail,
+            $primer->primer_tail,
             2, 'A01',
         );
     }
@@ -316,9 +331,6 @@ foreach my $db_connection ( @db_connections ){
         $mock_r_primer->sequence,
     );
     is( join(",", $well->contents->primer_pair_summary, ), $pp_summary,'check primer_pair info from db');
-}
-
-# drop databases
-foreach ( @db_adaptors ){
-    $_->destroy();
+    
+    $db_connection->destroy();
 }

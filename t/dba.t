@@ -1,26 +1,29 @@
 #!/usr/bin/env perl
 # DBA.t
+use warnings;
+use strict;
+
 use Test::More;
 use Readonly;
+use English qw( -no_match_vars );
 
 Readonly my $TESTS_FOREACH_DBC => 1 + 1 + 8;    # Number of tests in the loop
-plan tests => 2 * $TESTS_FOREACH_DBC;
+if( $ENV{NO_DB} ) {
+    plan skip_all => 'Not testing database';
+}
+else {
+    plan tests => 2 * $TESTS_FOREACH_DBC;
+}
 
 use lib 't/lib';
 use TestDB;
-
-# check environment variables have been set
-if( !$ENV{MYSQL_DBNAME} || !$ENV{MYSQL_DBUSER} || !$ENV{MYSQL_DBPASS} ){
-    die "The following environment variables need to be set for connecting to the database!\n",
-        "MYSQL_DBNAME, MYSQL_DBUSER, MYSQL_DBPASS"; 
-}
 
 my %db_connection_params = (
     mysql => {
         driver => 'mysql',
         dbname => $ENV{MYSQL_DBNAME},
-        host => $ENV{MYSQL_DBHOST} || '127.0.0.1',
-        port => $ENV{MYSQL_DBPORT} || 3306,
+        host => $ENV{MYSQL_DBHOST},
+        port => $ENV{MYSQL_DBPORT},
         user => $ENV{MYSQL_DBUSER},
         pass => $ENV{MYSQL_DBPASS},
     },
@@ -33,8 +36,20 @@ my %db_connection_params = (
 
 # TestDB creates test database, connects to it and gets db handle
 my @db_adaptors;
-foreach my $driver ( keys %db_connection_params ){
-    push @db_adaptors, TestDB->new( $db_connection_params{$driver} );
+foreach my $driver ( 'mysql', 'sqlite' ){
+    my $adaptor;
+    eval {
+        $adaptor = TestDB->new( $driver );
+    };
+    if( $EVAL_ERROR ){
+        if( $EVAL_ERROR =~ m/ENVIRONMENT VARIABLES/ ){
+            warn "The following environment variables need to be set for testing connections to a MySQL database!\n",
+                    q{$MYSQL_DBNAME, $MYSQL_DBHOST, $MYSQL_DBPORT, $MYSQL_DBUSER, $MYSQL_DBPASS}, "\n";
+        }
+    }
+    if( defined $adaptor ){
+        push @db_adaptors, $adaptor;
+    }
 }
 
 SKIP: {

@@ -12,9 +12,15 @@ use autodie qw(:all);
 use Getopt::Long;
 use Readonly;
 use File::Spec;
+use English qw( -no_match_vars );
 
 Readonly my $TESTS_FOREACH_DBC => 1 + 13 + 9 + 22 + 22;
-plan tests => 2 * $TESTS_FOREACH_DBC;
+if( $ENV{NO_DB} ) {
+    plan skip_all => 'Not testing database';
+}
+else {
+    plan tests => 2 * $TESTS_FOREACH_DBC;
+}
 
 use Crispr::DB::DBConnection;
 use Crispr::DB::PrimerPairAdaptor;
@@ -28,18 +34,13 @@ use Crispr::DB::PrimerAdaptor;
 # and returning a database connection
 use lib 't/lib';
 use TestDB;
-# check environment variables have been set
-if( !$ENV{MYSQL_DBNAME} || !$ENV{MYSQL_DBUSER} || !$ENV{MYSQL_DBPASS} ){
-    die "The following environment variables need to be set for connecting to the database!\n",
-        "MYSQL_DBNAME, MYSQL_DBUSER, MYSQL_DBPASS"; 
-}
 
 my %db_connection_params = (
     mysql => {
         driver => 'mysql',
         dbname => $ENV{MYSQL_DBNAME},
-        host => $ENV{MYSQL_DBHOST} || '127.0.0.1',
-        port => $ENV{MYSQL_DBPORT} || 3306,
+        host => $ENV{MYSQL_DBHOST},
+        port => $ENV{MYSQL_DBPORT},
         user => $ENV{MYSQL_DBUSER},
         pass => $ENV{MYSQL_DBPASS},
     },
@@ -51,17 +52,23 @@ my %db_connection_params = (
 );
 
 # TestDB creates test database, connects to it and gets db handle
-my %test_db_connections;
-foreach my $driver ( keys %db_connection_params ){
-    $test_db_connections{$driver} = TestDB->new( $db_connection_params{$driver} );
-}
-
-# make a proper DB_Connection
 my @db_connections;
-foreach my $driver ( keys %db_connection_params ){
-    push @db_connections, Crispr::DB::DBConnection->new( $db_connection_params{$driver} );
+foreach my $driver ( 'mysql', 'sqlite' ){
+    my $adaptor;
+    eval {
+        $adaptor = TestDB->new( $driver );
+    };
+    if( $EVAL_ERROR ){
+        if( $EVAL_ERROR =~ m/ENVIRONMENT VARIABLES/ ){
+            warn "The following environment variables need to be set for testing connections to a MySQL database!\n",
+                    q{$MYSQL_DBNAME, $MYSQL_DBHOST, $MYSQL_DBPORT, $MYSQL_DBUSER, $MYSQL_DBPASS}, "\n";
+        }
+    }
+    if( defined $adaptor ){
+        # reconnect to db using DBConnection
+        push @db_connections, $adaptor;
+    }
 }
-
 
 SKIP: {
     skip 'No database connections available', $TESTS_FOREACH_DBC * 2 if !@db_connections;
@@ -75,11 +82,13 @@ Readonly my @cols => ( qw{ 01 02 03 04 05 06 07 08 09 10 11 12 } );
 foreach my $db_connection ( @db_connections ){
     my $driver = $db_connection->driver;
     my $dbh = $db_connection->connection->dbh;
-    
     # $dbh is a DBI database handle
     local $Test::DatabaseRow::dbh = $dbh;
     
-    my $primer_pair_ad = Crispr::DB::PrimerPairAdaptor->new( db_connection => $db_connection, );
+    # make a real DBConnection object
+    my $db_conn = Crispr::DB::DBConnection->new( $db_connection_params{$driver} );
+    
+    my $primer_pair_ad = Crispr::DB::PrimerPairAdaptor->new( db_connection => $db_conn, );
 
     # 1 test
     isa_ok( $primer_pair_ad, 'Crispr::DB::PrimerPairAdaptor' );
@@ -257,11 +266,8 @@ foreach my $db_connection ( @db_connections ){
         
         check_primer_pair_attributes( $primer_pair_from_db, $mock_primer_pair, $driver, 'fetch_by_plate_name_and_well' );
     }
-}
-
-# drop databases
-foreach my $driver ( keys %test_db_connections ){
-    $test_db_connections{$driver}->destroy();
+    
+    $db_connection->destroy();
 }
 
 # 5 + 16 tests per call

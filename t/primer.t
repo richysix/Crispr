@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 # primer.t
+use warnings;
+use strict;
+
 use Test::More;
 use Test::Exception;
 
