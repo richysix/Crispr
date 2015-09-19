@@ -40,53 +40,21 @@ my @methods = (
 # Module with a function for creating an empty test database
 # and returning a database connection
 use lib 't/lib';
-use TestDB;
+use TestMethods;
 
-my %db_connection_params = (
-    mysql => {
-        driver => 'mysql',
-        dbname => $ENV{MYSQL_DBNAME},
-        host => $ENV{MYSQL_DBHOST},
-        port => $ENV{MYSQL_DBPORT},
-        user => $ENV{MYSQL_DBUSER},
-        pass => $ENV{MYSQL_DBPASS},
-    },
-    sqlite => {
-        driver => 'sqlite',
-        dbfile => 'test.db',
-        dbname => 'test',
-    }
-);
-
-# TestDB creates test database, connects to it and gets db handle
-my @db_connections;
-foreach my $driver ( 'mysql', 'sqlite' ){
-    my $adaptor;
-    eval {
-        $adaptor = TestDB->new( $driver );
-    };
-    if( $EVAL_ERROR ){
-        if( $EVAL_ERROR =~ m/ENVIRONMENT VARIABLES/ ){
-            warn "The following environment variables need to be set for testing connections to a MySQL database!\n",
-                    q{$MYSQL_DBNAME, $MYSQL_DBHOST, $MYSQL_DBPORT, $MYSQL_DBUSER, $MYSQL_DBPASS}, "\n";
-        }
-    }
-    if( defined $adaptor ){
-        # reconnect to db using DBConnection
-        push @db_connections, $adaptor;
-    }
-}
+my $test_method_obj = TestMethods->new();
+my ( $db_connection_params, $db_connections ) = $test_method_obj->create_test_db();
 
 SKIP: {
-    skip 'No database connections available', $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite} if !@db_connections;
+    skip 'No database connections available', $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite} if !@{$db_connections};
     
-    if( @db_connections == 1 ){
-        skip 'Only one database connection available', $TESTS_FOREACH_DBC{sqlite} if $db_connections[0]->driver eq 'mysql';
-        skip 'Only one database connection available', $TESTS_FOREACH_DBC{mysql} if $db_connections[0]->driver eq 'sqlite';
+    if( @{$db_connections} == 1 ){
+        skip 'Only one database connection available', $TESTS_FOREACH_DBC{sqlite} if $db_connections->[0]->driver eq 'mysql';
+        skip 'Only one database connection available', $TESTS_FOREACH_DBC{mysql} if $db_connections->[0]->driver eq 'sqlite';
     }
 }
 
-foreach my $db_connection ( @db_connections ){
+foreach my $db_connection ( @{$db_connections} ){
     my $driver = $db_connection->driver;
     my $dbh = $db_connection->connection->dbh;
     # $dbh is a DBI database handle

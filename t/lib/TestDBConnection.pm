@@ -1,4 +1,4 @@
-package TestDB;
+package TestDBConnection;
 use Moose;
 use Moose::Util::TypeConstraints;
 use File::Slurp;

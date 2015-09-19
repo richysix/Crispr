@@ -35,59 +35,28 @@ else {
 # Module with a function for creating an empty test database
 # and returning a database connection
 use lib 't/lib';
-use TestDB;
+use TestMethods;
 
-my %db_connection_params = (
-    mysql => {
-        driver => 'mysql',
-        dbname => $ENV{MYSQL_DBNAME},
-        host => $ENV{MYSQL_DBHOST},
-        port => $ENV{MYSQL_DBPORT},
-        user => $ENV{MYSQL_DBUSER},
-        pass => $ENV{MYSQL_DBPASS},
-    },
-    sqlite => {
-        driver => 'sqlite',
-        dbfile => 'test.db',
-        dbname => 'test',
-    }
-);
-
-# TestDB creates test database, connects to it and gets db handle
-my @db_connections;
-foreach my $driver ( 'mysql', 'sqlite' ){
-    my $adaptor;
-    eval {
-        $adaptor = TestDB->new( $driver );
-    };
-    if( $EVAL_ERROR ){
-        if( $EVAL_ERROR =~ m/ENVIRONMENT VARIABLES/ ){
-            warn "The following environment variables need to be set for testing connections to a MySQL database!\n",
-                    q{$MYSQL_DBNAME, $MYSQL_DBHOST, $MYSQL_DBPORT, $MYSQL_DBUSER, $MYSQL_DBPASS}, "\n";
-        }
-    }
-    if( defined $adaptor ){
-        push @db_connections, $adaptor;
-    }
-}
+my $test_method_obj = TestMethods->new();
+my ( $db_connection_params, $db_connections ) = $test_method_obj->create_test_db();
 
 SKIP: {
-    skip 'No database connections available', $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite} if !@db_connections;
+    skip 'No database connections available', $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite} if !@{$db_connections};
     
-    if( @db_connections == 1 ){
-        skip 'Only one database connection available', $TESTS_FOREACH_DBC{sqlite} if $db_connections[0]->driver eq 'mysql';
-        skip 'Only one database connection available', $TESTS_FOREACH_DBC{mysql} if $db_connections[0]->driver eq 'sqlite';
+    if( @{$db_connections} == 1 ){
+        skip 'Only one database connection available', $TESTS_FOREACH_DBC{sqlite} if $db_connections->[0]->driver eq 'mysql';
+        skip 'Only one database connection available', $TESTS_FOREACH_DBC{mysql} if $db_connections->[0]->driver eq 'sqlite';
     }
 }
 
-foreach my $db_connection ( @db_connections ){
+foreach my $db_connection ( @{$db_connections} ){
     my $driver = $db_connection->driver;
     my $dbh = $db_connection->connection->dbh;
     # $dbh is a DBI database handle
     local $Test::DatabaseRow::dbh = $dbh;
     
     # make a real DBConnection object
-    my $db_conn = Crispr::DB::DBConnection->new( $db_connection_params{$driver} );
+    my $db_conn = Crispr::DB::DBConnection->new( $db_connection_params->{$driver} );
     
     # 1 test
     isa_ok( $db_conn, 'Crispr::DB::DBConnection', "$driver: test inital Adaptor object class" );
@@ -105,26 +74,26 @@ foreach my $db_connection ( @db_connections ){
     is( $db_conn->driver, $driver, "$driver: check value of driver attribute" );
     if( $driver eq 'mysql' ){
         # 7 tests
-        is( $db_conn->dbname, $db_connection_params{mysql}->{dbname}, "$driver: check value of dbname attribute" );
-        is( $db_conn->host, $db_connection_params{mysql}->{host}, "$driver: check value of host attribute" );
-        is( $db_conn->port, $db_connection_params{mysql}->{port}, "$driver: check value of port attribute" );
-        is( $db_conn->user, $db_connection_params{mysql}->{user}, "$driver: check value of user attribute" );
-        is( $db_conn->pass, $db_connection_params{mysql}->{pass}, "$driver: check value of pass attribute" );
+        is( $db_conn->dbname, $db_connection_params->{mysql}->{dbname}, "$driver: check value of dbname attribute" );
+        is( $db_conn->host, $db_connection_params->{mysql}->{host}, "$driver: check value of host attribute" );
+        is( $db_conn->port, $db_connection_params->{mysql}->{port}, "$driver: check value of port attribute" );
+        is( $db_conn->user, $db_connection_params->{mysql}->{user}, "$driver: check value of user attribute" );
+        is( $db_conn->pass, $db_connection_params->{mysql}->{pass}, "$driver: check value of pass attribute" );
         ok( Crispr::DB::DBConnection->new(), "$driver: env variables" );
         ok( Crispr::DB::DBConnection->new( undef ), "$driver: env variables with undef parameter" );
     }
     else{
         # 2 tests
-        is( $db_conn->dbname, $db_connection_params{sqlite}->{dbname}, "$driver: check value of dbname attribute" );
-        is( $db_conn->dbfile, $db_connection_params{sqlite}->{dbfile}, "$driver: check value of dbfile attribute" );
+        is( $db_conn->dbname, $db_connection_params->{sqlite}->{dbname}, "$driver: check value of dbname attribute" );
+        is( $db_conn->dbfile, $db_connection_params->{sqlite}->{dbfile}, "$driver: check value of dbfile attribute" );
     }
     
     # test BUILDARGS method in constructor - 3 tests
     # create tmp config file
     open my $fh, '>', 'config.tmp';
     print $fh join("\n", map {
-        if($_ ne 'connection' ){ join("\t", $_, $db_connection_params{$driver}{$_} ) }else{ () }
-        } keys $db_connection_params{$driver} ), "\n";
+        if($_ ne 'connection' ){ join("\t", $_, $db_connection_params->{$driver}{$_} ) }else{ () }
+        } keys $db_connection_params->{$driver} ), "\n";
     close($fh);
     ok( Crispr::DB::DBConnection->new( 'config.tmp' ), "$driver: config_file" );
     unlink( 'config.tmp' );
@@ -134,11 +103,11 @@ foreach my $db_connection ( @db_connections ){
         qr/Could\snot\sparse\sarguments\sto\sBUILD\smethod/, "$driver: ArrayRef";
     
     # check that BUILD method throws properly if driver is undefined or not mysql or sqlite- 2 tests
-    $db_connection_params{ $driver }{ 'driver' } = undef;
-    throws_ok{ Crispr::DB::DBConnection->new( $db_connection_params{ $driver }, ) }
+    $db_connection_params->{ $driver }{ 'driver' } = undef;
+    throws_ok{ Crispr::DB::DBConnection->new( $db_connection_params->{ $driver }, ) }
         qr/Validation\sfailed/, "$driver: throws with undef driver";
-    $db_connection_params{ $driver }{ 'driver' } = 'cheese';
-    throws_ok{ Crispr::DB::DBConnection->new( $db_connection_params{ $driver }, ) }
+    $db_connection_params->{ $driver }{ 'driver' } = 'cheese';
+    throws_ok{ Crispr::DB::DBConnection->new( $db_connection_params->{ $driver }, ) }
         qr/Validation\sfailed/, "$driver: throws with incorrect driver";
     
     # test get_adaptor: target - 6 tests

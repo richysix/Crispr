@@ -5,6 +5,7 @@ use English qw( -no_match_vars );
 use Bio::EnsEMBL::Registry;
 use Bio::SeqIO;
 use Bio::Seq;
+use TestDBConnection;
 
 has 'slice_adaptor' => (
     is => 'ro',
@@ -12,6 +13,48 @@ has 'slice_adaptor' => (
     lazy => 1,
     builder => '_build_slice_adaptor',
 );
+
+sub create_test_db {
+    my ( $self, ) = @_;
+    
+    my %db_connection_params = (
+        mysql => {
+            driver => 'mysql',
+            dbname => $ENV{MYSQL_DBNAME},
+            host => $ENV{MYSQL_DBHOST},
+            port => $ENV{MYSQL_DBPORT},
+            user => $ENV{MYSQL_DBUSER},
+            pass => $ENV{MYSQL_DBPASS},
+        },
+        sqlite => {
+            driver => 'sqlite',
+            dbfile => 'test.db',
+            dbname => 'test',
+        }
+    );
+    
+    # TestDB creates test database, connects to it and gets db handle
+    my @db_connections;
+    foreach my $driver ( 'mysql', 'sqlite' ){
+        my $adaptor;
+        eval {
+            $adaptor = TestDBConnection->new( $driver );
+        };
+        if( $EVAL_ERROR ){
+            if( $EVAL_ERROR =~ m/ENVIRONMENT VARIABLES/ ){
+                warn "The following environment variables need to be set for testing connections to a MySQL database!\n",
+                        q{$MYSQL_DBNAME, $MYSQL_DBHOST, $MYSQL_DBPORT, $MYSQL_DBUSER, $MYSQL_DBPASS}, "\n";
+            }
+        }
+        if( defined $adaptor ){
+            # reconnect to db using DBConnection
+            push @db_connections, $adaptor;
+        }
+    }
+    
+    return ( \%db_connection_params, \@db_connections );
+}
+
 
 sub check_for_test_genome {
     my ( $self, $test_genome_prefix ) = @_;
