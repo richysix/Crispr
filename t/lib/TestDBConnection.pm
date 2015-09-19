@@ -1,4 +1,4 @@
-package TestDB;
+package TestDBConnection;
 use Moose;
 use Moose::Util::TypeConstraints;
 use File::Slurp;
@@ -58,6 +58,76 @@ has 'debug' => (
     isa => 'Int',
     default => 0,
 );
+
+around BUILDARGS => sub {
+    my $orig  = shift;
+    my $self = shift;
+    
+    my $db_conn_params;
+    my %db_connection_params = (
+        mysql => {
+            driver => 'mysql',
+            dbname => $ENV{MYSQL_DBNAME},
+            host => $ENV{MYSQL_DBHOST},
+            port => $ENV{MYSQL_DBPORT},
+            user => $ENV{MYSQL_DBUSER},
+            pass => $ENV{MYSQL_DBPASS},
+        },
+        sqlite => {
+            driver => 'sqlite',
+            dbfile => 'test.db',
+            dbname => 'test',
+        }
+    );
+    
+    if( @_ == 1 ){
+        # if it's not defined die
+        if( !defined $_[0] ){
+            die "No parameters were supplied when creating the TestDB object!";
+        }
+        # if it's a scalar assume it's a driver name and try and use the defaults
+        elsif( !ref $_[0] ){
+            if( !exists $db_connection_params{$_[0]} ){
+            }
+            else{
+                if( $_[0] eq 'mysql' ){
+                    if( !$ENV{MYSQL_DBNAME} || !$ENV{MYSQL_DBHOST} ||
+                       !$ENV{MYSQL_DBPORT} || !$ENV{MYSQL_DBUSER} ||
+                       !$ENV{MYSQL_DBPASS} ){
+                        die "ENVIRONMENT VARIABLES";
+                    }
+                    else{
+                        $db_conn_params = $db_connection_params{'mysql'};
+                    }
+                }
+                elsif( $_[0] eq 'sqlite' ){
+                    $db_conn_params = $db_connection_params{'sqlite'};
+                }
+                else{
+                    die "Could not understand the parameter passed to TestDB.\n",
+                        "Expecting one of mysql or sqlite\n";
+                }
+            }
+        }
+        elsif( ref $_[0] eq 'HASH' ){
+            # hashref.
+            $db_conn_params = $_[0];
+        }
+        else{
+            # complain
+            die join(q{ }, "Could not parse arguments to TestDB BUILD method!\n", Dumper( $_[0] ) );
+        }
+    }
+    elsif( @_ == 0 ){
+        die "No parameters were supplied when creating the TestDB object!";
+    }
+    elsif( @_ > 1 ){
+        # assume its an array of key value pairs
+        return $self->$orig( @_ );
+    }
+    
+    return $self->$orig( $db_conn_params );
+};
 
 sub BUILD {
     my $self = shift;

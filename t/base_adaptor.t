@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 # base_adaptor.t
+use warnings;
+use strict;
+
 use Test::More;
 use Test::Exception;
 use Test::Warn;
@@ -11,6 +14,7 @@ use Getopt::Long;
 use List::MoreUtils qw( any );
 use DateTime;
 use Readonly;
+use English qw( -no_match_vars );
 
 use Crispr::DB::BaseAdaptor;
 
@@ -20,54 +24,33 @@ Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
 );
-plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
+if( $ENV{NO_DB} ) {
+    plan skip_all => 'Not testing database';
+}
+else {
+    plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
+}
 
 ##  database tests  ##
 # Module with a function for creating an empty test database
 # and returning a database connection
 use lib 't/lib';
-use TestDB;
+use TestMethods;
 
-# check environment variables have been set
-if( !$ENV{MYSQL_DBNAME} || !$ENV{MYSQL_DBUSER} || !$ENV{MYSQL_DBPASS} ){
-    die "The following environment variables need to be set for connecting to the database!\n",
-        "MYSQL_DBNAME, MYSQL_DBUSER, MYSQL_DBPASS"; 
-}
-
-my %db_connection_params = (
-    mysql => {
-        driver => 'mysql',
-        dbname => $ENV{MYSQL_DBNAME},
-        host => $ENV{MYSQL_DBHOST} || '127.0.0.1',
-        port => $ENV{MYSQL_DBPORT} || 3306,
-        user => $ENV{MYSQL_DBUSER},
-        pass => $ENV{MYSQL_DBPASS},
-    },
-    sqlite => {
-        driver => 'sqlite',
-        dbfile => 'test.db',
-        dbname => 'test',
-    }
-);
-
-# TestDB creates test database, connects to it and gets db handle
-my %test_db_connections;
-foreach my $driver ( keys %db_connection_params ){
-    $test_db_connections{$driver} = TestDB->new( $db_connection_params{$driver} );
-    push @db_connections, $test_db_connections{$driver};
-}
+my $test_method_obj = TestMethods->new();
+my ( $db_connection_params, $db_connections ) = $test_method_obj->create_test_db();
 
 SKIP: {
-    skip 'No database connections available', $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite} if !@db_connections;
+    skip 'No database connections available', $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite} if !@{$db_connections};
     
-    if( @db_connections == 1 ){
-        skip 'Only one database connection available', $TESTS_FOREACH_DBC{sqlite} if $db_connections[0]->driver eq 'mysql';
-        skip 'Only one database connection available', $TESTS_FOREACH_DBC{mysql} if $db_connections[0]->driver eq 'sqlite';
+    if( @{$db_connections} == 1 ){
+        skip 'Only one database connection available', $TESTS_FOREACH_DBC{sqlite} if $db_connections->[0]->driver eq 'mysql';
+        skip 'Only one database connection available', $TESTS_FOREACH_DBC{mysql} if $db_connections->[0]->driver eq 'sqlite';
     }
 }
 
-foreach my $driver ( keys %test_db_connections ){
-    my $db_connection = $test_db_connections{$driver};
+foreach my $db_connection ( @{$db_connections} ){
+    my $driver = $db_connection->driver;
     my $dbh = $db_connection->connection->dbh;
     # $dbh is a DBI database handle
     local $Test::DatabaseRow::dbh = $dbh;
@@ -91,7 +74,6 @@ foreach my $driver ( keys %test_db_connections ){
     
     foreach my $method ( @methods ) {
         ok( $base_adaptor->can( $method ), "$driver: $method method test" );
-        $tests++;
     }
     
     # insert some data directly into db
@@ -119,7 +101,7 @@ foreach my $driver ( keys %test_db_connections ){
         qr/TOO\sMANY\sITEMS/xms, "$driver: check entry exists in db throws on too many items returned";
     
     # fetch_rows_for_generic_select_statement - 2 tests
-    $results = $base_adaptor->fetch_rows_for_generic_select_statement( $select_statement, [ 'pCS2', ] );
+    my $results = $base_adaptor->fetch_rows_for_generic_select_statement( $select_statement, [ 'pCS2', ] );
     is( scalar @{$results}, 2, "$driver: check number of rows returned by fetch_rows_for_generic_select_statement" );
     
     $select_statement = 'select * from cas9 where cas9_id = ?;';
@@ -171,6 +153,6 @@ foreach my $driver ( keys %test_db_connections ){
         qr/too many rows/, "$driver: _db_error_handling - error message not in caps";
     
     # drop database
-    $test_db_connections{$driver}->destroy();
+    $db_connection->destroy();
 }
 

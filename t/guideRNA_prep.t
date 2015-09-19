@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 # guideRNA_prep.t
+use warnings;
+use strict;
+
 use Test::More;
 use Test::Exception;
 use Test::Warn;
@@ -63,7 +66,7 @@ is( $guideRNA_prep->date, $date->ymd, 'check date');
 $tests += 4;
 
 # check attribute constraints
-%new_args = %args;
+my %new_args = %args;
 $new_args{ crRNA } = 'crRNA:7:26374-26396:-1';
 throws_ok { Crispr::DB::GuideRNAPrep->new( %new_args ) } qr/crRNA.*Validation\sfailed/, 'check crRNA throws on Str';
 %new_args = %args;

@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 # cas9_prep.t
+use warnings;
+use strict;
+
 use Test::More;
 use Test::Exception;
 use Test::Warn;

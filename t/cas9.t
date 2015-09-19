@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 # cas9.t
+use warnings;
+use strict;
+
 use Test::More;
 use Test::Exception;
 use Test::Warn;
@@ -72,7 +75,7 @@ throws_ok { Crispr::Cas9->new( type => 'cas9_gfp' ); } qr/Validation\sfailed/, '
 $tests += 3;
 
 # check _parse_species
-my $cas9_tmp = Crispr::Cas9->new( species => 'streptococcus_pyogenes' );
+$cas9_tmp = Crispr::Cas9->new( species => 'streptococcus_pyogenes' );
 is( $cas9_tmp->species, 's_pyogenes', 'check parse_species' );
 $tests++;
 $cas9_tmp = Crispr::Cas9->new( species => 'new species' ); 

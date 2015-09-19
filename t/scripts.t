@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 # scripts.t
+use warnings;
+use strict;
+
 BEGIN {
     if( !$ENV{RELEASE_TESTING} ) {
         require Test::More;

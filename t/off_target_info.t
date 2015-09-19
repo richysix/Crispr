@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 # off_target.t
+use warnings;
+use strict;
+
 use Test::More;
 use Test::Exception;
 use Test::Warn;
@@ -43,7 +46,7 @@ foreach my $method ( @methods ) {
 }
 
 # make mock OffTarget object
-$mock_exon_off_target = Test::MockObject->new();
+my $mock_exon_off_target = Test::MockObject->new();
 $mock_exon_off_target->set_isa( 'Crispr::OffTarget' );
 $mock_exon_off_target->mock( 'position', sub{ return 'test_chr1:201-123:1' });
 $mock_exon_off_target->mock( 'mismatches', sub{ return 2 });
@@ -61,7 +64,7 @@ throws_ok { $off_target->add_off_target( $mock_object ) } qr/Argument\smust\sbe\
 isa_ok( $off_target->_off_targets, 'HASH', 'check type of off_targets object' );
 is( $off_target->score, 0.9, 'check off target score 2' );
 
-$mock_intron_off_target = Test::MockObject->new();
+my $mock_intron_off_target = Test::MockObject->new();
 $mock_intron_off_target->set_isa( 'Crispr::OffTarget' );
 $mock_intron_off_target->mock( 'position', sub{ return 'test_chr3:101-123' });
 $mock_intron_off_target->mock( 'mismatches', sub{ return 1 });
@@ -70,7 +73,7 @@ $mock_intron_off_target->mock( 'annotation', sub{ return 'intron' });
 $off_target->add_off_target( $mock_intron_off_target );
 is( $off_target->score, 0.85, 'check off target score 3' );
 
-$mock_nongenic_off_target = Test::MockObject->new();
+my $mock_nongenic_off_target = Test::MockObject->new();
 $mock_nongenic_off_target->set_isa( 'Crispr::OffTarget' );
 $mock_nongenic_off_target->mock( 'position', sub{ return 'test_chr1:1-23' });
 $mock_nongenic_off_target->mock( 'mismatches', sub{ return 1 });

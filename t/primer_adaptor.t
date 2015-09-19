@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 # primer_adaptor.t
+use warnings;
+use strict;
+
 use Test::More;
 use Test::Exception;
 use Test::Warn;
@@ -10,6 +13,7 @@ use autodie qw(:all);
 use Getopt::Long;
 use Readonly;
 use File::Spec;
+use English qw( -no_match_vars );
 
 my $test_data = File::Spec->catfile( 't', 'data', 'test_primer_data.tsv' );
 
@@ -22,7 +26,13 @@ chomp $count_output;
 $count_output =~ s/\s$test_data//mxs;
 
 Readonly my $TESTS_FOREACH_DBC => 1 + 14 + $count_output * 2 + 2 + 9;
-plan tests => 2 * $TESTS_FOREACH_DBC;
+if( $ENV{NO_DB} ) {
+    plan skip_all => 'Not testing database';
+}
+else {
+    plan tests => 2 * $TESTS_FOREACH_DBC;
+}
+
 
 use Crispr::DB::DBConnection;
 use Crispr::DB::PrimerAdaptor;
@@ -31,42 +41,18 @@ use Crispr::DB::PrimerAdaptor;
 # Module with a function for creating an empty test database
 # and returning a database connection
 use lib 't/lib';
-use TestDB;
-# check environment variables have been set
-if( !$ENV{MYSQL_DBNAME} || !$ENV{MYSQL_DBUSER} || !$ENV{MYSQL_DBPASS} ){
-    die "The following environment variables need to be set for connecting to the database!\n",
-        "MYSQL_DBNAME, MYSQL_DBUSER, MYSQL_DBPASS"; 
-}
+use TestMethods;
 
-my %db_connection_params = (
-    mysql => {
-        driver => 'mysql',
-        dbname => $ENV{MYSQL_DBNAME},
-        host => $ENV{MYSQL_DBHOST} || '127.0.0.1',
-        port => $ENV{MYSQL_DBPORT} || 3306,
-        user => $ENV{MYSQL_DBUSER},
-        pass => $ENV{MYSQL_DBPASS},
-    },
-    sqlite => {
-        driver => 'sqlite',
-        dbfile => 'test.db',
-        dbname => 'test',
-    }
-);
-
-# TestDB creates test database, connects to it and gets db handle
-my @db_connections;
-foreach my $driver ( keys %db_connection_params ){
-    push @db_connections, TestDB->new( $db_connection_params{$driver} );
-}
+my $test_method_obj = TestMethods->new();
+my ( $db_connection_params, $db_connections ) = $test_method_obj->create_test_db();
 
 SKIP: {
-    skip 'No database connections available', $TESTS_FOREACH_DBC * 2 if !@db_connections;
+    skip 'No database connections available', $TESTS_FOREACH_DBC * 2 if !@{$db_connections};
     skip 'Only one database connection available', $TESTS_FOREACH_DBC
-      if @db_connections == 1;
+      if @{$db_connections} == 1;
 }
 
-foreach my $db_connection ( @db_connections ){
+foreach my $db_connection ( @{$db_connections} ){
     my $driver = $db_connection->driver;
     my $dbh = $db_connection->connection->dbh;
 
@@ -262,7 +248,7 @@ foreach my $db_connection ( @db_connections ){
     # test fetch methods
     # _fetch - 9 tests
     my $primer;
-    ok( $primers = $primer_ad->_fetch( 'primer_id = ?',
+    ok( my $primers = $primer_ad->_fetch( 'primer_id = ?',
         [ $mock_left_primer->primer_id, ] ), "$driver: Test _fetch method" );
     check_attributes( $primers->[0], $mock_left_primer, $driver, '_fetch' );
     

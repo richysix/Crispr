@@ -2395,6 +2395,8 @@ An example is shown below.
 
 =head1 OPTIONS
 
+=over
+
 =item B<--output_directory>
 
 Directory for output files [default: results]
@@ -2463,8 +2465,6 @@ Path to the genome reference file.
 =item B<--assembly>
 
 Name for the genome assembly
-
-=over
 
 =item B<--debug>
 

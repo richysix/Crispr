@@ -1,12 +1,15 @@
 #!/usr/bin/env perl
 # enzymeinfo.t
+use warnings;
+use strict;
+
 use Test::More;
 use Test::Exception;
 use Test::Warn;
 use List::MoreUtils qw( any none );
 
-#my $number_of_tests_run = 0;
-plan tests => 1 + 4 + 5;
+my $number_of_tests_run = 0;
+#plan tests => 1 + 4 + 5;
 
 use Crispr::EnzymeInfo;
 
@@ -32,5 +35,7 @@ foreach my $method ( @methods ) {
     can_ok( $enzyme_info_obj, $method );
     $number_of_tests_run++;
 }
+
+done_testing( $number_of_tests_run );
 
 ## TO DO: write some more tests.

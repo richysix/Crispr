@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 # target.t
+use warnings;
+use strict;
+
 use Test::More;
 use Test::Exception;
 use Test::Warn;
@@ -93,7 +96,7 @@ foreach my $method ( @methods ) {
 # 4 tests - check type constraints for target_id
 is( $target->target_id, undef, 'Get id' );
 
-$tmp_target = Crispr::Target->new( target_id => '1' );
+my $tmp_target = Crispr::Target->new( target_id => '1' );
 is( $tmp_target->target_id, '1', 'Set id' );
 throws_ok { Crispr::Target->new( target_id => 'string') } qr/Validation failed/ms, 'string id';
 throws_ok { Crispr::Target->new( target_id => '' ) } qr/Validation failed/ms, 'Empty string id';
