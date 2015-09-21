@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 # allele.t
+use warnings;
+use strict;
+
 use Test::More;
 use Test::Exception;
 use Test::Warn;
@@ -95,16 +98,16 @@ $tests++;
 my %new_args = %args;
 $new_args{ chr } = undef;
 throws_ok { Crispr::Allele->new( %new_args ) } qr/chr.*Validation\sfailed/, 'check chr throws on undef';
-my %new_args = %args;
+%new_args = %args;
 $new_args{ pos } = undef;
 throws_ok { Crispr::Allele->new( %new_args ) } qr/pos.*Validation\sfailed/, 'check pos throws on undef';
-my %new_args = %args;
+%new_args = %args;
 $new_args{ ref_allele } = undef;
 throws_ok { Crispr::Allele->new( %new_args ) } qr/ref_allele.*Not\sa\svalid\sDNA\ssequence/, 'check ref_allele throws on undef';
-my %new_args = %args;
+%new_args = %args;
 $new_args{ alt_allele } = undef;
 throws_ok { Crispr::Allele->new( %new_args ) } qr/alt_allele.*Not\sa\svalid\sDNA\ssequence/, 'check alt_allele throws on undef';
-my %new_args = %args;
+%new_args = %args;
 $new_args{ sa_number } = undef;
 ok ( Crispr::Allele->new( %new_args ), 'check alt_allele throws on undef' );
 $tests += 5;

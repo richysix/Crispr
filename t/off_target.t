@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 # off_target.t
+use warnings;
+use strict;
+
 use Test::More;
 use Test::Exception;
 use Test::Warn;

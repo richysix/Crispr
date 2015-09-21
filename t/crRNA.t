@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 # crRNA.t
+use warnings;
+use strict;
+
 use Test::More;
 use Test::Exception;
 use Test::Warn;
@@ -20,7 +23,7 @@ $mock_off_target_object->mock( 'score', sub{ return 0.223 } );
 $mock_off_target_object->mock( 'number_exon_hits', sub{ return 1 } );
 $mock_off_target_object->mock( 'number_intron_hits', sub{ return 2 } );
 $mock_off_target_object->mock( 'number_nongenic_hits', sub{ return 4 } );
-$mock_off_target_object->mock( 'info', sub { return qw( 0.223 0.528 17:403-425:-1/2/4 0.422 17:403-425:-1,Zv9_NA1:403-425:-1/2/4 ) } );
+$mock_off_target_object->mock( 'info', sub { return ( qw{ 0.88 1/2/0 17:403-425:-1|Zv9_NA1:403-425:-1/18:1000-1022:1| } ) } );
 
 my $mock_target_object = Test::MockObject->new();
 $mock_target_object->set_isa( 'Crispr::Target' );
@@ -93,7 +96,7 @@ foreach my $method ( @methods ) {
 # 4 tests - check type constraints for crRNA_id
 is( $crRNA->crRNA_id, undef, 'Get id' );
 
-$tmp_crRNA = Crispr::crRNA->new( crRNA_id => '1' );
+my $tmp_crRNA = Crispr::crRNA->new( crRNA_id => '1' );
 is( $tmp_crRNA->crRNA_id, '1', 'Set id' );
 throws_ok { Crispr::crRNA->new( crRNA_id => 'string') } qr/Validation failed/ms, 'string id';
 throws_ok { Crispr::crRNA->new( crRNA_id => '' ) } qr/Validation failed/ms, 'Empty string id';
@@ -212,7 +215,7 @@ is( abs($base_composition->{T} - 0.250) < 0.001, 1, 'check T base composition');
 
 # crRNA_info - 2 tests
 like( join("\t", $crRNA->info ),
-    qr/crRNA:5:18078991-18079013:1\t5\t18078991\t18079013\t1\t0.099\tGGCCTTCGGGTTTGACCCCATGG\tTAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGG\t0.223\t0.528\t17:403-425:-1\/2\/4\t0.422\t17:403-425:-1,Zv9_NA1:403-425:-1\/2\/4\t0.445\tENSDART00000037671=0.1;ENSDART00000037681=0.5;ENSDART00000037691=0.734/,
+    qr/crRNA:5:18078991-18079013:1\t5\t18078991\t18079013\t1\t0.099\tGGCCTTCGGGTTTGACCCCATGG\tTAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGG\t0.88\t1\/2\/0\t17:403-425:-1|Zv9_NA1:403-425:-1\/18:1000-1022:1|\t0.445\tENSDART00000037671=0.1;ENSDART00000037681=0.5;ENSDART00000037691=0.734/,
     'check info' );
 like( join("\t", $crRNA_2->info ),
     qr/crRNA:5:18078991-18079013:-1\t5\t18078991\t18079013\t-1\tNULL\tGGCCTTCGGGTTTGACCCCATGG\tATAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGGC\tNULL\tNULL\tNULL\tNULL\tNULL\t1\tpGERETY-1260/,
@@ -221,10 +224,10 @@ like( join("\t", $crRNA_2->info ),
 # crRNA target_summary_plus_crRNA_info & target_info_plus_crRNA_info
 # 2 tests
 like( join("\t", $crRNA->target_summary_plus_crRNA_info ),
-    qr/ENSE000000035646\tENSDARG00000026374\tatpase2\tcrispr_test\tcrRNA:5:18078991-18079013:1\t5\t18078991\t18079013\t1\t0.099\tGGCCTTCGGGTTTGACCCCATGG\tTAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGG\t0.223\t0.528\t17:403-425:-1\/2\/4\t0.422\t17:403-425:-1,Zv9_NA1:403-425:-1\/2\/4\t0.445\tENSDART00000037671=0.1;ENSDART00000037681=0.5;ENSDART00000037691=0.734/,
+    qr/ENSE000000035646\tENSDARG00000026374\tatpase2\tcrispr_test\tcrRNA:5:18078991-18079013:1\t5\t18078991\t18079013\t1\t0.099\tGGCCTTCGGGTTTGACCCCATGG\tTAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGG\t0.88\t1\/2\/0\t17:403-425:-1|Zv9_NA1:403-425:-1\/18:1000-1022:1|\t0.445\tENSDART00000037671=0.1;ENSDART00000037681=0.5;ENSDART00000037691=0.734/,
     'check target_summary plus info' );
 like( join("\t", $crRNA->target_info_plus_crRNA_info ),
-    qr/NULL\tENSE000000035646\tNULL\t5\t18078900\t18079400\t1\tzebrafish\tn\tENSDARG00000026374\tatpase2\tcrispr_test\t75\tNULL\tcrRNA:5:18078991-18079013:1\t5\t18078991\t18079013\t1\t0.099\tGGCCTTCGGGTTTGACCCCATGG\tTAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGG\t0.223\t0.528\t17:403-425:-1\/2\/4\t0.422\t17:403-425:-1,Zv9_NA1:403-425:-1\/2\/4\t0.445\tENSDART00000037671=0.1;ENSDART00000037681=0.5;ENSDART00000037691=0.734/,
+    qr/NULL\tENSE000000035646\tNULL\t5\t18078900\t18079400\t1\tzebrafish\tn\tENSDARG00000026374\tatpase2\tcrispr_test\t75\tNULL\tcrRNA:5:18078991-18079013:1\t5\t18078991\t18079013\t1\t0.099\tGGCCTTCGGGTTTGACCCCATGG\tTAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGG\t0.88\t1\/2\/0\t17:403-425:-1|Zv9_NA1:403-425:-1\/18:1000-1022:1|\t0.445\tENSDART00000037671=0.1;ENSDART00000037681=0.5;ENSDART00000037691=0.734/,
     'check target_info plus info' );
 
 # check cut-site 2 tests

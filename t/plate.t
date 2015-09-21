@@ -1,5 +1,7 @@
 #!/usr/bin/env perl
 # plate.t
+use warnings;
+use strict;
 
 use Test::More;
 use Test::Exception;
@@ -220,8 +222,8 @@ my $plate_5 = Crispr::Plate->new(
 my @list = ( 1..96 );
 $plate_4->fill_wells_from_first_empty_well( \@list );
 $plate_5->fill_wells_from_first_empty_well( \@list );
-$returned_wells_2 = $plate_4->return_all_wells;
-$returned_wells_3 = $plate_5->return_all_wells;
+my $returned_wells_2 = $plate_4->return_all_wells;
+my $returned_wells_3 = $plate_5->return_all_wells;
 my $wrong = 0;
 my @row_names = qw{A B C D E F G H};
 my @column_names = qw{ 01 02 03 04 05 06 07 08 09 10 11 12 };

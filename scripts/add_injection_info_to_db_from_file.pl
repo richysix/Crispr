@@ -1,7 +1,7 @@
-#!/usr/bin/perl
-# add_injection_info_to_db_from_file.pl -
-# takes a file with information about injections
-# and adds them to a MySQL database.
+#!/usr/bin/env perl
+
+# PODNAME: add_injection_info_to_db_from_file.pl
+# ABSTRACT: Add Information about guide RNA injections into a CRISPR SQL database.
 
 use warnings;
 use strict;

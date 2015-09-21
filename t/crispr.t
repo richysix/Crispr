@@ -1,5 +1,7 @@
 #!/usr/bin/env perl
 # crispr.t
+use warnings;
+use strict;
 
 use Test::More;
 use Test::Exception;
@@ -11,7 +13,7 @@ use Crispr::Target;
 use File::Spec;
 
 #plan tests => 15 + 36 + 3 + 4 + 6;
-$tests = 0;
+my $tests = 0;
 
 use lib 't/lib';
 use TestMethods;
@@ -107,7 +109,7 @@ $tests+=8;
 # find_crRNAs_by_target - 10 tests
 # make mock Target object
 my $crRNAs;
-$mock_target = Test::MockObject->new();
+my $mock_target = Test::MockObject->new();
 $mock_target->set_isa( 'Crispr::Target' );
 $mock_target->mock( 'target_name', sub{ return '5:46628364-46628423_b' });
 $mock_target->mock( 'crRNAs', sub{ my @args = @_; if( $args[1] ){ $crRNAs = $args[1] }else{ return $crRNAs } } );
@@ -337,7 +339,7 @@ $tests+=2;
 # make mock crRNA object
 my @list;
 foreach my $name ( 1..48 ){
-    $mock_crRNA = Test::MockObject->new();
+    my $mock_crRNA = Test::MockObject->new();
     $mock_crRNA->set_isa( 'Crispr::crRNA' );
     $mock_crRNA->mock( 'name', sub{ return $name });
     $mock_crRNA->mock( 'forward_oligo', sub{ return 'ATGGATAGACTAGATAGATAG' });

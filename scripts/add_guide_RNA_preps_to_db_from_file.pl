@@ -1,5 +1,7 @@
-#!/usr/bin/perl
-# add_guide_RNA_preps_to_db_from_file.pl - quick description
+#!/usr/bin/env perl
+
+# PODNAME: add_guide_RNA_preps_to_db_from_file.pl
+# ABSTRACT: Add Information about guide RNA preps into a CRISPR SQL database.
 
 use warnings;
 use strict;

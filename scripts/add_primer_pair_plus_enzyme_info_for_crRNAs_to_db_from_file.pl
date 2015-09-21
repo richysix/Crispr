@@ -1,5 +1,7 @@
 #!/usr/bin/env perl
-# add_primer_pair_plus_enzyme_info_for_crRNAs_to_db_from_file.pl
+
+# PODNAME: add_primer_pair_plus_enzyme_info_for_crRNAs_to_db_from_file.pl
+# ABSTRACT: Add Information about primer pairs into a CRISPR SQL database.
 
 use warnings; use strict;
 use autodie;

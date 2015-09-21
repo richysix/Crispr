@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 # target_adaptor.t
+use warnings;
+use strict;
+
 use Test::More;
 use Test::Exception;
 use Test::Warn;
@@ -7,6 +10,7 @@ use Test::DatabaseRow;
 use Test::MockObject;
 use Data::Dumper;
 use Readonly;
+use English qw( -no_match_vars );
 
 use Crispr::DB::PlateAdaptor;
 use Crispr::DB::PrimerPairAdaptor;
@@ -16,7 +20,12 @@ Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
 );
-plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
+if( $ENV{NO_DB} ) {
+    plan skip_all => 'Not testing database';
+}
+else {
+    plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
+}
 
 use DateTime;
 #get current date
@@ -25,47 +34,22 @@ my $todays_date = $date_obj->ymd;
 
 # Module with a function for creating an empty test database
 # and returning a database connection
-use TestDB;
+use lib 't/lib';
+use TestMethods;
 
-# check environment variables have been set
-if( !$ENV{MYSQL_DBNAME} || !$ENV{MYSQL_DBUSER} || !$ENV{MYSQL_DBPASS} ){
-    die "The following environment variables need to be set for connecting to the database!\n",
-        "MYSQL_DBNAME, MYSQL_DBUSER, MYSQL_DBPASS"; 
-}
-
-my %db_connection_params = (
-    mysql => {
-        driver => 'mysql',
-        dbname => $ENV{MYSQL_DBNAME},
-        host => $ENV{MYSQL_DBHOST} || '127.0.0.1',
-        port => $ENV{MYSQL_DBPORT} || 3306,
-        user => $ENV{MYSQL_DBUSER},
-        pass => $ENV{MYSQL_DBPASS},
-    },
-    sqlite => {
-        driver => 'sqlite',
-        dbfile => 'test.db',
-        dbname => 'test',
-    }
-);
-
-# TestDB creates test database, connects to it and gets db handle
-# TestDB creates test database, connects to it and gets db handle
-my @db_connections;
-foreach my $driver ( keys %db_connection_params ){
-    push @db_connections, TestDB->new( $db_connection_params{$driver} );
-}
+my $test_method_obj = TestMethods->new();
+my ( $db_connection_params, $db_connections ) = $test_method_obj->create_test_db();
 
 SKIP: {
-    skip 'No database connections available', $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite} if !@db_connections;
+    skip 'No database connections available', $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite} if !@{$db_connections};
     
-    if( @db_connections == 1 ){
-        skip 'Only one database connection available', $TESTS_FOREACH_DBC{sqlite} if $db_connections[0]->driver eq 'mysql';
-        skip 'Only one database connection available', $TESTS_FOREACH_DBC{mysql} if $db_connections[0]->driver eq 'sqlite';
+    if( @{$db_connections} == 1 ){
+        skip 'Only one database connection available', $TESTS_FOREACH_DBC{sqlite} if $db_connections->[0]->driver eq 'mysql';
+        skip 'Only one database connection available', $TESTS_FOREACH_DBC{mysql} if $db_connections->[0]->driver eq 'sqlite';
     }
 }
 
-foreach my $db_connection ( @db_connections ){
+foreach my $db_connection ( @{$db_connections} ){
     my $driver = $db_connection->driver;
     my $dbh = $db_connection->connection->dbh;
     # $dbh is a DBI database handle
@@ -260,14 +244,14 @@ foreach my $db_connection ( @db_connections ){
     $mock_r_primer->set_isa('Crispr::Primer');
     
     my $primer_statement = 'insert into primer values( ?, ?, ?, ?, ?, ?, ?, ?, ? );';
-    $sth = $dbh->prepare($primer_statement);
+    my $sth = $dbh->prepare($primer_statement);
     foreach my $primer ( $mock_l_primer, $mock_r_primer ){
         $sth->execute(
             $primer->primer_id, $primer->sequence,
             $primer->seq_region,
             $primer->seq_region_start, $primer->seq_region_end,
             $primer->seq_region_strand,
-            $primer_tail,
+            $primer->primer_tail,
             2, 'A01',
         );
     }
@@ -315,9 +299,6 @@ foreach my $db_connection ( @db_connections ){
         $mock_r_primer->sequence,
     );
     is( join(",", $well->contents->primer_pair_summary, ), $pp_summary,'check primer_pair info from db');
-}
-
-# drop databases
-foreach ( @db_adaptors ){
-    $_->destroy();
+    
+    $db_connection->destroy();
 }
