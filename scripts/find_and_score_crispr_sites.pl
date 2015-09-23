@@ -800,9 +800,7 @@ sub get_and_check_options {
         }
     }
     
-    if( !$options{requestor} ){
-        $options{requestor} = 'NULL';
-    }
+    $options{requestor} = !$options{requestor} ? 'NULL' : $options{requestor};
     $options{debug} = 0 if !$options{debug};
     
     warn "Settings:\n", map { join(' - ', $_, defined $options{$_} ? $options{$_} : 'off'),"\n" } sort keys %options if $options{verbose};
