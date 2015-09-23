@@ -192,7 +192,7 @@ if( $options{no_crRNA} ){
     print '#', join("\t", @columns[0..13] ), "\n";
 }
 else{
-    print join("\t", @columns ), "\n";    
+    print '#', join("\t", @columns ), "\n";    
 }
 
 if( $options{bed_file} ){
