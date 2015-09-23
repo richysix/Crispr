@@ -28,6 +28,14 @@ my %options = (
     restriction_enzymes => 1,
 );
 
+# set up a warning handler
+local $SIG{__WARN__} = sub {
+    my $message = shift;
+    if( $message !~ m/Couldn't\sretrieve\ssequence\sfor\scrRNA:/xms ){
+        warn $message;        
+    }
+};
+
 # Get and check command line options
 get_and_check_options();
 
