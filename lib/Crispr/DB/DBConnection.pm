@@ -260,22 +260,48 @@ around BUILDARGS => sub {
 sub _try_environment_variables {
     my ( $self ) = @_;
     
+    my $db_connection_params;
     # check environment variables
-    if( !$ENV{MYSQL_DBNAME} || !$ENV{MYSQL_DBUSER} || !$ENV{MYSQL_DBPASS} ){
-        confess join(q{ }, 'No config file or options supplied.',
-            'Trying to connect to database using environment variables.',
-            "These environment variables need to be set!\n",
-            "MYSQL_DBNAME, MYSQL_DBUSER, MYSQL_DBPASS\n", ); 
+    warn join(q{ }, 'No config file or options supplied.',
+        'Trying to connect to database using environment variables.', ), "\n";
+    warn "Checking MySQL environment variables\n";
+    my @unset_mysql_variables = ();
+    foreach my $variable ( qw{MYSQL_DBNAME MYSQL_DBHOST MYSQL_DBPORT MYSQL_DBUSER MYSQL_DBPASS } ){
+        if( !$ENV{$variable} ){
+            push @unset_mysql_variables, $variable;
+        }
     }
-    # try environment variables. Assume mysql. TO DO: could try sqlite as well maybe.
-    my $db_connection_params = {
-        driver => 'mysql',
-        dbname => $ENV{MYSQL_DBNAME},
-        host => $ENV{MYSQL_DBHOST} || '127.0.0.1',
-        port => $ENV{MYSQL_DBPORT} || 3306,
-        user => $ENV{MYSQL_DBUSER},
-        pass => $ENV{MYSQL_DBPASS},
-    };
+    if( scalar @unset_mysql_variables == 0 ){
+        $db_connection_params = {
+            driver => 'mysql',
+            dbname => $ENV{MYSQL_DBNAME},
+            host => $ENV{MYSQL_DBHOST},
+            port => $ENV{MYSQL_DBPORT},
+            user => $ENV{MYSQL_DBUSER},
+            pass => $ENV{MYSQL_DBPASS},
+        };
+    }
+    else{
+        # try SQLITE
+        my @unset_sqlite_variables = ();
+        foreach my $variable ( qw{SQLITE_DBNAME SQLITE_DBFILE } ){
+            if( !$ENV{$variable} ){
+                push @unset_sqlite_variables, $variable;
+            }
+        }
+        if( scalar @unset_sqlite_variables == 0 ){
+            $db_connection_params = {
+                driver => 'sqlite',
+                dbname => $ENV{SQLITE_DBNAME},
+                dbfile => $ENV{SQLITE_DBFILE},
+            };
+        }
+        else{
+            croak "These environment variables need to be set!\n",
+                'For MySQL ', join(q{ }, @unset_mysql_variables ), "\n",
+                'For SQLITE ', join(q{ }, @unset_sqlite_variables ), "\n",; 
+        }
+    }
     
     return $db_connection_params;
 }
