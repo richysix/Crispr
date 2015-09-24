@@ -34,12 +34,12 @@ subtype 'Crispr::DNA',
     },
     message { "Not a valid crRNA target sequence.\n" };
 
-subtype 'Crispr::FileExists',
-    as 'Str',
-    where { 
-        ( -e $_ && !-z $_ );
-    },
-    message { "File does not exist or is empty.\n" };
+#subtype 'Crispr::FileExists',
+#    as 'Str',
+#    where { 
+#        ( -e $_ && !-z $_ );
+#    },
+#    message { "File does not exist or is empty.\n" };
 
 =method new
 
@@ -159,7 +159,7 @@ has 'species' => (
 
 has 'target_genome' => (
     is => 'ro',
-    isa => 'Crispr::FileExists',
+    isa => 'Maybe[Str]',
 );
 
 =method slice_adaptor
@@ -227,7 +227,7 @@ has 'all_crisprs' => (
 
 has 'annotation_file' => (
     is => 'ro',
-    isa => 'Crispr::FileExists',
+    isa => 'Maybe[Str]',
 );
 
 =method annotation_tree
@@ -285,7 +285,7 @@ has 'debug' => (
 #_testing
 #
 #Usage       : $crRNA->_testing;
-#Purpose     : Internal method for to indicate whether testing is being done.
+#Purpose     : Internal method to indicate whether testing is being done.
 #Returns     : value for $testing
 #Parameters  : value to set $testing to  => Int
 #Throws      : 
@@ -295,6 +295,37 @@ my $testing;
 sub _testing {
     my $self = shift @_;
     $testing = shift @_;
+}
+
+#BUILD
+#
+#Usage       : $crRNA->BUILD;
+#Purpose     : Internal method to check whether the attributes that are files exist or not
+#Returns     : 
+#Parameters  : receives the hash ref of parameters given to new
+#Throws      : if any of the files don't exist or are empty
+#Comments    : 
+
+sub BUILD {
+    my $self = shift;
+    
+    my @err_messages;
+    # check target_genome attribute
+    if( defined $self->target_genome ){
+        if( !-e $self->target_genome || -z $self->target_genome ){
+            push @err_messages, "File supplied to Attribute target_genome does not exist or is empty!\n";
+        }
+    }
+    # check annotation file
+    if( defined $self->annotation_file ){
+        if( !-e $self->annotation_file || -z $self->annotation_file ){
+            push @err_messages, "File supplied to Attribute annotation_file does not exist or is empty!\n";
+        }
+    }
+    
+    if( @err_messages ){
+        die @err_messages;
+    }
 }
 
 #_seen_crRNA_id

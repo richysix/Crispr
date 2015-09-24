@@ -60,9 +60,6 @@ my $slice_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'cor
 # make design object
 my $crispr_design = Crispr->new(
     species => $options{species},
-    target_genome => $options{target_genome},
-    #target_seq => $options{target_sequence},
-    #five_prime_Gs => $options{num_five_prime_Gs},
     scored => 0,
     slice_adaptor => $slice_adaptor,
     debug => $options{debug},
@@ -74,8 +71,6 @@ my $db_connection = Crispr::DB::DBConnection->new( $options{crispr_db}, );
 # get Target Adaptor using database adaptor
 my $target_adaptor = $db_connection->get_adaptor( 'target' );
 my $crRNA_adaptor = $db_connection->get_adaptor( 'crRNA' );
-#my $primer_adaptor = $db_connection->get_adaptor( 'primer' );
-#my $primer_pair_adaptor = $db_connection->get_adaptor( 'primer_pair' );
 my $plate_adaptor = $db_connection->get_adaptor( 'plate' );
 
 my @attributes = ( qw{ well_id target_name species requestor crRNA_name
@@ -457,12 +452,8 @@ sub get_and_check_options {
         'fill_direction=s',
         'registry_file=s',
         'construction_oligos:s',
-        'expression_constructs+',        
+        'expression_constructs+',
         'species=s',
-        'target_genome=s',
-        'annotation_file=s',
-        'target_sequence=s',
-        'num_five_prime_Gs=i',
         'designed=s',
         'ordered=s',
         'received=s',
@@ -575,6 +566,7 @@ Takes Information on crispr target sites and enter guide RNA info into a MySQL o
         --construction_oligos           turns on adding construction oligos to the database for each crispr
                                         Also can dictate which type of oligos are added [default: cloning_oligos]
         --expression_constructs         turns on adding expression constructs to the database for each crispr
+        --species                       name of species [default: zebrafish]
         --designed                      date on which the crisprs were designed
         --ordered                       date on which the crisprs were ordered
         --received                      date on which the crisprs were received
@@ -683,6 +675,10 @@ Default is 'cloning' oligos. Other option at the moment is 't7_hairpin'.
 
 If set, expression constructs are are added to the database.
 By default, 2 duplicate plates are added as we routinely pick 2 colonies during cloning.
+
+=item B<--species >
+
+name of species. This is need to retrieve sequence for off-targets to check the number of mismatches [default:zebrafish]
 
 =item B<--designed >
 

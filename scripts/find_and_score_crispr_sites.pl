@@ -182,10 +182,11 @@ print "Outputting results...\n" if $options{verbose};
 Readonly my @columns => (
     qw{ target_id target_name assembly chr start end strand
         species requires_enzyme gene_id gene_name requestor ensembl_version
-        designed crRNA_name chr start end strand score sequence oligo1 oligo2
-        off_target_score off_target_counts off_target_hits
-        coding_score coding_scores_by_transcript five_prime_Gs plasmid_backbone
-        GC_content notes }
+        designed crRNA_name crRNA_chr crRNA_start crRNA_end crRNA_strand
+        crRNA_score crRNA_sequence crRNA_oligo1 crRNA_oligo2
+        crRNA_off_target_score crRNA_off_target_counts crRNA_off_target_hits
+        crRNA_coding_score crRNA_coding_scores_by_transcript crRNA_five_prime_Gs
+        crRNA_plasmid_backbone crRNA_GC_content crRNA_notes }
 );
 
 if( $options{no_crRNA} ){
