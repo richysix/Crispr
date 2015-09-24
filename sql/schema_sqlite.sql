@@ -1,4 +1,4 @@
-create table target (
+CREATE TABLE target (
     target_id integer   PRIMARY KEY,
     target_name VARCHAR(45) NOT NULL,
     assembly VARCHAR(20),
@@ -16,7 +16,7 @@ create table target (
 );
 CREATE UNIQUE INDEX `target_target_name_requestor` ON target ( `target_name`, `requestor` );
 
-create table plate (
+CREATE TABLE plate (
     plate_id integer   PRIMARY KEY,
     plate_name CHAR(10) UNIQUE,
     plate_type  NOT NULL,
@@ -26,7 +26,7 @@ create table plate (
 );
 CREATE UNIQUE INDEX `plate_plate_name` ON plate (`plate_name` );
 
-create table crRNA (
+CREATE TABLE crRNA (
     crRNA_id integer   PRIMARY KEY,
     crRNA_name VARCHAR(50),
     chr VARCHAR(30),
@@ -45,9 +45,9 @@ create table crRNA (
     FOREIGN KEY (target_id) REFERENCES target (target_id),
     FOREIGN KEY (plate_id) REFERENCES plate (plate_id)
 );
-CREATE UNIQUE INDEX `crRNA_crRNA_name_target_id` ON crRNA ( `crRNA_name`, `target_id` );
+CREATE UNIQUE INDEX `crRNA_crRNA_name_target_id_plate_id` ON crRNA ( `crRNA_name`, `target_id`, `plate_id` );
 
-create table crRNA_pair (
+CREATE TABLE crRNA_pair (
     crRNA_pair_id integer   PRIMARY KEY,
     crRNA_1_id integer  NOT NULL,
     crRNA_2_id integer  NOT NULL,
@@ -56,7 +56,7 @@ create table crRNA_pair (
     FOREIGN KEY (crRNA_2_id) REFERENCES crRNA (crRNA_id)
 );
 
-create table coding_scores (
+CREATE TABLE coding_scores (
     crRNA_id integer  NOT NULL,
     transcript_id VARCHAR(20) NOT NULL,
     score DECIMAL(4,3) NOT NULL,
@@ -64,7 +64,7 @@ create table coding_scores (
     FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id)
 );
 
-create table off_target_info (
+CREATE TABLE off_target_info (
     crRNA_id integer  NOT NULL,
     off_target_hit VARCHAR(120) NOT NULL,
     mismatches  integer  NOT NULL,
@@ -73,14 +73,14 @@ create table off_target_info (
     FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id)
 );
 
-create table plasmid_backbone (
+CREATE TABLE plasmid_backbone (
     plasmid_backbone_id integer   PRIMARY KEY,
     plasmid_backbone VARCHAR(50) NOT NULL
 );
 
-create table construction_oligos (
+CREATE TABLE construction_oligos (
     crRNA_id integer  NOT NULL,
-    forward_oligo VARCHAR(30) NOT NULL,
+    forward_oligo VARCHAR(200) NOT NULL,
     reverse_oligo VARCHAR(30),
     plasmid_backbone_id integer UNSIGNED,
     plate_id integer UNSIGNED,
@@ -90,7 +90,7 @@ create table construction_oligos (
     FOREIGN KEY (plate_id) REFERENCES plate(plate_id)
 );
 
-create table expression_construct (
+CREATE TABLE expression_construct (
     crRNA_id integer  NOT NULL,
     plate_id integer UNSIGNED,
     well_id CHAR(3),
@@ -103,7 +103,7 @@ create table expression_construct (
     FOREIGN KEY (plate_id) REFERENCES plate(plate_id)
 );
 
-create table guideRNA_prep (
+CREATE TABLE guideRNA_prep (
     guideRNA_prep_id integer   PRIMARY KEY,
     crRNA_id integer  NOT NULL,
     guideRNA_type  NOT NULL,
@@ -117,7 +117,7 @@ create table guideRNA_prep (
     FOREIGN KEY (plate_id) REFERENCES plate(plate_id)
 );
 
-create table primer (
+CREATE TABLE primer (
     primer_id integer   PRIMARY KEY,
     primer_sequence VARCHAR(50) NOT NULL,
     primer_chr VARCHAR(30),
@@ -131,7 +131,7 @@ create table primer (
 );
 CREATE INDEX `primer_plate_id_well_id` ON primer ( `plate_id`, `well_id` );
 
-create table primer_pair (
+CREATE TABLE primer_pair (
     primer_pair_id integer   PRIMARY KEY,
     type  NOT NULL,
     left_primer_id integer  NOT NULL,
@@ -145,7 +145,7 @@ create table primer_pair (
     FOREIGN KEY (right_primer_id) REFERENCES primer(primer_id)
 );
 
-create table amplicon_to_crRNA (
+CREATE TABLE amplicon_to_crRNA (
     primer_pair_id integer  NOT NULL,
     crRNA_id integer  NOT NULL,
     CONSTRAINT `amplicon_to_crRNA_primer_pair_id_crRNA_id` PRIMARY KEY ( `primer_pair_id`, `crRNA_id` ),
@@ -153,14 +153,14 @@ create table amplicon_to_crRNA (
     FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id)
 );
 
-create table enzyme (
+CREATE TABLE enzyme (
     enzyme_id  integer   PRIMARY KEY,
     name VARCHAR(20) NOT NULL,
     site VARCHAR(20) NOT NULL,
     CONSTRAINT `enzyme_name` UNIQUE ( `name` )
 );
 
-create table enzyme_ordering (
+CREATE TABLE enzyme_ordering (
     order_no VARCHAR(20) PRIMARY KEY,
     enzyme_id  integer  NOT NULL,
     company VARCHAR(20) NOT NULL,
@@ -169,7 +169,7 @@ create table enzyme_ordering (
     FOREIGN KEY (enzyme_id) REFERENCES enzyme(enzyme_id)
 );
 
-create table restriction_enzymes (
+CREATE TABLE restriction_enzymes (
     primer_pair_id integer  NOT NULL,
     crRNA_id integer  NOT NULL,
     enzyme_id  integer  NOT NULL,
@@ -181,15 +181,17 @@ create table restriction_enzymes (
     FOREIGN KEY (enzyme_id) REFERENCES enzyme(enzyme_id)
 );
 
-create table cas9 (
+CREATE TABLE cas9 (
     cas9_id integer   PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
     type VARCHAR(100) NOT NULL,
-    plasmid_name VARCHAR(100),
-    CONSTRAINT `cas9_type` UNIQUE ( `type` ),
-    CONSTRAINT `cas9_plasmid_name` UNIQUE ( `plasmid_name` )
+    vector VARCHAR(100) NOT NULL,
+    species VARCHAR(100) NOT NULL,
+    CONSTRAINT `cas9_name` UNIQUE ( `name` ),
+    CONSTRAINT `cas9_type_vector` UNIQUE ( `type`, `vector` )
 );
 
-create table cas9_prep (
+CREATE TABLE cas9_prep (
     cas9_prep_id integer   PRIMARY KEY,
     cas9_id integer  NOT NULL,
     prep_type  NOT NULL,
@@ -200,7 +202,7 @@ create table cas9_prep (
     FOREIGN KEY (cas9_id) REFERENCES cas9(cas9_id)
 );
 
-create table injection (
+CREATE TABLE injection (
     injection_id integer   PRIMARY KEY,
     injection_name VARCHAR(30) NOT NULL,
     cas9_prep_id integer  NOT NULL,
@@ -213,7 +215,7 @@ create table injection (
     FOREIGN KEY (cas9_prep_id) REFERENCES cas9_prep(cas9_prep_id)
 );
 
-create table injection_pool (
+CREATE TABLE injection_pool (
     injection_id integer  NOT NULL,
     crRNA_id integer  NOT NULL,
     guideRNA_prep_id integer  NOT NULL,
@@ -224,7 +226,7 @@ create table injection_pool (
     FOREIGN KEY (guideRNA_prep_id) REFERENCES guideRNA_prep(guideRNA_prep_id)
 );
 
-create table plex (
+CREATE TABLE plex (
     plex_id integer   PRIMARY KEY,
     plex_name VARCHAR(10) NOT NULL,
     run_id integer  NOT NULL,
@@ -233,31 +235,41 @@ create table plex (
     CONSTRAINT `plex_plex_name` UNIQUE ( `plex_name` )
 );
 
-create table subplex (
-    subplex_id integer   PRIMARY KEY,
-    plex_id integer  NOT NULL,
-    plate_num  integer NOT NULL,
-    injection_id integer  NOT NULL,
-    FOREIGN KEY (plex_id) REFERENCES plex(plex_id),
-    FOREIGN KEY (injection_id) REFERENCES injection(injection_id)
-);
-
-create table sample (
+CREATE TABLE sample (
     sample_id integer   PRIMARY KEY,
     sample_name VARCHAR(20) NOT NULL,
+    sample_number integer  NOT NULL,
     injection_id integer  NOT NULL,
-    subplex_id integer  NOT NULL,
-    well CHAR(3) NOT NULL,
-    barcode_number  integer NOT NULL,
     generation  NOT NULL,
     type  NOT NULL,
     species VARCHAR(50) NOT NULL,
-    FOREIGN KEY (injection_id) REFERENCES injection(injection_id),
-    FOREIGN KEY (subplex_id) REFERENCES subplex(subplex_id)
+    FOREIGN KEY (injection_id) REFERENCES injection(injection_id)
 );
 CREATE UNIQUE INDEX `sample_name` ON sample (`sample_name`);
 
-create table sequencing_results (
+CREATE TABLE analysis (
+    analysis_id integer   PRIMARY KEY,
+    plex_id integer  NOT NULL,
+    analysis_started DATE,
+    analysis_finished DATE,
+    FOREIGN KEY (plex_id) REFERENCES plex(plex_id)
+);
+
+CREATE TABLE analysis_information (
+    analysis_id integer  NOT NULL,
+    sample_id integer  NOT NULL,
+    primer_pair_id integer  NOT NULL,
+    barcode_id  integer NOT NULL,
+    plate_number  integer NOT NULL,
+    well_id CHAR(3) NOT NULL,
+    CONSTRAINT `analysis_analysis_id_sample_id_primer_pair_id` UNIQUE ( `analysis_id`, `sample_id`, `primer_pair_id` ),
+    FOREIGN KEY (analysis_id) REFERENCES analysis(analysis_id),
+    FOREIGN KEY (sample_id) REFERENCES sample(sample_id),
+    FOREIGN KEY (primer_pair_id) REFERENCES primer_pair(primer_pair_id)
+);
+CREATE INDEX `analysis_analysis_id` ON analysis (`analysis_id`);
+
+CREATE TABLE sequencing_results (
     sample_id integer  NOT NULL,
     crRNA_id integer  NOT NULL,
     fail BOOLEAN NOT NULL,
@@ -270,33 +282,43 @@ create table sequencing_results (
     FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id)
 );
 
-create table allele (
+CREATE TABLE allele (
     allele_id integer   PRIMARY KEY,
     chr VARCHAR(30) NOT NULL,
     pos integer  NOT NULL,
     ref_allele VARCHAR(200) NOT NULL,
     alt_allele VARCHAR(200) NOT NULL,
     ref_seq VARCHAR(200),
-    alt_seq VARCHAR(200)
-);
-
-create table sample_allele (
-    sample_id integer  NOT NULL,
-    allele_id integer  NOT NULL,
+    alt_seq VARCHAR(200),
     primer_pair_id integer  NOT NULL,
     type ,
-    crispr_id integer  NOT NULL,
-    percentage_of_reads DECIMAL(4,1) NOT NULL,
-    CONSTRAINT `sample_allele_sample_id_allele_id` PRIMARY KEY ( `sample_id`, `allele_id` ),
-    FOREIGN KEY (sample_id) REFERENCES sample(sample_id),
-    FOREIGN KEY (allele_id) REFERENCES allele(allele_id),
     FOREIGN KEY (primer_pair_id) REFERENCES primer_pair(primer_pair_id)
 );
 
-create table kasp (
+CREATE TABLE allele_to_crispr (
+    allele_id integer  NOT NULL,
+    crRNA_id integer  NOT NULL,
+    FOREIGN KEY (allele_id) REFERENCES allele(allele_id),
+    FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id)
+);
+
+CREATE TABLE sample_allele (
+    sample_id integer  NOT NULL,
+    allele_id integer  NOT NULL,
+    percentage_of_reads DECIMAL(4,1) NOT NULL,
+    CONSTRAINT `sample_allele_sample_id_allele_id` PRIMARY KEY ( `sample_id`, `allele_id` ),
+    FOREIGN KEY (sample_id) REFERENCES sample(sample_id),
+    FOREIGN KEY (allele_id) REFERENCES allele(allele_id)
+);
+
+CREATE TABLE kasp (
     kasp_id VARCHAR(10) PRIMARY KEY,
     allele_id integer  NOT NULL,
     allele_number VARCHAR(10) NOT NULL,
+    allele_specific_primer_1 VARCHAR(50) NOT NULL,
+    allele_specific_primer_2 VARCHAR(50) NOT NULL,
+    common_primer_1 VARCHAR(50) NOT NULL,
+    common_primer_2 VARCHAR(50),
     plate_id integer UNSIGNED,
     well_id CHAR(3),
     CONSTRAINT `kasp_kasp_id_allele_id` UNIQUE ( `kasp_id`, `allele_id` ),
