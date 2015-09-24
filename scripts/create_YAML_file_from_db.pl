@@ -170,7 +170,7 @@ sub get_and_check_options {
     # default options
     $options{lane} = $options{lane}    ?   $options{lane}  :   1;
     $options{plex} = lc( $options{plex} );
-    $options{output_file} = $options{output_file}    ?   $options{output_file}  :   uc($options{plex}) . '.yml';
+    $options{output_file} = $options{output_file}    ?   $options{output_file}  :   lc($options{plex}) . '.yml';
     $options{debug} = $options{debug}    ?   $options{debug}  :   0;
     
     print "Settings:\n", map { join(' - ', $_, defined $options{$_} ? $options{$_} : 'off'),"\n" } sort keys %options if $options{verbose};
