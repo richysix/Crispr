@@ -86,7 +86,7 @@ throws_ok { Crispr->new( five_prime_Gs => 3 ) } qr/Validation\sfailed/, 'Attempt
 throws_ok { Crispr->new( target_genome => 'non_existent_genome_file.fa' ) }
     qr/File\ssupplied\sto\sAttribute\starget_genome\sdoes\snot\sexist\sor\sis\sempty/xms, 'genome file that does not exist';
 throws_ok { Crispr->new( annotation_file => 'non_existent_annotation_file.gff' ) }
-    qr/File\ssupplied\sto\sAttribute\sannotation_file\sdoes\snot\sexist\sor\sis\sempty/xms, 'genome file that does not exist';
+    qr/File\ssupplied\sto\sAttribute\sannotation_file\sdoes\snot\sexist\sor\sis\sempty/xms, 'annotation file that does not exist';
 $tests+=4;
 
 # test methods
