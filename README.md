@@ -168,7 +168,8 @@ An example command is shown below
     --target_genome /path/to/genome/file.fa \
     --annotation_file /path/to/annotation/file.gff \
     --target_sequence GGNNNNNNNNNNNNNNNNNNNGG \
-    --species zebrafish targets_file.txt > crRNAs-scored.txt
+    --species zebrafish --requestor crispr_test \
+    targets_file.txt > crRNAs-scored.txt
     
     # a quick description of options available
     find_and_score_crispr_sites.pl --help
@@ -525,6 +526,47 @@ The SQL database is designed to hold information on CRISPR target sites/guide RN
 including construction oligos and PCR primers for screening. As well as this, it has
 tables to store the results of amplicon sequencing including the variants found and KASP genotyping assays.
 Also, if the database is loaded with information on samples and guide RNAs etc. it can be used to automate the analysis pipeline.
+
+The tables in the database are:  
+
+    target                      cas9
+    plate                       cas9_prep
+    crRNA                       injection
+    crRNA_pair                  injection_pool
+    coding_scores               sample
+    off_target_info             plex
+    plasmid_backbone            analysis
+    construction_oligos         analysis_information
+    expression_construct        sequencing_results
+    guideRNA_prep               allele
+    primer                      allele_to_crispr
+    primer_pair                 sample_allele
+    amplicon_to_crRNA           kasp
+    enzyme                      
+    enzyme_ordering             
+    restriction_enzymes         
+
+A Target is a stretch of DNA that can be associated with CRISPR targets.
+crRNA/crRNA_pair represents a CRISPR target site/pairs of CRISPR target sites.
+coding_scores, off_target_info, plasmid_backbone, construction_oligos and
+expression_construct hold other information about CRISPR target sites.
+A guideRNA_prep is a particular preparation (protein/RNA) of a sgRNA.
+The table holds information about the date it was made and who made it.
+primer, primer_pair and amplicon_to_crRNA hold information about which screening primers are for which CRISPR targets.
+The enzyme tables store information on unique restriction sites near CRISPR target sites.
+cas9 and cas9_prep have information on the type of Cas9 and a particular prep.
+injection and injection_pool were designed to hold information on sgRNAs injected
+into zebrafish but can be used for other things such as other species or transfections.
+sample is an instance of a sample that has been injected/transfected with sgRNA(s).
+plex represents a multiplexed sequencing run. Within a sequencing run, an Analysis is a set of samples
+that are all sequenced for the same amplicons. The analysis and analysis_information
+tables holds the information on the amplicons and sgRNAs in an Analysis.
+sequencing_results, allele, allele_to_crispr, sample_allele and kasp hold the results
+of the analysis including genotyping assays.  
+In order to use the database to automate analysis the following tables need to be used:  
+target, crRNA, guideRNA_prep, primer, primer_pair, amplicon_to_crRNA, cas9, cas9_prep,
+injection, injection_pool, sample, plex, analysis and analysis_information
+
 The full schema of the database can be found in `sql/schema_mysql.sql` or `sql/schema_sqlite.sql`.
 The connection settings for the database can be set either by supplying a config file or by using environment variables.
 The config file is tab-separated key value pairs.
@@ -568,7 +610,8 @@ The targets must exist in the database and the columns start, end, strand, seque
 num_five_prime_Gs, and target_id cannot be null.
 
     # make crispr info file
-    head crRNAs-scored.txt | cut -f2,8,12,15-31 > crRNA-info.txt
+    echo "target" | cat - crRNA_file.txt | grep -f - crRNAs-scored.txt | \
+    cut -f2,8,12,15-31 | sed -e 's|^target|#target|' > crRNA-info.txt
     
     # add crRNA info to db
     add_crRNAs_to_db_from_file.pl \
@@ -576,16 +619,131 @@ num_five_prime_Gs, and target_id cannot be null.
     --plate_num 1 --plate_type 96 --fill_direction row \
     --designed 2015-09-22 --construction_oligos t7_fill-in_oligos crRNA-info.txt
 
-
 #### add_crispr_pairs_to_db_from_file.pl
+
+    # add crRNA pair info to db
+    add_crispr_pairs_to_db_from_file.pl \
+    --crispr_db /path/to/config.conf \
+    --plate_num 2 --plate_type 96 --fill_direction row \
+    --designed 2015-09-22 --construction_oligos t7_fill-in_oligos crRNA_pair-info.txt
+
 #### add_primer_pair_plus_enzyme_info_for_crRNAs_to_db_from_file.pl
-#### add_guide_RNA_preps_to_db_from_file.pl
-#### add_cas9_preps_to_db.pl
-#### add_injection_info_to_db_from_file.pl
-#### add_samples_to_db_from_sample_manifest.pl
-#### add_analysis_information_to_db_from_file.pl
+
+Script to add screening primer information. It will also add information on unique restriction sites
+The input file should contain the following columns:
+
+ * product_size       - size of PCR product (Int)
+ * crisprs            - comma-separated list of crRNAs covered by amplicon
+ * left_primer_info   - comma-separated list (primer_name,sequence)
+ * right_primer_info  - comma-separated list (primer_name,sequence)
+
+Optional columns are:
+
+ * well_id            - well id to use for adding primers to db.
+    (A01-H12 for 96 well plates. A01-P24 for 384 well plates.)
+ * enzyme_info        - comma-separated list of enzymes that cut the amplicon and the crispr target site uniquely  
+    each item should consist of Enzyme_name:Site:Distance_to_crispr_cut_site  
+
+
+    # make primer info files
+    perl -F"\t" -lane 'if($. == 1){ print "#", join("\t", qw{ crisprs left_primer_info right_primer_info product_size } ); }
+    else{ print join("\t", $F[1], join(q{,}, @F[3,4]), join(q{,}, @F[5,6]), $F[18], ) }' miseq_primers.tsv > ext_primers.tsv
+    perl -F"\t" -lane 'if($. == 1){ print "#", join("\t", qw{ crisprs left_primer_info right_primer_info product_size } ); }
+    else{ print join("\t", $F[1], join(q{,}, @F[13,14]), join(q{,}, @F[15,16]), $F[19], ) }' miseq_primers.tsv > int_primers.tsv
+    
+    # add primers
+    add_primer_pair_plus_enzyme_info_for_crRNAs_to_db_from_file.pl \
+    --crispr_db /path/to/config.conf --type ext-illumina \
+    --plate_num 1 --plate_type 96 --fill_direction row ext_primers.tsv
+    
+    add_primer_pair_plus_enzyme_info_for_crRNAs_to_db_from_file.pl \
+    --crispr_db /path/to/config.conf --type int-illumina_tailed \
+    --plate_num 1 --plate_type 96 --fill_direction row int_primers.tsv
+
+If the option --plate\_num is set a plate name of the form sprintf("CR_%06d%s", plate_num, suffix) with a suffix depending on the primer type.
+e.g. --plate_num 1 --type ext-illumina would be stored in a plate named CR_000001f  
+    --plate_num 1 --type int-illumina_tailed would be stored in a plate named CR_000001h  
+
 #### get_pcr_primers_from_db.pl
+
+This script gets info about primers on a given plate and prints them to a tsv file for ordering.
+It can output everything on the plate or particular wells.
+
+    # print primers for plate 1f
+    echo CR_000001f | get_pcr_primers_from_db.pl \
+    --crispr_db /path/to/config.conf \
+    --well_range A01-A02 > CR_000001f.tsv
+
+#### add_guide_RNA_preps_to_db_from_file.pl
+
+The database has tables for both CRISPR target sites and the actual guide RNA prep that is injected/transfected.
+This script adds information on guide RNA preps.
+
+    # add guide RNA preps
+    add_guide_RNA_preps_to_db_from_file.pl \
+    --crispr_db /path/to/config.conf --plate_type 96 --fill_direction row gRNA-info.txt
+
+A guide RNA prep must exist in the database in order to use the database to
+automate analysis.
+To add guide RNA preps for any CRISPR target in the db that doesn't have one use this
+to add dummy sgRNA preps:
+
+    # MySQL
+    mysql -h $MYSQL_DBHOST -P $MYSQL_DBPORT -u $MYSQL_DBUSER -p$MYSQL_DBPASS $MYSQL_DBNAME -Bse \
+    "INSERT into guideRNA_prep \
+    SELECT NULL as guideRNA_prep_id, crRNA_id, "sgRNA" as guideRNA_type, \
+    0.0 as concentration, "user1" as made_by, "2014-01-01" as date, NULL as plate_id, NULL as well_id \
+    FROM crRNA cr \
+    WHERE crRNA_id NOT IN \
+    (SELECT crRNA_id FROM guideRNA_prep )"
+    
+    # SQLite
+    echo "INSERT into guideRNA_prep \
+    SELECT NULL as guideRNA_prep_id, crRNA_id, 'sgRNA' as guideRNA_type, \
+    0.0 as concentration, 'user1' as made_by, '2014-01-01' as date, NULL as plate_id, NULL as well_id \
+    FROM crRNA cr \
+    WHERE crRNA_id NOT IN \
+    (SELECT crRNA_id FROM guideRNA_prep );" | sqlite3 $SQLITE_DBFILE
+
+#### add_cas9_preps_to_db.pl
+
+This adds information on both Cas9 objects and Cas9Preps. If the Cas9 does not exist in the database already it is added.
+
+    add_cas9_preps_to_db.pl \
+    --crispr_db /path/to/config.conf cas9_prep-test_info.txt
+    
+#### add_injection_info_to_db_from_file.pl
+
+An injection represents which Cas9/sgRNAs were used in a particular experiment.
+
+    add_injection_info_to_db_from_file.pl \
+    --crispr_db /path/to/config.conf  injection-test_info.txt
+    
+#### add_samples_to_db_from_sample_manifest.pl
+
+This script adds individual samples to the database.
+
+    add_samples_to_db_from_sample_manifest.pl \
+    --crispr_db /path/to/config.conf samples-test_info.txt
+
+#### add_analysis_information_to_db_from_file.pl
+
+This script is used to add the information about which samples are to analysed for which amplicons/sgRNAs.
+
+    # add analysis info
+    add_analysis_information_to_db_from_file.pl \
+    --crispr_db /path/to/config.conf \
+    --plex_name miseq1 --run_id 10001 --analysis_started 2014-03-15 \
+    --sample_plate_format 96 --sample_plate_fill_direction row \
+    --barcode_plate_format 96 --barcode_plate_fill_direction row \
+     analyses-test_info.txt
+
 #### create_YAML_file_from_db.pl
+
+This script creates the YAML file required by `count_indel_reads_from_bam.pl` from the information in the database.
+
+    create_YAML_file_from_db.pl \
+    --crispr_db /path/to/config.conf --plex miseq1
 
 ---
 
@@ -625,7 +783,7 @@ The Crispr packages contains the following modules:
 
 *   Cas9Prep.pm                 - object representing a particular preparation of Cas9 (protein or RNA)
 
-*   GuideRNAPrep.pm             - object representing a particular preparation of a Cas9 synthetic guide RNA
+*   GuideRNAPrep.pm             - object representing a particular preparation of an sgRNA
 
 *   InjectionPool.pm            - object representing guide RNAs injected/tranfected into samples
 
