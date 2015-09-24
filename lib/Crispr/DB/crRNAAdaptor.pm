@@ -667,7 +667,7 @@ sub fetch_by_ids {
 
 =method fetch_all_by_name
 
-    Usage       : $crRNAs = $crRNA_adaptor->fetch_by_name( $crRNA_name, );
+    Usage       : $crRNAs = $crRNA_adaptor->fetch_all_by_name( $crRNA_name, );
     Purpose     : Fetch crRNAs given a crRNA name
     Returns     : ArrayRef of Crispr::crRNA objects
     Parameters  : crispr-db crRNA name
