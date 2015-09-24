@@ -78,7 +78,7 @@ print {$primer_fh} join("\t", qw{ crispr_pair_name crRNA_name
                         int-illumina_tailed_primer_pair_id
                         left_int-illumina_tailed_primer_id left_int-illumina_tailed_primer_seq
                         right_int-illumina_tailed_primer_id right_int-illumina_tailed_primer_seq
-                        ext_sizes int_sizes }, ), "\n";
+                        enzyme_info ext_sizes int_sizes }, ), "\n";
 
 # remove previously existing primer3 output files
 my @files = qw{ int_6_primer3.out int_2_primer3.out int_6_primer3.out RM_int.fa RM_ext.fa };
@@ -350,8 +350,8 @@ foreach my $id ( @ids ){
                 @enzyme_information = get_enzyme_information( $crRNA, );
             }
             print {$primer_fh} join("\t", $crispr_pair->pair_name, $crRNA->name,
-                                @primer_info, join(q{,}, @enzyme_information, ),
-                                $ext_product_size, $sizes || '', ), "\n";
+                                @primer_info, join(q{,}, @enzyme_information || 'NULL', ),
+                                $ext_product_size, $sizes || 'NULL', ), "\n";
         }
     }
     elsif( exists $target_info->{crRNA} ){
@@ -367,7 +367,7 @@ foreach my $id ( @ids ){
         }
         push @info, 'NULL', $crRNA->name;
         print {$primer_fh} join("\t", @info, @primer_info, join(q{,},
-                                @enzyme_information, ), $ext_product_size,
+                                @enzyme_information || 'NULL', ), $ext_product_size,
                                 $product_size || 'NULL', ), "\n";
     }
     else{
