@@ -104,7 +104,7 @@ while(<>){
                                         \d+ - \d+       # start-end
                                         :\-*1           # strand
                                         \z/xms ){
-            my $crRNAs = $crRNA_adaptor->fetch_by_name( $args{crispr_guide}, );
+            my $crRNAs = $crRNA_adaptor->fetch_all_by_name( $args{crispr_guide}, );
             if( scalar @{$crRNAs} != 1 ){
                 die join(q{ }, "Crispr name,", $args{crispr_guide},
                         "is not unique. Try using plate number and well.", ), "\n";
