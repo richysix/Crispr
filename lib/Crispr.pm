@@ -1299,6 +1299,16 @@ sub make_and_add_off_target_from_position {
             "One of the arguments was not specified\n",
             "Arguments are: crRNA, position, annotation\n";
     }
+    my $not_crRNA = 0;
+    if( !ref $crRNA ){
+        $not_crRNA = 1;
+    }
+    elsif( !$crRNA->isa('Crispr::crRNA') ){
+        $not_crRNA = 1;
+    }
+    confess "method: make_and_add_off_target_from_position - ",
+        "First argument must be a Crispr::crRNA object!\n" if $not_crRNA;
+    
     # check crispr off_target_info object exists
     if( !defined $crRNA->off_target_hits ){
         $crRNA->off_target_hits(
@@ -1366,10 +1376,13 @@ sub _fetch_sequence {
     if( !defined $slice && defined $self->target_genome ){
         my $db = Bio::DB::Fasta->new( $self->target_genome );
         my $obj = $db->get_Seq_by_id($chr);
-        if( defined $obj ){
+        if( defined $obj->seq ){
             my $seq = $obj->seq;
             my $subseq = $obj->subseq( $pos => $end );
             $slice = $strand eq '-1' ?   $subseq->revcom :   $subseq;
+        }
+        else{
+            return;
         }
     }
     return $slice;

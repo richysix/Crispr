@@ -12,7 +12,6 @@ use Crispr::Target;
 
 use File::Spec;
 
-#plan tests => 15 + 36 + 3 + 4 + 6;
 my $tests = 0;
 
 use lib 't/lib';
@@ -195,12 +194,57 @@ ok( $design_obj2->find_off_targets( $design_obj2->all_crisprs,  ), 'off_targets'
 ## Off Targets for crRNA:test_chr1:101-123:1
 #exon:test_chr1:201-223:1 mismatches:2 annotation:exon
 #intron:test_chr2:101-123:1 mismatches:3 annotation:intron
-#intron:test_chr3:101-223:1 mismatches:1 annotation:intron
+#intron:test_chr3:101-123:1 mismatches:1 annotation:intron
 #nongenic:test_chr1:1-23:1 mismatches:1 annotation:nongenic
 #nongenic:test_chr3:201-223:1 mismatches:2 annotation:nongenic
 is( $mock_crRNA1->off_target_hits->score, 0.76, 'check off target score 1');
 is( $mock_crRNA2->off_target_hits->score, 1, 'check off target score 2');
 $tests+=3;
+
+# test make_and_add_off_target_from_position
+# test args
+# OffTargets for crRNA:test_chr2:106-128:1
+# intron:test_chr2:206-228:1 mismatches:1 annotation:intron
+# exon:test_chr2:406-428:-1 mismatches:1 annotation:exon
+my $mock_crRNA3 = Test::MockObject->new();
+$mock_crRNA3->set_isa( 'Crispr::crRNA' );
+$mock_crRNA3->mock('name', sub { return 'crRNA:test_chr2:106-128:1' } );
+$mock_crRNA3->mock('sequence', sub { return 'ATCGCGATCGATATCTGGTTTGG' } );
+my $off_target;
+$mock_crRNA3->mock( 'off_target_hits', sub{ my @args = @_; if( $args[1] ){ $off_target = $args[1] }else{ return $off_target } });
+my $mock_off_target = Test::MockObject->new();
+$mock_off_target->set_isa( 'Crispr::OffTargetInfo' );
+$mock_off_target->mock( '_make_and_add_off_target', sub{ return 1 });
+
+throws_ok { $design_obj2->make_and_add_off_target_from_position() }
+    qr/method: make_and_add_off_target_from_position - One of the arguments was not specified/,
+    'make_and_add_off_target_from_position throws on undef args 1';
+throws_ok { $design_obj2->make_and_add_off_target_from_position( $mock_crRNA3, ) }
+    qr/method: make_and_add_off_target_from_position - One of the arguments was not specified/,
+    'make_and_add_off_target_from_position throws on undef args 2';
+throws_ok { $design_obj2->make_and_add_off_target_from_position( $mock_crRNA3, '15:192827-192849:1', ) }
+    qr/method: make_and_add_off_target_from_position - One of the arguments was not specified/,
+    'make_and_add_off_target_from_position throws on undef args 3';
+throws_ok { $design_obj2->make_and_add_off_target_from_position( 'mock_crRNA3', '15:192827-192849:1', 'exon') }
+    qr/method: make_and_add_off_target_from_position - First argument must be a Crispr::crRNA object/,
+    'make_and_add_off_target_from_position throws on args 1 - Str';
+my $tmp_mock_crRNA = Test::MockObject->new();
+$tmp_mock_crRNA->set_isa( 'Crispr::Target' );
+throws_ok { $design_obj2->make_and_add_off_target_from_position( $tmp_mock_crRNA, '15:192827-192849:1', 'exon') }
+    qr/method: make_and_add_off_target_from_position - First argument must be a Crispr::crRNA object/,
+    'make_and_add_off_target_from_position throws on args 1 - not a Crispr::crRNA';
+
+ok( $design_obj2->make_and_add_off_target_from_position( $mock_crRNA3, 'test_chr2:206-228:1', 'intron'), 'make_and_add_off_target_from_position 1' );
+is( $mock_crRNA3->off_target_hits->all_off_target_hits->[0], 'test_chr2:206-228:1', 'check off-target position 1' );
+
+ok( $design_obj2->make_and_add_off_target_from_position( $mock_crRNA3, 'test_chr2:406-428:1', 'exon'), 'make_and_add_off_target_from_position 2' );
+is( $mock_crRNA3->off_target_hits->all_off_target_hits->[0], 'test_chr2:406-428:1', 'check off-target position 2' );
+
+throws_ok { $design_obj2->make_and_add_off_target_from_position( $mock_crRNA3, 'test_chr4:406-428:1', 'exon') }
+    qr/Couldn't fetch sequence for off-target position to check for mismatches/,
+    "make_and_add_off_target_from_position throws - couldn't get sequence";
+
+$tests+=10;
 
 # check if full genome exists and is indexed and test off-target
 # skip if genome isn't there or not indexed
