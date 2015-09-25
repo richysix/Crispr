@@ -1,4 +1,8 @@
 #!/usr/bin/env perl
+
+# PODNAME: filter_fastq.pl
+# ABSTRACT: Filter FASTQ files removing reads shorter than a certain distance.
+
 use warnings; use strict;
 use Getopt::Long;
 use autodie;
