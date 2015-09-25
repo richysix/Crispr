@@ -264,7 +264,7 @@ sub _try_environment_variables {
     # check environment variables
     warn join(q{ }, 'No config file or options supplied.',
         'Trying to connect to database using environment variables.', ), "\n";
-    warn "Checking MySQL environment variables\n";
+    warn "Checking MySQL environment variables...\n";
     my @unset_mysql_variables = ();
     foreach my $variable ( qw{MYSQL_DBNAME MYSQL_DBHOST MYSQL_DBPORT MYSQL_DBUSER MYSQL_DBPASS } ){
         if( !$ENV{$variable} ){
@@ -283,6 +283,8 @@ sub _try_environment_variables {
     }
     else{
         # try SQLITE
+        warn "MySQL environment variables are not set.\n";
+        warn "Checking SQLITE environment variables...\n";
         my @unset_sqlite_variables = ();
         foreach my $variable ( qw{SQLITE_DBNAME SQLITE_DBFILE } ){
             if( !$ENV{$variable} ){
@@ -298,8 +300,8 @@ sub _try_environment_variables {
         }
         else{
             croak "These environment variables need to be set!\n",
-                'For MySQL ', join(q{ }, @unset_mysql_variables ), "\n",
-                'For SQLITE ', join(q{ }, @unset_sqlite_variables ), "\n",; 
+                'EITHER: For MySQL ', join(q{ }, @unset_mysql_variables ), "\n",
+                'OR:     For SQLITE ', join(q{ }, @unset_sqlite_variables ), "\n",; 
         }
     }
     
