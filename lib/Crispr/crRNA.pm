@@ -981,7 +981,7 @@ sub _build_backbone {
 			$plasmid = $plasmids_for{$key};
 		}
 	}
-	
+    
 	if( !$plasmid ){
 		warn $self->name, " - Cannot determine vector backbone from species. Guessing pGERETY-1261.\n";
 		$plasmid = 'pGERETY-1261';
