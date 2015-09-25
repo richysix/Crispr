@@ -8,6 +8,7 @@ use namespace::autoclean;
 use Moose;
 use Moose::Util::TypeConstraints;
 use Carp qw( cluck confess );
+use Crispr::OffTarget;
 
 use Number::Format;
 my $num = new Number::Format( DECIMAL_DIGITS => 3, );

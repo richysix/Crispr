@@ -19,7 +19,7 @@ use Getopt::Long;
 #chomp $count_output;
 #$count_output =~ s/\s$test_data//mxs;
 
-plan tests => 1 + 2 + 13 + 8 + 6 + 4 + 1;
+plan tests => 1 + 2 + 13 + 8 + 11 + 4 + 1 + 1;
 
 use Crispr::OffTargetInfo;
 
@@ -83,7 +83,7 @@ $off_target->add_off_target( $mock_nongenic_off_target );
 $off_target->add_off_target( $mock_nongenic_off_target );
 is( $off_target->score, 0.81, 'check off target score 4' );
 
-# check number attributes - 6 tests
+# check number attributes - 11 tests
 is( $off_target->number_exon_hits, 1, 'check number of exon hits' );
 is( $off_target->number_intron_hits, 1, 'check number of intron hits' );
 is( $off_target->number_nongenic_hits, 2, 'check number of nongenic hits' );
@@ -96,6 +96,13 @@ my $hits = join('|',
                 join('/', @{$hits[2]} ),
             );
 is( $hits, 'test_chr1:201-123:1|test_chr3:101-123|test_chr1:1-23/test_chr1:1-23', 'check off target hits');
+is( $off_target->number_hits, 4, 'check number_hits method');
+
+$hits = $off_target->all_off_target_hits;
+is( $hits->[0], 'test_chr1:201-123:1', 'check all_off_target_hits method');
+is( $hits->[1], 'test_chr3:101-123', 'check all_off_target_hits method');
+is( $hits->[2], 'test_chr1:1-23', 'check all_off_target_hits method');
+is( $hits->[3], 'test_chr1:1-23', 'check all_off_target_hits method');
 
 like( join("\t", $off_target->info), qr/0.81\t1|1|2\ttest_chr1:201-123:1|test_chr3:101-123|test_chr1:1-23\/test_chr1:1-23/xms, 'check off target info' );
 
@@ -111,5 +118,17 @@ foreach ( 1..10 ){
     $off_target->add_off_target( $mock_exon_off_target );
 }
 is( $off_target->score, 0, 'check off target score 5' );
+
+# check _make_and_add_off_target - 1 test
+my %args = (
+        crRNA_name => 'crRNA:1:1-23:1',
+        chr => '2',
+        start => 2563,
+        end => 2585,
+        strand => -1,
+        mismatches => 3,
+        annotation => 'exon',
+);
+ok( $off_target->_make_and_add_off_target( \%args ), 'check _make_and_add_off_target' );
 
 
