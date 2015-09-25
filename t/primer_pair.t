@@ -7,7 +7,7 @@ use Test::More;
 use Test::Exception;
 use Test::MockObject;
 
-plan tests => 1 + 18 + 1;
+plan tests => 1 + 18 + 1 + 2;
 
 use Crispr::PrimerPair;
 
@@ -57,4 +57,16 @@ foreach my $method ( @methods ) {
 # check type constraints - 1 tests
 throws_ok { Crispr::PrimerPair->new( type => 'nt' ) }
     qr/PrimerPair:Type/ms, 'wrong pair type';
+
+my $primer_pair_2 = Crispr::PrimerPair->new(
+    amplicon_name => 'ENSDARE00000001',
+    pair_name => '5:2403050-2403273',
+    product_size => '224',
+    left_primer => $mock_r_primer,
+    right_primer => $mock_l_primer,
+    type => 'ext',
+);
+
+is( $primer_pair_2->seq_region_start, 2403050, 'check start where right primer is before left primer' );
+is( $primer_pair_2->seq_region_end, 2403273, 'check end where right primer is before left primer' );
 
