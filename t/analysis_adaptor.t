@@ -17,7 +17,7 @@ use Crispr::DB::AnalysisAdaptor;
 use Crispr::DB::DBConnection;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 18 + 4 + 4 + 4 + 3 + 1 + 5 + 5 + 10 + 6 + 6;
+Readonly my $TESTS_IN_COMMON => 1 + 18 + 4 + 4 + 4 + 3 + 1 + 5 + 5 + 10 + 6 + 6 + 1;
 #Readonly my $TESTS_IN_COMMON => 1 + 20 + 4 + 13 + 2 + 3 + 24 + 24 + 48 + 25 + 2;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
@@ -517,12 +517,13 @@ foreach my $db_connection ( @{$db_connections} ){
     ok( $analyses_from_db = $analysis_adaptor->fetch_all_by_plex( $mock_plex ), 'fetch_all_by_plex');
     check_attributes( $analyses_from_db->[3], $mock_analysis_2, $driver, 'fetch_all_by_plex', );
 
-#TODO: {
-#    local $TODO = 'methods not implemented yet.';
-#    
-#    ok( $analysis_adaptor->delete_analysis_from_db ( 'rna' ), 'delete_analysis_from_db');
-#
-#}
+TODO: {
+    local $TODO = 'methods not implemented yet.';
+    
+    ok( $analysis_adaptor->delete_analysis_from_db ( 'rna' ), 'delete_analysis_from_db');
+
+}
+
     $db_connection->destroy();
 }
 

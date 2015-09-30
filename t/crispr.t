@@ -136,6 +136,7 @@ throws_ok { $design_obj_no_target_seq->find_crRNAs_by_target( $mock_target ) } q
 $mock_target->mock( 'target_name', sub{ return '5:46628364-46628423_e' });
 ok( $design_obj->find_crRNAs_by_target( $mock_target ), 'find crRNAs by target');
 is( scalar @{ $design_obj->targets }, 1, 'check number of targets');
+
 ok( $design_obj->filter_crRNAs_from_target_by_strand( $mock_target, '1' ), 'filter crRNAs by strand');
 is( scalar @{ $mock_target->crRNAs }, 6, 'check crispr left after filtering by + strand' );
 
