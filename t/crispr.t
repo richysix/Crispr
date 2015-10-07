@@ -146,7 +146,10 @@ $tests+=10;
 
 my $crRNA_1;
 ok( $crRNA_1 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:3:5689156-5689178:1', 'zebrafish' ), 'create crRNA from crRNA name' );
-$tests+=1;
+warning_like { $crRNA_1 = $design_obj_no_slice_adaptor->create_crRNA_from_crRNA_name( 'crRNA:3:5689156-5689178:1', 'zebrafish' ) }
+    qr/Couldn't retrieve sequence for crRNA/,
+   'create crRNA from crRNA name no slice adaptor';
+$tests+=2;
 
 my $off_targets1;
 my $coding_scores1 = {};

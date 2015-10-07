@@ -1379,7 +1379,7 @@ sub _fetch_sequence {
     if( !defined $slice && defined $self->target_genome ){
         my $db = Bio::DB::Fasta->new( $self->target_genome );
         my $obj = $db->get_Seq_by_id($chr);
-        if( defined $obj->seq ){
+        if( defined $obj && defined $obj->seq ){
             my $seq = $obj->seq;
             my $subseq = $obj->subseq( $pos => $end );
             $slice = $strand eq '-1' ?   $subseq->revcom :   $subseq;
