@@ -629,7 +629,7 @@ num_five_prime_Gs, and target_id cannot be null.
 
 #### add_primer_pair_plus_enzyme_info_for_crRNAs_to_db_from_file.pl
 
-Script to add screening primer information. It will also add information on unique restriction sites
+Script to add screening primer information. It will also add information on unique restriction sites.  
 The input file should contain the following columns:
 
  * product_size       - size of PCR product (Int)
@@ -639,10 +639,10 @@ The input file should contain the following columns:
 
 Optional columns are:
 
- * well_id            - well id to use for adding primers to db.
-    (A01-H12 for 96 well plates. A01-P24 for 384 well plates.)
+ * well_id            - well id to use for adding primers to db.  
+  (A01-H12 for 96 well plates. A01-P24 for 384 well plates.)
  * enzyme_info        - comma-separated list of enzymes that cut the amplicon and the crispr target site uniquely  
-    each item should consist of Enzyme_name:Site:Distance_to_crispr_cut_site  
+each item should consist of Enzyme_name:Site:Distance_to_crispr_cut_site  
 
 
     # make primer info files
