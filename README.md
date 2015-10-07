@@ -666,7 +666,7 @@ Example
     --crispr_db /path/to/config.conf --type int-illumina_tailed \
     --plate_num 1 --plate_type 96 --fill_direction row int_primers.tsv
 
-If the option --plate\_num is set a plate name of the form sprintf("CR_%06d%s", plate_num, suffix) with a suffix depending on the primer type.
+If the option --plate\_num is set a plate name of the form sprintf("CR_%06d%s", plate_num, suffix) with a suffix depending on the primer type.  
 e.g. --plate_num 1 --type ext-illumina would be stored in a plate named CR_000001f  
     --plate_num 1 --type int-illumina_tailed would be stored in a plate named CR_000001h  
 
