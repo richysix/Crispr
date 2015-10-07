@@ -22,7 +22,7 @@ use Crispr::DB::DBConnection;
 Readonly my $TESTS_IN_COMMON => 1 + 11 + 1 + 3 + 2 + ( 6 * 14 ) + 1;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON + 7,
-    sqlite => $TESTS_IN_COMMON + 2,
+    sqlite => $TESTS_IN_COMMON + 4,
 );
 if( $ENV{NO_DB} ) {
     plan skip_all => 'Not testing database';
@@ -55,6 +55,11 @@ foreach my $db_connection ( @{$db_connections} ){
     # $dbh is a DBI database handle
     local $Test::DatabaseRow::dbh = $dbh;
     
+    if( $driver eq 'sqlite' ){
+        foreach my $variable ( qw{MYSQL_DBNAME MYSQL_DBHOST MYSQL_DBPORT MYSQL_DBUSER MYSQL_DBPASS } ){
+            $ENV{$variable} = undef;
+        }
+    }
     # make a real DBConnection object
     my $db_conn = Crispr::DB::DBConnection->new( $db_connection_params->{$driver} );
     
@@ -79,13 +84,34 @@ foreach my $db_connection ( @{$db_connections} ){
         is( $db_conn->port, $db_connection_params->{mysql}->{port}, "$driver: check value of port attribute" );
         is( $db_conn->user, $db_connection_params->{mysql}->{user}, "$driver: check value of user attribute" );
         is( $db_conn->pass, $db_connection_params->{mysql}->{pass}, "$driver: check value of pass attribute" );
-        ok( Crispr::DB::DBConnection->new(), "$driver: env variables" );
-        ok( Crispr::DB::DBConnection->new( undef ), "$driver: env variables with undef parameter" );
+        warning_like { Crispr::DB::DBConnection->new() }
+            qr/No config file or options supplied/,
+            "$driver: env variables";
+        warning_like { Crispr::DB::DBConnection->new( undef ) }
+            qr/No config file or options supplied/,
+            "$driver: env variables with undef parameter";
     }
     else{
-        # 2 tests
+        # 4 tests
         is( $db_conn->dbname, $db_connection_params->{sqlite}->{dbname}, "$driver: check value of dbname attribute" );
         is( $db_conn->dbfile, $db_connection_params->{sqlite}->{dbfile}, "$driver: check value of dbfile attribute" );
+        
+        throws_ok {
+                warnings_like { Crispr::DB::DBConnection->new() }
+                    [ qr/No config file or options supplied/,
+                        qr/MySQL environment variables are not set/,
+                    ]
+            }
+            qr/These environment variables need to be set/,
+            "$driver: throws if no env variables set";
+        
+        $ENV{SQLITE_DBNAME} = 'test';
+        $ENV{SQLITE_DBFILE} = 'test.db';
+        warnings_like { Crispr::DB::DBConnection->new() }
+            [ qr/No config file or options supplied/,
+                qr/MySQL environment variables are not set/,
+            ],
+            "$driver: env variables";
     }
     
     # test BUILDARGS method in constructor - 3 tests
