@@ -642,9 +642,9 @@ Optional columns are:
 * well_id            - well id to use for adding primers to db.  
   (A01-H12 for 96 well plates. A01-P24 for 384 well plates.)
 * enzyme_info        - comma-separated list of enzymes that cut the amplicon and the crispr target site uniquely  
-  each item should consist of Enzyme_name:Site:Distance_to_crispr_cut_site  
+  each item should consist of Enzyme_name:Site:Distance_to_crispr_cut_site
 
-
+Example
     # make primer info files
     perl -F"\t" -lane 'if($. == 1){ print "#", join("\t", qw{ crisprs left_primer_info right_primer_info product_size } ); }
     else{ print join("\t", $F[1], join(q{,}, @F[3,4]), join(q{,}, @F[5,6]), $F[18], ) }' miseq_primers.tsv > ext_primers.tsv
