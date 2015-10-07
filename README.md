@@ -647,10 +647,15 @@ Optional columns are:
 Example  
 
     # make primer info files
-    perl -F"\t" -lane 'if($. == 1){ print "#", join("\t", qw{ crisprs left_primer_info right_primer_info product_size } ); }
-    else{ print join("\t", $F[1], join(q{,}, @F[3,4]), join(q{,}, @F[5,6]), $F[18], ) }' miseq_primers.tsv > ext_primers.tsv
-    perl -F"\t" -lane 'if($. == 1){ print "#", join("\t", qw{ crisprs left_primer_info right_primer_info product_size } ); }
-    else{ print join("\t", $F[1], join(q{,}, @F[13,14]), join(q{,}, @F[15,16]), $F[19], ) }' miseq_primers.tsv > int_primers.tsv
+    perl -F"\t" -lane 'if($. == 1){
+    print "#", join("\t", qw{ crisprs left_primer_info right_primer_info product_size } ); }
+    else{ print join("\t", $F[1], join(q{,}, @F[3,4]), join(q{,}, @F[5,6]), $F[18], ) }' \
+    miseq_primers.tsv > ext_primers.tsv
+    
+    perl -F"\t" -lane 'if($. == 1){
+    print "#", join("\t", qw{ crisprs left_primer_info right_primer_info product_size } ); }
+    else{ print join("\t", $F[1], join(q{,}, @F[13,14]), join(q{,}, @F[15,16]), $F[19], ) }' \
+    miseq_primers.tsv > int_primers.tsv
     
     # add primers
     add_primer_pair_plus_enzyme_info_for_crRNAs_to_db_from_file.pl \
