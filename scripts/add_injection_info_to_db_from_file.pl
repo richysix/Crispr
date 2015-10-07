@@ -92,7 +92,7 @@ while(<>){
             my $col_num = $3;
             if( $col_num > 24 ){
                 die join(q{ }, "Column number of well id is too large,",
-                        $1, $args{crispr_guide}, ), "\n";
+                        $1, $crispr_guide, ), "\n";
             }
             $col_num = length $col_num == 1 ? '0' . $col_num : $col_num;
             my $well_id = $2 . $col_num;
@@ -115,7 +115,7 @@ while(<>){
         }
         else{
             die join(q{ }, "Could not parse crispr guide name,",
-                    $args{crispr_guide}, ), "\n";
+                    $crispr_guide, ), "\n";
         }
         push @crRNAs, $crRNA;
         
