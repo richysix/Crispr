@@ -640,7 +640,7 @@ The input file should contain the following columns:
 Optional columns are:
 
  * well_id            - well id to use for adding primers to db.  
-  (A01-H12 for 96 well plates. A01-P24 for 384 well plates.)
+(A01-H12 for 96 well plates. A01-P24 for 384 well plates.)
  * enzyme_info        - comma-separated list of enzymes that cut the amplicon and the crispr target site uniquely  
 each item should consist of Enzyme_name:Site:Distance_to_crispr_cut_site  
 
