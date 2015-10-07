@@ -644,7 +644,7 @@ Optional columns are:
 * enzyme_info        - comma-separated list of enzymes that cut the amplicon and the crispr target site uniquely  
   each item should consist of Enzyme_name:Site:Distance_to_crispr_cut_site
 
-Example
+Example  
     # make primer info files
     perl -F"\t" -lane 'if($. == 1){ print "#", join("\t", qw{ crisprs left_primer_info right_primer_info product_size } ); }
     else{ print join("\t", $F[1], join(q{,}, @F[3,4]), join(q{,}, @F[5,6]), $F[18], ) }' miseq_primers.tsv > ext_primers.tsv
