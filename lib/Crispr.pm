@@ -297,14 +297,17 @@ sub _testing {
     $testing = shift @_;
 }
 
-#BUILD
-#
-#Usage       : $crRNA->BUILD;
-#Purpose     : Internal method to check whether the attributes that are files exist or not
-#Returns     : 
-#Parameters  : receives the hash ref of parameters given to new
-#Throws      : if any of the files don't exist or are empty
-#Comments    : 
+=method BUILD
+
+  Usage       : 
+  Purpose     : Internal method called when the Crispr object is created to
+                check some of the attributes.
+  Returns     : None
+  Parameters  : None
+  Throws      : If either of the attributes target_genome or annotation_file is set but the file itself does not exist.
+  Comments    : 
+
+=cut
 
 sub BUILD {
     my $self = shift;
