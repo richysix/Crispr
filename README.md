@@ -546,6 +546,12 @@ The tables in the database are:
     enzyme_ordering             
     restriction_enzymes         
 
+#### Target
+|target_id|target_name|assembly|chr|start|end|strand|species|requires_enzyme|gene_id|gene_name|requestor|ensembl_version|designed|
+|--------------------------------------------------------------------------------------------------------------------------------|
+|257|ENSDARE00000322522|Zv9|21|18273817|18274310|1|zebrafish|y|ENSDARG00000002593|slc45a2|rnk|75|2013-06-10|
+
+
 A Target is a stretch of DNA that can be associated with CRISPR targets.
 crRNA/crRNA_pair represents a CRISPR target site/pairs of CRISPR target sites.
 coding_scores, off_target_info, plasmid_backbone, construction_oligos and
