@@ -293,19 +293,20 @@ sub parse_number_range {
 sub parse_wells {
     my ( $wells, ) = @_;
     my @wells;
-    if( $wells =~ m/\A [A-P]\d+             # single well
+    $wells = uc($wells);
+    if( $wells =~ m/\A [A-P]\d+             # single well e.g. A1 or B01
                         \z/xms ){
         @wells = ( $wells );
     }
     elsif( $wells =~ m/\A [A-P]\d+          # well_id
                             ,+              # zero or more commas
-                            [A-P]\d+        # well_id
+                            [A-P]\d+        # well_id e.g. A01,A02,A03,A04
                         /xms ){
         @wells = split /,/, $wells;
     }
     elsif( $wells =~ m/\A  [A-P]\d+         # well_id
                             \-              # literal hyphen
-                            [A-P]\d+        # well_id
+                            [A-P]\d+        # well_id e.g. A1-B3
                         \z/xms ){
         @wells = $sample_plate->range_to_well_ids( $wells );
     }
