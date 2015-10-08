@@ -559,7 +559,7 @@ A crRNA represents a CRISPR target site and is linked to a particular target and
 crRNAs can be paired and this is stored in the crRNA_pair table.
 
 |crRNA_id|crRNA_name|chr|start|end|strand|sequence|num_five_prime_Gs|score|off_target_score|coding_score|target_id|plate_id|well_id|
-|-|-|-|-|-|-|-|-|-|-|-|-|-|-|
+|--------|----------|---|-----|---|------|--------|-----------------|-----|----------------|------------|---------|--------|-------|
 |436|crRNA:21:18273990-18274012:1|21|18273990|18274012|1|TTGGAGTGGTGGAGCCTCCGAGG|0|1.000|1.000|NULL|257|37|D01|
 
 Tables coding_scores, off_target_info, plasmid_backbone, construction_oligos and
@@ -570,7 +570,7 @@ A guideRNA_prep is a particular preparation (protein/RNA) of an sgRNA.
 The table holds information about the date it was made and who made it.
 
 |guideRNA_prep_id|crRNA_id|guideRNA_type|concentration|made_by|date|plate_id|well_id|
-|-|-|-|-|-|-|-|-|
+|----------------|--------|-------------|-------------|-------|----|--------|-------|
 |1|242|sgRNA|0.0|cr_user2|2014-01-01|NULL|NULL|
 
 primer, primer_pair and amplicon_to_crRNA hold information about which screening primers are for which CRISPR targets.
