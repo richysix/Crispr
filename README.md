@@ -549,18 +549,18 @@ The tables in the database are:
 #### Target table  
 A Target is a stretch of DNA that can be associated with CRISPR targets.
 
-|target_id|target_name|assembly|chr|start|end|strand|species|requires_enzyme|gene_id|gene_name|requestor|ensembl_version|designed|
-|---------|-----------|--------|---|-----|---|------|-------|---------------|-------|---------|---------|---------------|--------|
-|257|ENSDARE00000322522|Zv9|21|18273817|18274310|1|zebrafish|y|ENSDARG00000002593|slc45a2|cr_user1|75|2013-06-10|
+| target_id | target_name | assembly | chr | start | end | strand | species | requires_enzyme | gene_id | gene_name | requestor | ensembl_version | designed |
+|-----------|-------------|----------|-----|-------|-----|--------|---------|-----------------|---------|-----------|-----------|-----------------|----------|
+| 257 | ENSDARE00000322522 | Zv9 | 21 | 18273817 | 18274310 | 1 | zebrafish | y | ENSDARG00000002593 | slc45a2 | cr_user1 | 75 | 2013-06-10 |
 
 #### crRNA/crRNA_pair
 
 A crRNA represents a CRISPR target site and is linked to a particular target and requestor.
 crRNAs can be paired and this is stored in the crRNA_pair table.
 
-|crRNA_id|crRNA_name|chr|start|end|strand|sequence|num_five_prime_Gs|score|off_target_score|coding_score|target_id|plate_id|well_id|
-|--------|----------|---|-----|---|------|--------|-----------------|-----|----------------|------------|---------|--------|-------|
-|436|crRNA:21:18273990-18274012:1|21|18273990|18274012|1|TTGGAGTGGTGGAGCCTCCGAGG|0|1.000|1.000|NULL|257|37|D01|
+| crRNA_id | crRNA_name | chr | start | end | strand | sequence | num_five_prime_Gs | score | off_target_score | coding_score | target_id | plate_id | well_id |
+|----------|------------|-----|-------|-----|--------|----------|-------------------|-------|------------------|--------------|-----------|----------|---------|
+| 436 | crRNA:21:18273990-18274012:1 | 21 | 18273990 | 18274012 | 1 | TTGGAGTGGTGGAGCCTCCGAGG | 0 | 1.000 | 1.000 | NULL | 257 | 37 | D01 |
 
 Tables coding_scores, off_target_info, plasmid_backbone, construction_oligos and
 expression_construct hold other information about CRISPR target sites.
@@ -569,21 +569,125 @@ expression_construct hold other information about CRISPR target sites.
 A guideRNA_prep is a particular preparation (protein/RNA) of an sgRNA.
 The table holds information about the date it was made and who made it.
 
-|guideRNA_prep_id|crRNA_id|guideRNA_type|concentration|made_by|date|plate_id|well_id|
-|----------------|--------|-------------|-------------|-------|----|--------|-------|
-|1|242|sgRNA|0.0|cr_user2|2014-01-01|NULL|NULL|
+| guideRNA_prep_id | crRNA_id | guideRNA_type | concentration | made_by | date | plate_id | well_id |
+|------------------|----------|---------------|---------------|---------|------|----------|---------|
+| 1 | 242 | sgRNA | 0.0 | cr_user2 | 2014-01-01 | NULL | NULL |
 
-primer, primer_pair and amplicon_to_crRNA hold information about which screening primers are for which CRISPR targets.
+#### primers
+
+The primer, primer_pair and amplicon_to_crRNA tables hold information about screening primers and which ones are for which CRISPR targets.
+
+##### primer
+| primer_id | primer_sequence | primer_chr | primer_start | primer_end | primer_strand | primer_tail | plate_id | well_id |
+|-----------|-----------------|------------|--------------|------------|---------------|-------------|----------|---------|
+| 1 | CCAATATAGTGCTCCACATCTGTTACA | 23 | 27843893 | 27843919 | 1 | NULL | 5 | A01 |
+
+##### primer_pair
+| primer_pair_id | type | left_primer_id | right_primer_id | chr | start | end | strand | product_size |
+|----------------|------|----------------|-----------------|-----|-------|-----|--------|--------------|
+| 1 | int-illumina | 1 | 46 | 23 | 27843893 | 27844076 | 1 | 184 |
+
+##### amplicon_to_crRNA
+| primer_pair_id | crRNA_id |
+|----------------|----------|
+|              1 |        1 |
+
+#### EnzymeInfo
+
 The enzyme tables store information on unique restriction sites near CRISPR target sites.
-cas9 and cas9_prep have information on the type of Cas9 and a particular prep.
-injection and injection_pool were designed to hold information on sgRNAs injected
+
+#### Cas9
+
+The type of Cas9 construct and type of prep (rna vs protein) are stored in the cas9 and cas9_prep tables.
+
+##### cas9
+| cas9_id | name | type | vector | species |
+|---------|------|------|--------|---------|
+| 1 | pCS2-ZfnCas9n | ZfnCas9n | pCS2 | s_pyognenes |
+
+##### cas9_prep
+| cas9_prep_id | cas9_id | prep_type | made_by | date | notes |
+|--------------|---------|-----------|---------|------|-------|
+| 113 | 1 | rna | cr_user2 | 2014-04-13 | M113 |
+
+#### Injections
+
+The injection and injection_pool tables were designed to hold information on sgRNAs injected
 into zebrafish but can be used for other things such as other species or transfections.
-sample is an instance of a sample that has been injected/transfected with sgRNA(s).
-plex represents a multiplexed sequencing run. Within a sequencing run, an Analysis is a set of samples
+
+##### injection
+
+| injection_id | injection_name | cas9_prep_id | cas9_concentration | date | line_injected | line_raised | sorted_by |
+|--------------|----------------|--------------|--------------------|------|---------------|-------------|-----------|
+| 1 | 49 | 1 | 200.0 | 2014-02-05 | H0001 | MR0001 | NULL |
+
+##### injection_pool
+
+| injection_id | crRNA_id | guideRNA_prep_id | guideRNA_concentration |
+|--------------|----------|------------------|------------------------|
+|            6 |      501 |                6 |                     10 |
+|            6 |      502 |                7 |                     10 |
+
+#### Samples
+
+A sample is a preparation of DNA from cells that have been injected/transfected
+with sgRNA(s) to be analysed.
+
+| sample_id | sample_name | sample_number | injection_id | generation | type  | species   |
+|-----------|-------------|---------------|--------------|------------|-------|-----------|
+|         1 | 49_1        |             1 |            1 | G0         | sperm | zebrafish |
+
+#### Sequencing Information
+
+##### plex
+A plex represents a multiplexed sequencing run.
+
+| plex_id | plex_name | run_id | analysis_started | analysis_finished |
+|---------|-----------|--------|------------------|-------------------|
+|       1 | mpx22     |  15524 | 2015-02-23       | NULL              |
+
+Within a sequencing run, an Analysis is a set of samples
 that are all sequenced for the same amplicons. The analysis and analysis_information
-tables holds the information on the amplicons and sgRNAs in an Analysis.
+tables hold the information on the amplicons and sgRNAs in an Analysis.
+
+##### analysis
+| analysis_id | plex_id | analysis_started | analysis_finished |
+|-------------|---------|------------------|-------------------|
+|           1 |       4 | 2014-06-09       | NULL              |
+
+##### analysis_information
+| analysis_id | sample_id | primer_pair_id | barcode_id | plate_number | well_id |
+|-------------|-----------|----------------|------------|--------------|---------|
+|           1 |       619 |             46 |          1 |            1 | A01     |
+
 sequencing_results, allele, allele_to_crispr, sample_allele and kasp hold the results
-of the analysis including genotyping assays.  
+of the analysis including genotyping assays.
+
+##### sequencing_results
+| sample_id | crRNA_id | fail | num_indels | total_percentage_of_reads | percentage_major_variant | total_reads |
+|-----------|----------|------|------------|---------------------------|--------------------------|-------------|
+| 1 | 1 | 0 | 5 | 0.2456 | 0.0853 | 23753 |
+
+##### allele
+| allele_id | chr | pos | ref_allele | alt_allele | ref_seq | alt_seq | primer_pair_id | type |
+|-----------|-----|-----|------------|------------|---------|---------|----------------|------|
+| 1 | 23 | 25637957 | AGCTTG | A | GACTAGACTAGATCATATGACAGATCGACGATACGATACGTACGATACGATAGCTTGACAGACTACTACAGCAGCAGTTTGATAGAGCAGACCCACACGATAGACATCAGT | GACTAGACTAGATCATATGACAGATCGACGATACGATACGTACGATACGATAACAGACTACTACAGCAGCAGTTTGATAGAGCAGACCCACACGATAGACATCAGT | 1 | crispr |
+
+##### allele_to_crispr
+| allele_id | crRNA_id |
+|-----------|----------|
+| 1 | 1 |
+
+##### sample_allele
+| sample_id | allele_id | percentage_of_reads |
+|-----------|-----------|---------------------|
+| 1 | 1 | 0.0853 |
+
+##### kasp
+| kasp_id | allele_id | allele_number | allele_specific_primer_1 | allele_specific_primer_2 | common_primer_1 | common_primer_2 | plate_id | well_id |
+|---------|-----------|---------------|--------------------------|--------------------------|-----------------|-----------------|----------|---------|
+| 1 | 1 | sa30756 | GCAGAGAGAAGGAAGCCGAGA | CAGAGAGAAGGAAGCCGAGG | ATCTGGTGTGTCAGGCTGGGTA | NULL | 24 | A01 |
+
 In order to use the database to automate analysis the following tables need to be used:  
 target, crRNA, guideRNA_prep, primer, primer_pair, amplicon_to_crRNA, cas9, cas9_prep,
 injection, injection_pool, sample, plex, analysis and analysis_information
