@@ -186,8 +186,15 @@ e.g.
     # index with bwa
     bwa index -a bwtsw Danio_rerio.GRCz10.dna.toplevel.fa
 
-##TO DO
-Write some text about getting annotation (exons and introns)
+Off-targets are scored based on whether they are found in exons, introns or between genes.
+To do this the script requires a file of gene annotation in gff format.
+A helper script (dump_exons_and_introns.pl) is included to download annotation from the Ensembl database.
+The annotation depends on which gene build it is from. Please make sure you are using the correct version of the Ensembl API.
+e.g.
+
+    # download annotation for zebrafish from Ensembl
+    perl scripts/dump_exons_and_introns.pl zebrafish
+
 
 There is also a --no_db option which stops the script connecting to the Ensembl database.
 It uses the supplied genome file to search for CRISPR target sites, but can
