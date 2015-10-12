@@ -68,20 +68,19 @@ setwd( cmd_line_args$options[['directory']] )
 # open data file
 input_file <- cmd_line_args$args[1]
 
-col_names <- c("plex", "plate", "sub_plex", "well", "sample_name", "gene", "group_name", "region", "caller", "indel_position",
-"crispr_name", "chr", "pos", "ref", "alt", "reads", "total_on_target_reads", "pc_total_reads",
-"consensus_start", "ref_seq", "alt_consensus" )
+#col_names <- c("plex", "plate", "analysis", "well", "sample_name", "gene_name", "group_name", "amplicon", "caller", "type",
+#"crispr_name", "chr", "variant_position", "reference_allele", "alternate_allele", "num_reads_with_indel", "total_on_target_reads", "percentage_reads_with_indel",
+#"consensus_start", "ref_seq", "consensus_alt_seq" )
 data_types <- c("factor","factor","factor","factor","factor","factor","factor","factor","factor","factor",
 "factor", "character","integer","character","character","integer","integer","numeric",
-"numeric", "character", "character" )
+"integer", "character", "character" )
 
-all_indels <- read.table(file=input_file, sep="\t", comment.char="%", col.names=col_names, colClasses=data_types )
-all_indels$group_name <- factor( all_indels$group_name, levels= levels( all_indels$group_name )[ order( levels( all_indels$group_name ) ) ] )
+all_indels <- read.table(file=input_file, sep="\t", comment.char = "%", header = TRUE, colClasses=data_types )
+all_indels$group_name <- factor( all_indels$group_name, levels= levels( all_indels$group_name )[ order( as.integer(levels( all_indels$group_name ) ) ) ] )
+names(all_indels)[1] <- sub("^X\\.", "", names(all_indels)[1])
 
 # remove non-overlapping
-indels <- subset( all_indels, ( is.na( all_indels$indel_position ) | all_indels$indel_position == 'crispr' | all_indels$indel_position == 'crispr_pair' ) )
-# remove indels below 0.1%
-# indels <- subset( indels, indels$pc_total_reads >= 0.001 )
+indels <- subset( all_indels, ( is.na( all_indels$type ) | all_indels$type == 'crispr' | all_indels$type == 'crispr_pair' ) )
 
 # add well info
 indels$row <- well_to_row( indels$well )
@@ -89,24 +88,24 @@ indels$column <- well_to_column( indels$well )
 indels <- add_row_indices_for_tile_plot( indels )
 
 # summaries
-results_by_sample_by_crispr <- ddply(indels, .(plex,plate,sub_plex,sample_name,crispr_name), summarise,
-	region = region[1],
-	gene = gene[1],
+results_by_sample_by_crispr <- ddply(indels, .(plex,plate,analysis,sample_name,crispr_name), summarise,
+	amplicon = amplicon[1],
+	gene_name = gene_name[1],
 	group_name = group_name[1],
-	total_indels=length(reads), 
-	Deletions=sum(nchar(ref) > nchar(alt)),
-	Insertions=sum(nchar(ref) < nchar(alt)),
-	pc_reads=round( sum(pc_total_reads, na.rm=TRUE) * 100, 1 ),
-	pc_reads_per_indel=round( sum(pc_total_reads, na.rm=TRUE)/( length(reads) - 1 ) * 100, 1 ),
-	pc_major_variant=round( max(pc_total_reads, na.rm=TRUE) * 100, 1 ), 
+	total_indels=length(num_reads_with_indel), 
+	Deletions=sum(nchar(reference_allele) > nchar(alternate_allele)),
+	Insertions=sum(nchar(reference_allele) < nchar(alternate_allele)),
+	pc_reads=round( sum(percentage_reads_with_indel, na.rm=TRUE) * 100, 1 ),
+	pc_reads_per_indel=round( sum(percentage_reads_with_indel, na.rm=TRUE)/( length(num_reads_with_indel) - 1 ) * 100, 1 ),
+	pc_major_variant=round( max(percentage_reads_with_indel, na.rm=TRUE) * 100, 1 ), 
 	total_on_target_reads = total_on_target_reads[1],
 	row=row[1], col=column[1], row_i = row_indices[1] )
 
 results_by_sample_by_crispr$total_indels[ results_by_sample_by_crispr$pc_reads == 0 ] <- 0
 
-results_by_gene <- ddply(results_by_sample_by_crispr, .(plex,plate,sub_plex,crispr_name,gene), summarise,
-	region = region[1],
-	gene = gene[1],
+results_by_gene_name <- ddply(results_by_sample_by_crispr, .(plex,plate,analysis,crispr_name,gene_name), summarise,
+	amplicon = amplicon[1],
+	gene_name = gene_name[1],
 	group_name = group_name[1],
 	min_pc = round( min( pc_reads ), digits=1 ),
 	max_pc = round( max( pc_reads ), digits=1 ),
@@ -118,19 +117,19 @@ results_by_gene <- ddply(results_by_sample_by_crispr, .(plex,plate,sub_plex,cris
 
 # sort and output table
 results_sorted <- results_by_sample_by_crispr[ order( results_by_sample_by_crispr$plate, -results_by_sample_by_crispr$row_i, results_by_sample_by_crispr$col ), ]
-results_sorted_subset <- subset( results_sorted, select = c("plex", "plate", "sub_plex", "sample_name", "region", "gene", "crispr_name", "total_indels", "pc_reads", "pc_major_variant", "total_on_target_reads"))
+results_sorted_subset <- subset( results_sorted, select = c("plex", "plate", "analysis", "sample_name", "amplicon", "gene_name", "crispr_name", "total_indels", "pc_reads", "pc_major_variant", "total_on_target_reads"))
 table_filename <- paste(cmd_line_args$options[['basename']], "results.txt", sep=".")
 write.table(results_sorted_subset, file=table_filename, col.names = TRUE, row.names = FALSE, quote = FALSE, sep="\t" )
 
 # output summary table
-summary_table <- subset(results_by_gene, select = c("sub_plex", "gene", "region", "crispr_name", "min_pc", "max_pc", "mean_pc", "sd_pc", "num_founders_over_5pc", "max_pc_major_variant" ) )
+summary_table <- subset(results_by_gene_name, select = c("analysis", "gene_name", "amplicon", "crispr_name", "min_pc", "max_pc", "mean_pc", "sd_pc", "num_founders_over_5pc", "max_pc_major_variant" ) )
 summary_filename <- paste(cmd_line_args$options[['basename']], "summary.txt", sep=".")
 write.table(summary_table, file=summary_filename, col.names = TRUE, row.names = FALSE, quote = FALSE, sep="\t" )
 
 # coverage
 log_labels <- c("10", "100", "1000", "10000", "100000", "1000000")
 coverage_plot <- ggplot(data=results_by_sample_by_crispr) + 
-	geom_boxplot( aes(y = total_on_target_reads, x = sub_plex ) ) +
+	geom_boxplot( aes(y = total_on_target_reads, x = analysis ) ) +
 	scale_y_log10( limits = c(10,1000000), breaks = as.numeric(log_labels), labels = log_labels ) +
 	labs(x = "Target", y = "Coverage" )
 
@@ -142,13 +141,13 @@ if( file.exists(total_reads_file) ){
 	total_reads <- read.table(file=total_reads_file, sep="\t", col.names = c("plex","sample_name","total_reads"))
 	
 	# merge data frames
-	results_by_sample_by_gene <- merge(results_by_sample_by_gene, total_reads)
+	results_by_sample_by_gene_name <- merge(results_by_sample_by_gene_name, total_reads)
 	
 	# create new ON target % column
-	results_by_sample_by_gene$pc_on_target <- results_by_sample_by_gene$total_on_target_reads / 	results_by_sample_by_gene$total_reads
+	results_by_sample_by_gene_name$pc_on_target <- results_by_sample_by_gene_name$total_on_target_reads / 	results_by_sample_by_gene_name$total_reads
 	
 	# make boxplot of ON target %
-	ON_target_boxplot <- ggplot( data=results_by_sample_by_gene ) + 
+	ON_target_boxplot <- ggplot( data=results_by_sample_by_gene_name ) + 
 		geom_boxplot( aes( x = plex, y = pc_on_target ) ) + 
 		scale_y_continuous( limits = c(0,1), labels = percent ) + 
 		labs(x = "Target", y = "Percentage ON Target")

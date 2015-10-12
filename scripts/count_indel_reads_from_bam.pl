@@ -614,9 +614,10 @@ if( !$options{no_dindel} ){
 
 # print out results to txt file and vcf file
 $out_fh->autoflush( 0 );
-print {$out_fh} q{#}, join("\t", qw{ plex plate subplex well sample_name
+# print header line
+print {$out_fh} q{#}, join("\t", qw{ plex plate analysis well sample_name
     gene_name group_name amplicon caller type crispr_name chr variant_position
-    reference_allele alternate_allele num_reads_with_indel total_reads
+    reference_allele alternate_allele num_reads_with_indel total_on_target_reads
     percentage_reads_with_indel consensus_start ref_seq consensus_alt_seq } ),
         "\n";
 
