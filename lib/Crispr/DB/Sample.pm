@@ -10,6 +10,7 @@ use Moose;
 use Moose::Util::TypeConstraints;
 use namespace::autoclean;
 use DateTime;
+use Labware::Well;
 
 with 'Crispr::SharedMethods';
 
@@ -18,21 +19,27 @@ with 'Crispr::SharedMethods';
   Usage       : my $sample = Crispr::DB::Sample->new(
 					db_id => undef,
                     injection_pool => $inj_pool,
-					subplex => $subplex,
-					barcode_id => 1,
 					generation => 'G0',
                     sample_type => 'sperm',
-                    well_id => 'A01',
+                    sample_name => '170_A01'
+                    sample_number => 12,
+                    alleles => $alleles_array_ref,
+                    species => 'zebrafish',
+                    well => $well,
+                    cryo_box => 'Cr_Sperm12'
                 );
   Purpose     : Constructor for creating Sample objects
   Returns     : Crispr::DB::Sample object
   Parameters  : db_id => Int,
                 injection_pool => Crispr::DB::InjectionPool,
-                subplex => Crispr::DB:Subplex,
-                barcode_id => Int,
                 generation => Str ('G0', 'F1', OR 'F2' ),
                 sample_type => Str ( 'sperm', 'embryo', 'fin_clip' ),
-                well_id => Str,
+                sample_name => Str,
+                sample_number => Int,
+                alleles => ArrayRef[ Crispr::Allele ],
+                species => Str
+                well => Labware::Well,
+                cryo_box => Str
   Throws      : If parameters are not the correct type
   Comments    : None
 
@@ -152,6 +159,38 @@ has 'species' => (
     default => 'zebrafish',
 );
 
+=method well
+
+  Usage       : $sample->well;
+  Purpose     : Getter for well attribute
+  Returns     : Str
+  Parameters  : None
+  Throws      : If input is given
+  Comments    : 
+
+=cut
+
+has 'well' => (
+    is => 'ro',
+    isa => 'Maybe[Labware::Well]',
+);
+
+=method cryo_box
+
+  Usage       : $sample->cryo_box;
+  Purpose     : Getter for cryo_box attribute
+  Returns     : Str
+  Parameters  : None
+  Throws      : If input is given
+  Comments    : 
+
+=cut
+
+has 'cryo_box' => (
+    is => 'ro',
+    isa => 'Maybe[Str]',
+);
+
 =method sample_name
 
   Usage       : $sample->sample_name;
@@ -172,7 +211,7 @@ has 'sample_name' => (
 
 sub _build_sample_name {
     my ( $self, ) = @_;
-    return join("_", $self->injection_pool->pool_name, $self->sample_number, );
+    return join("_", $self->injection_pool->pool_name, $self->well->position, );
 }
 
 __PACKAGE__->meta->make_immutable;
@@ -187,9 +226,15 @@ __END__
     use Crispr::DB::Sample;
     my $sample = Crispr::DB::Sample->new(
         db_id => undef,
-        injection_pool => $inj,
+        injection_pool => $inj_pool,
         generation => 'G0',
         sample_type => 'sperm',
+        sample_name => '170_A01'
+        sample_number => 12,
+        alleles => $alleles_array_ref,
+        species => 'zebrafish',
+        well => $well,
+        cryo_box => 'Cr_Sperm12'
     );    
     
 =head1 DESCRIPTION
