@@ -556,15 +556,19 @@ Script to add information about MiSeq analyses (usually a subset of a full run) 
 =head1 SYNOPSIS
 
     add_analysis_information_to_db_from_file.pl [options] filename(s) | STDIN
-        --plex_name             name of the plex (e.g. MPX22) REQUIRED
-        --run_id                The id of the sequencing run REQUIRED
-        --analysis_started      date that analysis was started (yyyy-mm-dd)
-        --analysis_finished     date that analysis was finished (yyyy-mm-dd)
-        --crispr_db             config file for connecting to the database
-        --help                  print this help message
-        --man                   print the manual page
-        --debug                 print debugging information
-        --verbose               turn on verbose output
+        --plex_name                         name of the plex (e.g. MPX22) REQUIRED
+        --run_id                            The id of the sequencing run REQUIRED
+        --analysis_started                  date that analysis was started (yyyy-mm-dd)
+        --analysis_finished                 date that analysis was finished (yyyy-mm-dd)
+        --crispr_db                         config file for connecting to the database
+        --sample_plate_format               plate format for sample plate (96 or 384)
+        --sample_plate_fill_direction       fill direction for sample plate (row or column)
+        --barcode_plate_format              plate format for sample plate (96 or 384)
+        --barcode_plate_fill_direction      fill direction for sample plate (row or column)
+        --help                              print this help message
+        --man                               print the manual page
+        --debug                             print debugging information
+        --verbose                           turn on verbose output
 
 
 =head1 ARGUMENTS
@@ -678,6 +682,26 @@ At the moment MySQL is assumed as the driver for this.
 =item MYSQL_DBNAME
 
 =back
+
+=item B<--sample_plate_format>
+
+plate format for sample plate (96 or 384)
+default: 96
+
+=item B<--sample_plate_fill_direction>
+
+fill direction for sample plate (row or column)
+default: row
+
+=item B<--barcode_plate_format>
+
+plate format for sample plate (96 or 384)
+default: 96
+
+=item B<--barcode_plate_fill_direction>
+
+fill direction for sample plate (row or column)
+default: row
 
 =item B<--debug>
 
