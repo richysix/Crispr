@@ -147,11 +147,11 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_crRNA_object_2->set_isa( 'Crispr::crRNA' );
     $mock_crRNA_object_2->mock( 'crRNA_id', sub{ return 2 } );
     
-    my $mock_well = Test::MockObject->new();
-    $mock_well->set_isa( 'Labware::Well' );
+    my $mock_well_1 = Test::MockObject->new();
+    $mock_well_1->set_isa( 'Labware::Well' );
     #$mock_well->mock( 'plate', sub{ return $mock_plate } );
     #$mock_well->mock( 'plate_type', sub{ return '96' } );
-    $mock_well->mock( 'position', sub{ return 'A01' } );
+    $mock_well_1->mock( 'position', sub{ return 'A01' } );
     
     my $mock_gRNA_1 = Test::MockObject->new();
     $mock_gRNA_1->set_isa( 'Crispr::guideRNA_prep' );
@@ -163,7 +163,7 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_gRNA_1->mock( 'date', sub{ return '2014-10-02' } );
     $mock_gRNA_1->mock( 'crRNA', sub{ return $mock_crRNA_object_1 } );
     $mock_gRNA_1->mock( 'crRNA_id', sub{ return $mock_crRNA_object_1->crRNA_id } );
-    $mock_gRNA_1->mock( 'well', sub{ return $mock_well } );
+    $mock_gRNA_1->mock( 'well', sub{ return $mock_well_1 } );
     
     my $mock_well_2 = Test::MockObject->new();
     $mock_well_2->set_isa( 'Labware::Well' );
@@ -248,6 +248,8 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_sample_1->mock( 'generation', sub { return 'G0' } );
     $mock_sample_1->mock( 'type', sub { return 'embryo' } );
     $mock_sample_1->mock( 'species', sub { return 'zebrafish' } );
+    $mock_sample_1->mock( 'well', sub { return $mock_well_1 } );
+    $mock_sample_1->mock( 'cryo_box', sub { return 'Cr_Sperm12' } );
     
     my $mock_sample_2 = Test::MockObject->new();
     $mock_sample_2->set_isa( 'Crispr::DB::Sample' );
@@ -258,9 +260,11 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_sample_2->mock( 'generation', sub { return 'G0' } );
     $mock_sample_2->mock( 'type', sub { return 'embryo' } );
     $mock_sample_2->mock( 'species', sub { return 'zebrafish' } );
+    $mock_sample_2->mock( 'well', sub { return $mock_well_2 } );
+    $mock_sample_2->mock( 'cryo_box', sub { return 'Cr_Sperm12' } );
     
     # add samples to db
-    $statement = "insert into sample values( ?, ?, ?, ?, ?, ?, ? );";
+    $statement = "insert into sample values( ?, ?, ?, ?, ?, ?, ?, ?, ? );";
     $sth = $dbh->prepare($statement);
     $sth->execute(
         $mock_sample_1->db_id,
@@ -270,6 +274,8 @@ foreach my $db_connection ( @{$db_connections} ){
         $mock_sample_1->generation,
         $mock_sample_1->type,
         $mock_sample_1->species,
+        $mock_sample_1->well->position,
+        $mock_sample_1->cryo_box,
     );
     $sth->execute(
         $mock_sample_2->db_id,
@@ -279,6 +285,8 @@ foreach my $db_connection ( @{$db_connections} ){
         $mock_sample_2->generation,
         $mock_sample_2->type,
         $mock_sample_2->species,
+        $mock_sample_2->well->position,
+        $mock_sample_2->cryo_box,
     );
     
     # make mock primer and primer pair objects
