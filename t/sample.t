@@ -64,6 +64,10 @@ $mock_subplex_object->set_isa( 'Crispr::DB::Subplex' );
 $mock_subplex_object->mock( 'plex_name', sub{ return '8' } );
 $mock_subplex_object->mock( 'db_id', sub{ return 1 } );
 
+my $mock_well_object = Test::MockObject->new();
+$mock_well_object->set_isa( 'Labware::Well' );
+$mock_well_object->mock( 'position', sub { return 'A01' } );
+
 $sample = Crispr::DB::Sample->new(
     db_id => 1,
     injection_pool => $mock_inj_object,
@@ -71,16 +75,20 @@ $sample = Crispr::DB::Sample->new(
     sample_type => 'sperm',
     sample_number => 1,
     species => 'zebrafish',
+    well => $mock_well_object,
+    cryo_box => 'Cr_Sperm12'
 );
 
 is( $sample->db_id, 1, 'check db_id');
 is( $sample->generation, 'G0', 'check generation');
 is( $sample->sample_type, 'sperm', 'check sample_type');
-is( $sample->sample_number, 1, 'check sample_type');
-$tests += 4;
+is( $sample->sample_number, 1, 'check sample number');
+is( $sample->well->position, 'A01', 'check well');
+is( $sample->cryo_box, 'Cr_Sperm12', 'check cryo_box');
+$tests += 6;
 
 # check sample_name
-is( $sample->sample_name, '170_1', 'check sample name' );
+is( $sample->sample_name, '170_A01', 'check sample name' );
 $tests++;
 
 # check alleles attribute

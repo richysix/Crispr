@@ -11,6 +11,7 @@ use Carp qw( cluck confess );
 use English qw( -no_match_vars );
 use List::MoreUtils qw( any );
 use Crispr::DB::Sample;
+use Labware::Well;
 
 extends 'Crispr::DB::BaseAdaptor';
 
@@ -127,54 +128,60 @@ sub store_samples {
     
 	confess "Supplied argument must be an ArrayRef of Sample objects.\n" if( ref $samples ne 'ARRAY');
 	foreach my $sample ( @{$samples} ){
-        if( !ref $sample || !$sample->isa('Crispr::DB::Sample') ){
+        if( !ref $sample ){
+            confess "Argument must be Crispr::DB::Sample objects.\n";
+        }
+        elsif( !$sample->isa('Crispr::DB::Sample') ){
             confess "Argument must be Crispr::DB::Sample objects.\n";
         }
     }
     
-    my $add_sample_statement = "insert into sample values( ?, ?, ?, ?, ?, ?, ? );"; 
+    my $add_sample_statement = "insert into sample values( ?, ?, ?, ?, ?, ?, ?, ?, ? );"; 
     
     $self->connection->txn(  fixup => sub {
         my $sth = $dbh->prepare($add_sample_statement);
         foreach my $sample ( @{$samples} ){
             # check injection pool for id and check it exists in the db
-            my $injection_id;
             my ( $inj_pool_check_statement, $inj_pool_params );
             if( !defined $sample->injection_pool ){
-                confess join("\n", "One of the Sample objects does not contain a InjectionPool object.",
+                confess join("\n", "One of the Sample objects does not contain an InjectionPool object.",
                     "This is required to able to add the sample to the database.", ), "\n";
             }
             else{
                 if( defined $sample->injection_pool->db_id ){
-                    $inj_pool_check_statement = "select count(*) from injection where injection_id = ?;";
+                    $inj_pool_check_statement = "SELECT count(*) FROM injection WHERE injection_id = ?;";
                     $inj_pool_params = [ $sample->injection_pool->db_id ];
                 }
                 elsif( defined $sample->injection_pool->pool_name ){
-                    $inj_pool_check_statement = "select count(*) from injection i, injection_pool ip where injection_name = ? and ip.crRNA_id is NOT NULL;";
+                    $inj_pool_check_statement = "SELECT count(*) FROM injection i WHERE injection_name = ?;";
                     $inj_pool_params = [ $sample->injection_pool->pool_name ];
+                }
+                else{
+                    confess join("\n", "One of the Sample objects contains an InjectionPool object with neither a db_id nor an injection_name.",
+                        "This is required to able to add the sample to the database.", ), "\n";
                 }
             }
             # check injection_pool exists in db
             if( !$self->check_entry_exists_in_db( $inj_pool_check_statement, $inj_pool_params ) ){
                 # try storing it
-                $self->injection_pool_adaptor->store( $sample->injection_pool );
+                my $injection_pool = $self->injection_pool_adaptor->store( $sample->injection_pool );
+                $sample->injection_pool->db_id( $injection_pool->db_id )
+            }
+            # need db_id
+            my $injection_id;
+            if( defined $sample->injection_pool->db_id ){
+                $injection_id = $sample->injection_pool->db_id;
             }
             else{
-                # need db_id
-                if( defined $sample->injection_pool->db_id ){
-                    $injection_id = $sample->injection_pool->db_id;
-                }
-                else{
-                    my $injection_pool = $self->injection_pool_adaptor->fetch_by_name( $sample->injection_pool->pool_name );
-                    $injection_id = $injection_pool->db_id;
-                }
+                my $injection_pool = $self->injection_pool_adaptor->fetch_by_name( $sample->injection_pool->pool_name );
+                $injection_id = $injection_pool->db_id;
             }
             
             # add sample
             $sth->execute(
                 $sample->db_id, $sample->sample_name, $sample->sample_number,
                 $injection_id, $sample->generation, $sample->sample_type,
-                $sample->species,
+                $sample->species, $sample->well->position, $sample->cryo_box,
             );
             
             my $last_id;
@@ -269,7 +276,7 @@ sub fetch_by_name {
 sub fetch_all_by_injection_id {
     my ( $self, $inj_id ) = @_;
     my $samples = $self->_fetch( 'injection_id = ?;', [ $inj_id ] );
-    if( !$samples ){
+    if( ! @{$samples} ){
         confess join(q{ }, "Couldn't retrieve samples for injection id,",
                      $inj_id, "from database.\n" );
     }
@@ -311,23 +318,23 @@ sub fetch_all_by_analysis_id {
     my $sql = <<'END_SQL';
         SELECT
             s.sample_id, sample_name, sample_number,
-            injection_id, generation, type, species
+            injection_id, generation, type, species,
+            s.well_id, cryo_box
         FROM sample s, analysis_information info
         WHERE s.sample_id = info.sample_id
 END_SQL
 
-    if ($where_clause) {
-        $sql .= 'AND ' . $where_clause;
-    }
+    $sql .= 'AND ' . $where_clause;
     
     my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
     $sth->execute();
 
     my ( $sample_id, $sample_name, $sample_number, $injection_id,
-        $generation, $type, $species, );
+        $generation, $type, $species, $well_id, $cryo_box, );
     
     $sth->bind_columns( \( $sample_id, $sample_name, $sample_number,
-                          $injection_id, $generation, $type, $species, ) );
+                          $injection_id, $generation, $type, $species,
+                          $well_id, $cryo_box, ) );
 
     my @samples = ();
     while ( $sth->fetch ) {
@@ -337,6 +344,9 @@ END_SQL
             # fetch injection pool by id
             my $injection_pool = $self->injection_pool_adaptor->fetch_by_id( $injection_id );
             
+            my $well = defined $well_id ?
+                Labware::Well->new( position => $well_id )
+                :   undef;
             $sample = Crispr::DB::Sample->new(
                 db_id => $sample_id,
                 sample_name => $sample_name,
@@ -345,6 +355,8 @@ END_SQL
                 generation => $generation,
                 sample_type => $type,
                 species => $species,
+                well => $well,
+                cryo_box => $cryo_box,
             );
             $sample_cache{ $sample_id } = $sample;
         }
@@ -355,6 +367,11 @@ END_SQL
         push @samples, $sample;
     }
 
+    if( ! @samples ){
+        confess join(q{ }, "Couldn't retrieve samples for analysis id,",
+                     $analysis_id, "from database.\n" );
+    }
+    
     return \@samples;
 }
 
@@ -371,6 +388,13 @@ END_SQL
 
 sub fetch_all_by_analysis {
     my ( $self, $analysis ) = @_;
+    # check whether it an Analysis object
+    if( !ref $analysis ){
+        confess "Argument must be a Crispr::DB::Analysis object.\n";
+    }
+    elsif( !$analysis->isa('Crispr::DB::Analysis') ){
+        confess "Argument must be a Crispr::DB::Analysis object.\n";
+    }
     return $self->fetch_all_by_analysis_id( $analysis->db_id );
 }
 
@@ -391,7 +415,8 @@ sub _fetch {
     my $sql = <<'END_SQL';
         SELECT
             sample_id, sample_name, sample_number,
-            injection_id, generation, type, species
+            injection_id, generation, type, species,
+            well_id, cryo_box
         FROM sample
 END_SQL
 
@@ -403,10 +428,11 @@ END_SQL
     $sth->execute();
 
     my ( $sample_id, $sample_name, $sample_number, $injection_id,
-        $generation, $type, $species, );
+        $generation, $type, $species, $well_id, $cryo_box, );
     
     $sth->bind_columns( \( $sample_id, $sample_name, $sample_number,
-                          $injection_id, $generation, $type, $species, ) );
+                          $injection_id, $generation, $type, $species,
+                          $well_id, $cryo_box, ) );
 
     my @samples = ();
     while ( $sth->fetch ) {
@@ -416,6 +442,9 @@ END_SQL
             # fetch injection pool by id
             my $injection_pool = $self->injection_pool_adaptor->fetch_by_id( $injection_id );
             
+            my $well = defined $well_id ?
+                Labware::Well->new( position => $well_id )
+                :   undef;
             $sample = Crispr::DB::Sample->new(
                 db_id => $sample_id,
                 sample_name => $sample_name,
@@ -424,6 +453,8 @@ END_SQL
                 generation => $generation,
                 sample_type => $type,
                 species => $species,
+                well => $well,
+                cryo_box => $cryo_box,
             );
             $sample_cache{ $sample_id } = $sample;
         }

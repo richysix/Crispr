@@ -243,9 +243,12 @@ CREATE TABLE sample (
     generation  NOT NULL,
     type  NOT NULL,
     species VARCHAR(50) NOT NULL,
+    well_id CHAR(3),
+    cryo_box VARCHAR(30),
     FOREIGN KEY (injection_id) REFERENCES injection(injection_id)
 );
 CREATE UNIQUE INDEX `sample_name` ON sample (`sample_name`);
+CREATE UNIQUE INDEX `box_n_well` ON sample (`cryo_box`, `well_id`);
 
 CREATE TABLE analysis (
     analysis_id integer   PRIMARY KEY,

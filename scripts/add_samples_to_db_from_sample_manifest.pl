@@ -23,10 +23,17 @@ my $db_connection = Crispr::DB::DBConnection->new( $options{crispr_db}, );
 my $injection_pool_adaptor = $db_connection->get_adaptor( 'injection_pool' );
 my $sample_adaptor = $db_connection->get_adaptor( 'sample' );
 
-# parse input file, create Sample objects and add them to db
-my @attributes = ( qw{ injection_name num_samples generation sample_type species } );
+# make a minimal plate for parsing well-ranges
+my $sample_plate = Crispr::Plate->new(
+    plate_category => 'samples',
+    plate_type => $options{sample_plate_format},
+    fill_direction => $options{sample_plate_fill_direction},
+);
 
-my @required_attributes = qw{ injection_name num_samples generation sample_type species };
+# parse input file, create Sample objects and add them to db
+my @attributes = ( qw{ injection_name generation sample_type species sample_wells num_samples cryo_box } );
+
+my @required_attributes = qw{ injection_name generation sample_type species };
 
 my $comment_regex = qr/#/;
 my @columns;
@@ -42,15 +49,25 @@ while(<>){
         }
         s|$comment_regex||xms;
         @columns = split /\t/, $_;
+        my ( $wells, $numbers );
         foreach my $column_name ( @columns ){
             if( none { $column_name eq $_ } @attributes ){
                 die "Could not recognise column name, ", $column_name, ".\n";
+            }
+            if( $column_name eq 'sample_wells' ){
+                $wells = 1;
+            }
+            if( $column_name eq 'num_samples' ){
+                $numbers = 1;
             }
         }
         foreach my $attribute ( @required_attributes ){
             if( none { $attribute eq $_ } @columns ){
                 die "Missing required attribute: ", $attribute, ".\n";
             }
+        }
+        if( !( $wells xor $numbers ) ){
+            die "Input file must include only one of sample_wells or num_samples!\n";
         }
         next;
     }
@@ -72,17 +89,25 @@ while(<>){
     my $samples = $sample_adaptor->fetch_all_by_injection_pool( $args{'injection_pool'} );
     
     my @sample_numbers;
-    if( @{$samples} ){
+     if( @{$samples} ){
         @sample_numbers = sort { $b <=> $a }
                             map { $_->sample_number } @{$samples};
     }
     my $starting_sample_number = @sample_numbers
         ?   $sample_numbers[0]
         :   0;
-    
-    foreach my $sample_number ( $starting_sample_number + 1 .. $starting_sample_number + $args{'num_samples'} ){
+   
+    my @well_ids;
+    if( defined $args{sample_wells} ){
+        @well_ids = $sample_plate->parse_wells( $args{sample_wells} );
+    }
+    my $num_samples = @well_ids ? scalar @well_ids : $args{num_samples};
+    foreach my $sample_number ( $starting_sample_number + 1 .. $starting_sample_number + $num_samples ){
+        my $well_id = shift @well_ids;
+        $args{'well'} = defined $well_id ? Labware::Well->new( position => $well_id, )
+            :       undef;
         # make new sample object
-        $args{'sample_name'} = join("_", $args{'injection_name'}, $sample_number, );
+        $args{'sample_name'} = join("_", $args{'injection_name'}, $well_id, );
         $args{'sample_number'} = $sample_number;
         my $sample = Crispr::DB::Sample->new( \%args );
         push @samples, $sample;
@@ -115,6 +140,8 @@ sub get_and_check_options {
     GetOptions(
         \%options,
 		'crispr_db=s',
+        'sample_plate_format=s',
+        'sample_plate_fill_direction=s',
         'help',
         'man',
         'debug+',
@@ -134,6 +161,8 @@ sub get_and_check_options {
     if( $options{debug} > 1 ){
         use Data::Dumper;
     }
+    $options{sample_plate_format} = defined $options{sample_plate_format} ? $options{sample_plate_format} : '96';
+    $options{sample_plate_fill_direction} = defined $options{sample_plate_fill_direction} ? $options{sample_plate_fill_direction} : 'row';
     
     print "Settings:\n", map { join(' - ', $_, defined $options{$_} ? $options{$_} : 'off'),"\n" } sort keys %options if $options{verbose};
 }
@@ -156,11 +185,13 @@ Script to take a sample manifest file as input and add those samples to an SQL d
 =head1 SYNOPSIS
 
     add_samples_to_db_from_sample_manifest.pl [options] filename(s) | STDIN
-        --crispr_db             config file for connecting to the database
-        --help                  print this help message
-        --man                   print the manual page
-        --debug                 print debugging information
-        --verbose               turn on verbose output
+        --crispr_db                         config file for connecting to the database
+        --sample_plate_format               plate format for sample plate (96 or 384)
+        --sample_plate_fill_direction       fill direction for sample plate (row or column)
+        --help                              print this help message
+        --man                               print the manual page
+        --debug                             print debugging information
+        --verbose                           turn on verbose output
 
 
 =head1 ARGUMENTS
@@ -238,6 +269,16 @@ At the moment MySQL is assumed as the driver for this.
 
 =over
 
+=item B<--sample_plate_format>
+
+plate format for sample plate (96 or 384)
+default: 96
+
+=item B<--sample_plate_fill_direction>
+
+fill direction for sample plate (row or column)
+default: row
+
 =item B<--debug>
 
 Print debugging information.
@@ -254,7 +295,7 @@ Print this script's manual page and exit.
 
 =head1 DEPENDENCIES
 
-None
+Crispr
 
 =head1 AUTHOR
 

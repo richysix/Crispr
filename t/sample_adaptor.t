@@ -17,7 +17,7 @@ use Crispr::DB::SampleAdaptor;
 use Crispr::DB::DBConnection;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 21 + 4 + 5 + 4 + 3 + 1 + 7 + 7 + 14 + 8;
+Readonly my $TESTS_IN_COMMON => 1 + 21 + 4 + 7 + 5 + 3 + 1 + 10 + 9 + 18 + 38 + 11 + 19 + 21 + 2;
 #Readonly my $TESTS_IN_COMMON => 1 + 20 + 4 + 13 + 2 + 3 + 24 + 24 + 48 + 25 + 2;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
@@ -206,7 +206,7 @@ foreach my $db_connection ( @{$db_connections} ){
 
     my $mock_injection_pool = Test::MockObject->new();
     $mock_injection_pool->set_isa( 'Crispr::DB::InjectionPool' );
-    my $i_id = 1;
+    my $i_id;
     $mock_injection_pool->mock( 'db_id', sub{ my @args = @_; if( $_[1] ){ $i_id = $_[1] } return $i_id; } );
     $mock_injection_pool->mock( 'pool_name', sub{ return '170' } );
     $mock_injection_pool->mock( 'cas9_prep', sub{ return $mock_cas9_prep_object_1 } );
@@ -216,27 +216,27 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_injection_pool->mock( 'line_raised', sub{ return undef } );
     $mock_injection_pool->mock( 'sorted_by', sub{ return 'cr_1' } );
     $mock_injection_pool->mock( 'guideRNAs', sub{ return [ $mock_gRNA_1, $mock_gRNA_2, ] } );
-    # add directly to db
-    $statement = "insert into injection values( ?, ?, ?, ?, ?, ?, ?, ? );";
-    $sth = $dbh->prepare($statement);
-    $sth->execute(
-        $mock_injection_pool->db_id,
-        $mock_injection_pool->pool_name,
-        $mock_cas9_prep_object_1->db_id,
-        $mock_cas9_prep_object_1->concentration,
-        $mock_injection_pool->date,
-        $mock_injection_pool->line_injected,
-        $mock_injection_pool->line_raised,
-        $mock_injection_pool->sorted_by,
-    );
-    $statement = "insert into injection_pool values( ?, ?, ?, ? );";
-    $sth = $dbh->prepare($statement);
-    $sth->execute(
-        $mock_injection_pool->db_id,
-        $mock_crRNA_object_1->crRNA_id,
-        $mock_gRNA_1->db_id,
-        $mock_gRNA_1->injection_concentration,
-    );
+    ## add directly to db
+    #$statement = "insert into injection values( ?, ?, ?, ?, ?, ?, ?, ? );";
+    #$sth = $dbh->prepare($statement);
+    #$sth->execute(
+    #    $mock_injection_pool->db_id,
+    #    $mock_injection_pool->pool_name,
+    #    $mock_cas9_prep_object_1->db_id,
+    #    $mock_cas9_prep_object_1->concentration,
+    #    $mock_injection_pool->date,
+    #    $mock_injection_pool->line_injected,
+    #    $mock_injection_pool->line_raised,
+    #    $mock_injection_pool->sorted_by,
+    #);
+    #$statement = "insert into injection_pool values( ?, ?, ?, ? );";
+    #$sth = $dbh->prepare($statement);
+    #$sth->execute(
+    #    $mock_injection_pool->db_id,
+    #    $mock_crRNA_object_1->crRNA_id,
+    #    $mock_gRNA_1->db_id,
+    #    $mock_gRNA_1->injection_concentration,
+    #);
     
     # make a new real Sample Adaptor
     my $sample_adaptor = Crispr::DB::SampleAdaptor->new( db_connection => $db_conn, );
@@ -255,13 +255,20 @@ foreach my $db_connection ( @{$db_connections} ){
     my $mock_sample = Test::MockObject->new();
     $mock_sample->set_isa( 'Crispr::DB::Sample' );
     my $sample_id = 1;
+    
+    my $mock_well_object = Test::MockObject->new();
+    $mock_well_object->set_isa( 'Labware::Well' );
+    $mock_well_object->mock( 'position', sub { return 'A01' } );
+
     $mock_sample->mock( 'db_id', sub{ return $sample_id } );
-    $mock_sample->mock( 'injection_pool', sub{ return $mock_injection_pool } );
+    $mock_sample->mock( 'injection_pool', sub{ return undef } );
     $mock_sample->mock( 'generation', sub{ return 'G0' } );
     $mock_sample->mock( 'sample_type', sub{ return 'finclip' } );
     $mock_sample->mock( 'species', sub{ return 'zebrafish' } );
     $mock_sample->mock( 'sample_number', sub { return $sample_id } );
-    $mock_sample->mock( 'sample_name', sub{ return join("_", $mock_injection_pool->db_id, $mock_sample->sample_number, ) } );
+    $mock_sample->mock( 'well', sub { return $mock_well_object } );
+    $mock_sample->mock( 'cryo_box', sub { return undef } );
+    $mock_sample->mock( 'sample_name', sub{ return join("_", $mock_injection_pool->pool_name, $mock_sample->well->position, ) } );
     
     # check db adaptor attributes - 4 tests
     my $analysis_adaptor;
@@ -271,7 +278,19 @@ foreach my $db_connection ( @{$db_connections} ){
     ok( $injection_pool_adaptor = $sample_adaptor->injection_pool_adaptor(), "$driver: get injection_pool_adaptor" );
     isa_ok( $injection_pool_adaptor, 'Crispr::DB::InjectionPoolAdaptor', "$driver: check injection_pool_adaptor class" );
     
-    # check store methods 5 tests
+    # check store methods 7 tests
+    throws_ok { $sample_adaptor->store( $mock_sample ) }
+        qr/One of the Sample objects does not contain an InjectionPool object/,
+        'check store throws if sample does not have an injection pool';
+    
+    # check injection pool info
+    $mock_injection_pool->mock( 'pool_name', sub{ return undef } );
+    $mock_sample->mock( 'injection_pool', sub{ return $mock_injection_pool } );
+    throws_ok { $sample_adaptor->store( $mock_sample ) }
+        qr/One of the Sample objects contains an InjectionPool object with neither a db_id nor an injection_name/,
+        'check store throws if injection has neither db_id nor name';
+    
+    $mock_injection_pool->mock( 'pool_name', sub{ return '170' } );
     ok( $sample_adaptor->store( $mock_sample ), "$driver: store" );
     row_ok(
        table => 'sample',
@@ -282,6 +301,8 @@ foreach my $db_connection ( @{$db_connections} ){
                 generation => $mock_sample->generation,
                 type => $mock_sample->sample_type,
                 species => $mock_sample->species,
+                well_id => $mock_sample->well->position,
+                cryo_box => $mock_sample->cryo_box,
            },
            '==' => {
                 injection_id => $mock_sample->injection_pool->db_id,
@@ -289,6 +310,8 @@ foreach my $db_connection ( @{$db_connections} ){
        },
        label => "$driver: sample stored",
     );
+    # reset db_id on mock injection pool
+    $i_id = undef;
     
     # test that store throws properly
     throws_ok { $sample_adaptor->store_sample('Sample') }
@@ -311,8 +334,21 @@ foreach my $db_connection ( @{$db_connections} ){
         $regex,
         "$driver: store_sample throws because of duplicate entry";
     
-    # store sample - 4 tests
+    # store sample - 5 tests
     $sample_id = 2;
+    $regex = $driver eq 'mysql' ?   qr/Duplicate entry/
+        :                           qr/column sample_name is not unique/;
+    throws_ok {
+        warning_like { $sample_adaptor->store_sample( $mock_sample ) }
+            $regex;
+    }
+        $regex, "$driver: store sample throws with duplicate sample_name";
+    
+    # change well_id to solve duplicate sample name problem
+    $mock_well_object->mock( 'position', sub { return 'A02' } );
+    # add injection pool db_id
+
+    $i_id = 1;
     ok( $sample_adaptor->store_sample( $mock_sample ), "$driver: store_sample" );
     row_ok(
        table => 'sample',
@@ -323,6 +359,8 @@ foreach my $db_connection ( @{$db_connections} ){
                 generation => $mock_sample->generation,
                 type => $mock_sample->sample_type,
                 species => $mock_sample->species,
+                well_id => $mock_sample->well->position,
+                cryo_box => $mock_sample->cryo_box,
            },
            '==' => {
                 injection_id => $mock_sample->injection_pool->db_id,
@@ -340,16 +378,26 @@ foreach my $db_connection ( @{$db_connections} ){
     
     # increment mock object 1's id
     $sample_id = 3;
+    # change well_id to solve duplicate sample name problem
+    $mock_well_object->mock( 'position', sub { return 'A03' } );
+    
     # make new mock object for store injection pools
     my $mock_sample_2 = Test::MockObject->new();
     $mock_sample_2->set_isa( 'Crispr::DB::Sample' );
     my $sample_id_2 = 4;
+    
+    my $mock_well_object_2 = Test::MockObject->new();
+    $mock_well_object_2->set_isa( 'Labware::Well' );
+    $mock_well_object_2->mock( 'position', sub { return undef } );
+    
     $mock_sample_2->mock( 'db_id', sub{ return $sample_id_2 } );
     $mock_sample_2->mock( 'injection_pool', sub{ return $mock_injection_pool } );
     $mock_sample_2->mock( 'generation', sub{ return 'F1' } );
     $mock_sample_2->mock( 'sample_type', sub{ return 'embryo' } );
     $mock_sample_2->mock( 'species', sub{ return 'zebrafish' } );
     $mock_sample_2->mock( 'sample_number', sub { return $sample_id_2 } );
+    $mock_sample_2->mock( 'well', sub { return $mock_well_object_2 } );
+    $mock_sample_2->mock( 'cryo_box', sub { return 'Cr_Sperm12' } );
     $mock_sample_2->mock( 'sample_name', sub{ return join("_", $mock_injection_pool->db_id, $mock_sample_2->sample_number, ) } );
     
     # 3 tests
@@ -363,6 +411,8 @@ foreach my $db_connection ( @{$db_connections} ){
                 generation => $mock_sample->generation,
                 type => $mock_sample->sample_type,
                 species => $mock_sample->species,
+                well_id => $mock_sample->well->position,
+                cryo_box => $mock_sample->cryo_box,
            },
            '==' => {
                 injection_id => $mock_sample->injection_pool->db_id,
@@ -379,6 +429,8 @@ foreach my $db_connection ( @{$db_connections} ){
                 generation => $mock_sample_2->generation,
                 type => $mock_sample_2->sample_type,
                 species => $mock_sample_2->species,
+                well_id => $mock_sample_2->well->position,
+                cryo_box => $mock_sample_2->cryo_box,
            },
            '==' => {
                 injection_id => $mock_sample_2->injection_pool->db_id,
@@ -390,15 +442,16 @@ foreach my $db_connection ( @{$db_connections} ){
     # 1 test
     throws_ok{ $sample_adaptor->fetch_by_id( 10 ) } qr/Couldn't retrieve sample/, 'Sample does not exist in db';
     
-    # _fetch - 7 tests
+    # _fetch - 10 tests
+    ok( $sample_adaptor->_fetch(), '_fetch without where clause');
     my $sample_from_db = @{ $sample_adaptor->_fetch( 'sample_id = ?', [ 3, ] ) }[0];
     check_attributes( $sample_from_db, $mock_sample, $driver, '_fetch', );
     
-    # fetch_by_id - 7 tests
+    # fetch_by_id - 9 tests
     $sample_from_db = $sample_adaptor->fetch_by_id( 4 );
     check_attributes( $sample_from_db, $mock_sample_2, $driver, 'fetch_by_id', );
     
-    # fetch_by_ids - 14 tests
+    # fetch_by_ids - 18 tests
     my @ids = ( 3, 4 );
     my $samples_from_db = $sample_adaptor->fetch_by_ids( \@ids );
     
@@ -409,23 +462,113 @@ foreach my $db_connection ( @{$db_connections} ){
         check_attributes( $sample_from_db, $mock_sample, $driver, 'fetch_by_ids', );
     }
 
-    # fetch_by_name - 8 tests
-    $sample_id = 1;
-    ok( $sample_from_db = $sample_adaptor->fetch_by_name( '1_1' ), 'fetch_by_name');
+    # fetch all by injection id - 19 tests
+    throws_ok { $sample_adaptor->fetch_all_by_injection_id( 171 ) }
+        qr/Couldn't retrieve samples/,
+        'fetch_all_by_injection_id throws on non-existent injection_id';
+    
+    $samples_from_db = $sample_adaptor->fetch_all_by_injection_id( 1 );
+    foreach my $i ( 2..3 ){
+        my $sample_from_db = $samples_from_db->[$i];
+        my $mock_sample = $samples[$i-2];
+        check_attributes( $sample_from_db, $mock_sample, $driver, 'fetch_by_ids', );
+    }
+    
+    # fetch_all_by_injection_pool - 19 tests
+    $i_id = 171;
+    throws_ok { $sample_adaptor->fetch_all_by_injection_pool( $mock_injection_pool ) }
+        qr/Couldn't retrieve samples/,
+        'fetch_all_by_injection_pool throws on non-existent injection_id';
+    
+    $i_id = 1;
+    $samples_from_db = $sample_adaptor->fetch_all_by_injection_pool( $mock_injection_pool );
+    foreach my $i ( 2..3 ){
+        my $sample_from_db = $samples_from_db->[$i];
+        my $mock_sample = $samples[$i-2];
+        check_attributes( $sample_from_db, $mock_sample, $driver, 'fetch_by_ids', );
+    }
+    
+    # fetch_by_name - 11 tests
+    throws_ok { $sample_adaptor->fetch_by_name( '170_A05' ) }
+        qr/Couldn't retrieve sample/,
+        'fetch_by_name throws on non-existent sample';
+    ok( $sample_from_db = $sample_adaptor->fetch_by_name( '170_A03' ), 'fetch_by_name');
     check_attributes( $sample_from_db, $mock_sample, $driver, 'fetch_by_name', );
+    
+    # add analysis
+    $statement = "insert into analysis values( ?, ?, ?, ? );";
+    $sth = $dbh->prepare($statement);
+    $sth->execute( 1, 1, '2014-10-02', '2014-10-02' );
+    
+    $statement = "insert into primer values( ?, ?, ?, ?, ?, ?, ?, ?, ? );";
+    $sth = $dbh->prepare($statement);
+    $sth->execute( 1, 'ACGATAGACGATA', '13', 13535, 13635, '1', undef, undef, undef );
+    $sth->execute( 2, 'ACGATAGACGATA', '13', 13535, 13635, '1', undef, undef, undef );
 
-#    # 2 tests
-#    ok( $sample_adaptor->fetch_all_by_date( '2014-10-13' ), 'fetch_all_by_date');
-#TODO: {
-#    local $TODO = 'methods not implemented yet.';
-#    
-#    ok( $sample_adaptor->delete_sample_from_db ( 'rna' ), 'delete_sample_from_db');
-#
-#}
+    $statement = "insert into primer_pair values( ?, ?, ?, ?, ?, ?, ?, ?, ? );";
+    $sth = $dbh->prepare($statement);
+    $sth->execute( 1, 'ext', 1, 2, '13', 13535, 13635, '1', 250 );
+    
+    # increment mock object 1's id
+    $sample_id = 5;
+    # change well_id to solve duplicate sample name problem
+    $mock_well_object->mock( 'position', sub { return 'A06' } );
+    
+    $sample_id_2 = 6;
+    $mock_well_object_2->mock( 'position', sub { return undef } );
+    # store new samples
+    ok( $sample_adaptor->store_samples( [ $mock_sample, $mock_sample_2 ] ), "$driver: store_samples 5 & 6" );
+    
+    my $mock_analysis = Test::MockObject->new();
+    $mock_analysis->set_isa( 'Crispr::DB::Analysis' );
+    $mock_analysis->mock( 'db_id', sub { return 2 } );
+    
+    $statement = "insert into analysis_information values( ?, ?, ?, ?, ?, ? );";
+    $sth = $dbh->prepare($statement);
+    $sth->execute( 1, 5, 1, 5, 1, 'A06' );
+    $sth->execute( 1, 6, 1, 6, 1, 'A07' );
+    
+    # fetch_all_by_analysis_id - 19 tests
+    throws_ok { $sample_adaptor->fetch_all_by_analysis_id( 2 ) }
+        qr/Couldn't retrieve samples/,
+        'fetch_all_by_analysis_id throws on no samples returned';
+    $samples_from_db = $sample_adaptor->fetch_all_by_analysis_id( 1 );
+    foreach my $i ( 0..1 ){
+        my $sample_from_db = $samples_from_db->[$i];
+        my $mock_sample = $samples[$i];
+        check_attributes( $sample_from_db, $mock_sample, $driver, 'fetch_all_by_analysis_id', );
+    }
+    
+    # fetch_all_by_analysis - 21 tests
+    throws_ok { $sample_adaptor->fetch_all_by_analysis( 2 ) }
+        qr/Argument must be a Crispr::DB::Analysis object/,
+        'fetch_all_by_analysis throws on string input';
+    throws_ok { $sample_adaptor->fetch_all_by_analysis( $mock_injection_pool ) }
+        qr/Argument must be a Crispr::DB::Analysis object/,
+        'fetch_all_by_analysis throws on object of wrong type';
+    throws_ok { $sample_adaptor->fetch_all_by_analysis_id( $mock_analysis ) }
+        qr/Couldn't retrieve samples/,
+        'fetch_all_by_analysis throws on no samples returned';
+
+    $mock_analysis->mock( 'db_id', sub { return 1 } );
+    $samples_from_db = $sample_adaptor->fetch_all_by_analysis( $mock_analysis );
+    foreach my $i ( 0..1 ){
+        my $sample_from_db = $samples_from_db->[$i];
+        my $mock_sample = $samples[$i];
+        check_attributes( $sample_from_db, $mock_sample, $driver, 'fetch_all_by_analysis_id', );
+    }
+    
+
+    # 2 tests
+TODO: {
+    local $TODO = 'methods not implemented yet.';
+    
+    ok( $sample_adaptor->delete_sample_from_db ( $mock_sample ), 'delete_sample_from_db');
+}
     $db_connection->destroy();
 }
 
-# 7 tests
+# 9 tests
 sub check_attributes {
     my ( $object1, $object2, $driver, $method ) = @_;
     is( $object1->injection_pool->db_id, $object2->injection_pool->db_id, "$driver: object from db $method - check inj db_id");
@@ -434,6 +577,13 @@ sub check_attributes {
     is( $object1->sample_type, $object2->sample_type, "$driver: object from db $method - check sample_type");
     is( $object1->sample_number, $object2->sample_number, "$driver: object from db $method - check sample_number");
     is( $object1->species, $object2->species, "$driver: object from db $method - check species");
+    if( !defined $object1->well || !defined $object2->well ){
+        is( $object1->well, undef, "$driver: object from db $method - check well");        
+    }
+    else{
+        is( $object1->well->position, $object2->well->position, "$driver: object from db $method - check well");
+    }
+    is( $object1->cryo_box, $object2->cryo_box, "$driver: object from db $method - check cryo_box");
     is( $object1->sample_name, $object2->sample_name, "$driver: object from db $method - check sample_name");
 }
 
