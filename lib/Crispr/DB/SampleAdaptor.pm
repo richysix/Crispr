@@ -177,11 +177,12 @@ sub store_samples {
                 $injection_id = $injection_pool->db_id;
             }
             
+            my $well_id = defined $sample->well ? $sample->well->position : undef;
             # add sample
             $sth->execute(
                 $sample->db_id, $sample->sample_name, $sample->sample_number,
                 $injection_id, $sample->generation, $sample->sample_type,
-                $sample->species, $sample->well->position, $sample->cryo_box,
+                $sample->species, $well_id, $sample->cryo_box,
             );
             
             my $last_id;

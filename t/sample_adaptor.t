@@ -266,9 +266,9 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_sample->mock( 'sample_type', sub{ return 'finclip' } );
     $mock_sample->mock( 'species', sub{ return 'zebrafish' } );
     $mock_sample->mock( 'sample_number', sub { return $sample_id } );
-    $mock_sample->mock( 'well', sub { return $mock_well_object } );
+    $mock_sample->mock( 'well', sub { return undef } );
     $mock_sample->mock( 'cryo_box', sub { return undef } );
-    $mock_sample->mock( 'sample_name', sub{ return join("_", $mock_injection_pool->pool_name, $mock_sample->well->position, ) } );
+    $mock_sample->mock( 'sample_name', sub{ return join("_", $mock_injection_pool->pool_name, $mock_sample->sample_number, ) } );
     
     # check db adaptor attributes - 4 tests
     my $analysis_adaptor;
@@ -301,7 +301,7 @@ foreach my $db_connection ( @{$db_connections} ){
                 generation => $mock_sample->generation,
                 type => $mock_sample->sample_type,
                 species => $mock_sample->species,
-                well_id => $mock_sample->well->position,
+                well_id => $mock_sample->well,
                 cryo_box => $mock_sample->cryo_box,
            },
            '==' => {
@@ -336,16 +336,11 @@ foreach my $db_connection ( @{$db_connections} ){
     
     # store sample - 5 tests
     $sample_id = 2;
-    $regex = $driver eq 'mysql' ?   qr/Duplicate entry/
-        :                           qr/column sample_name is not unique/;
-    throws_ok {
-        warning_like { $sample_adaptor->store_sample( $mock_sample ) }
-            $regex;
-    }
-        $regex, "$driver: store sample throws with duplicate sample_name";
-    
+    # change well from undef to mock well and change mocked sample_name method
+    $mock_sample->mock( 'well', sub { return $mock_well_object } );
+    $mock_sample->mock( 'sample_name', sub{ return join("_", $mock_injection_pool->pool_name, $mock_sample->well->position, ) } );
     # change well_id to solve duplicate sample name problem
-    $mock_well_object->mock( 'position', sub { return 'A02' } );
+    #$mock_well_object->mock( 'position', sub { return 'A02' } );
     # add injection pool db_id
 
     $i_id = 1;
@@ -378,10 +373,19 @@ foreach my $db_connection ( @{$db_connections} ){
     
     # increment mock object 1's id
     $sample_id = 3;
+    # check store throws on duplicate sample_name
+    $regex = $driver eq 'mysql' ?   qr/Duplicate entry/
+        :                           qr/column sample_name is not unique/;
+    throws_ok {
+        warning_like { $sample_adaptor->store_sample( $mock_sample ) }
+            $regex;
+    }
+        $regex, "$driver: store sample throws with duplicate sample_name";
+    
     # change well_id to solve duplicate sample name problem
     $mock_well_object->mock( 'position', sub { return 'A03' } );
     
-    # make new mock object for store injection pools
+    # make new mock object for store samples
     my $mock_sample_2 = Test::MockObject->new();
     $mock_sample_2->set_isa( 'Crispr::DB::Sample' );
     my $sample_id_2 = 4;
