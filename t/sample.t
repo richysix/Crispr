@@ -91,6 +91,44 @@ $tests += 6;
 is( $sample->sample_name, '170_A01', 'check sample name' );
 $tests++;
 
+# check default sample_name
+my $tmp_sample = Crispr::DB::Sample->new(
+    db_id => 1,
+    generation => 'G0',
+    sample_type => 'sperm',
+    sample_number => 1,
+    species => 'zebrafish',
+    well => undef,
+    cryo_box => undef
+);
+is( $tmp_sample->sample_name, undef, 'check sample name: no injection_pool' );
+$tests++;
+
+$tmp_sample = Crispr::DB::Sample->new(
+    db_id => 1,
+    injection_pool => $mock_inj_object,
+    generation => 'G0',
+    sample_type => 'sperm',
+    sample_number => 1,
+    species => 'zebrafish',
+    well => undef,
+    cryo_box => undef
+);
+is( $tmp_sample->sample_name, '170_1', 'check sample name: no well' );
+$tests++;
+
+$tmp_sample = Crispr::DB::Sample->new(
+    db_id => 1,
+    injection_pool => $mock_inj_object,
+    generation => 'G0',
+    sample_type => 'sperm',
+    species => 'zebrafish',
+    well => undef,
+    cryo_box => undef
+);
+is( $tmp_sample->sample_name, undef, 'check sample name: no well or sample number' );
+$tests++;
+
 # check alleles attribute
 # make mock allele object
 my $allele_db_id = 1;

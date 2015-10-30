@@ -204,14 +204,29 @@ has 'cryo_box' => (
 
 has 'sample_name' => (
     is => 'ro',
-    isa => 'Str',
+    isa => 'Maybe[Str]',
     lazy => 1,
     builder => '_build_sample_name',
 );
 
 sub _build_sample_name {
     my ( $self, ) = @_;
-    return join("_", $self->injection_pool->pool_name, $self->well->position, );
+    my $sample_name;
+    if( defined $self->injection_pool ){
+        if( defined $self->well ){
+            $sample_name = join("_", $self->injection_pool->pool_name, $self->well->position, );
+        }
+        elsif( defined $self->sample_number ){
+            $sample_name = join("_", $self->injection_pool->pool_name, $self->sample_number, );
+        }
+        else{
+            $sample_name = undef;
+        }
+    }
+    else{
+        $sample_name = undef;
+    }
+    return $sample_name;
 }
 
 __PACKAGE__->meta->make_immutable;
