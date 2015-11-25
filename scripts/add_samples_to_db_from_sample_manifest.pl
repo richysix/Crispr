@@ -89,7 +89,7 @@ while(<>){
     my $samples = $sample_adaptor->fetch_all_by_injection_pool( $args{'injection_pool'} );
     
     my @sample_numbers;
-     if( @{$samples} ){
+    if( @{$samples} ){
         @sample_numbers = sort { $b <=> $a }
                             map { $_->sample_number } @{$samples};
     }
