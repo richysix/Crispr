@@ -77,16 +77,22 @@ while(<>){
     push @targets, $target;
 }
 
-eval{
-    $target_adaptor->store_targets( \@targets );
-};
-if( $EVAL_ERROR ){
-    warn "There was a problem storing one of the targets in the database.\n",
-            "ERROR MSG:", $EVAL_ERROR, "\n";
-}
-else{
-    foreach ( @targets ){
-        print join(q{ }, join(q{}, 'ID=', $_->target_id, ':', ), "Target", $_->target_name, "was successfully added to the database.\n", );
+foreach my $target ( @targets ){
+    eval{
+        $target = $target_adaptor->store( $target );
+    };
+    if( $EVAL_ERROR ){
+        if( $EVAL_ERROR =~ m/Duplicate\sentry/xms ){
+            warn join(q{ }, $_->target_name, $_->requestor, ), "\n",
+                'This target and requestor already exist in the database. Skipping...', "\n";
+        }
+        else{
+            die "There was a problem storing one of the targets in the database.\n",
+                    "ERROR MSG:", $EVAL_ERROR, "\n";
+        }
+    }
+    else{
+        print join(q{ }, join(q{}, 'ID=', $target->target_id, ':', ), "Target", $target->target_name, "was successfully added to the database.\n", );
     }
 }
 
