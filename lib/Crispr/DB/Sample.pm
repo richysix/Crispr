@@ -21,7 +21,7 @@ with 'Crispr::SharedMethods';
                     injection_pool => $inj_pool,
 					generation => 'G0',
                     sample_type => 'sperm',
-                    sample_name => '170_A01'
+                    sample_name => '170_1'
                     sample_number => 12,
                     alleles => $alleles_array_ref,
                     species => 'zebrafish',
@@ -213,10 +213,7 @@ sub _build_sample_name {
     my ( $self, ) = @_;
     my $sample_name;
     if( defined $self->injection_pool ){
-        if( defined $self->well ){
-            $sample_name = join("_", $self->injection_pool->pool_name, $self->well->position, );
-        }
-        elsif( defined $self->sample_number ){
+        if( defined $self->sample_number ){
             $sample_name = join("_", $self->injection_pool->pool_name, $self->sample_number, );
         }
         else{
