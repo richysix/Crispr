@@ -689,6 +689,7 @@ sub filter_crRNAs_from_target_by_snps_and_indels {
 			push @crRNAs_to_keep, $crRNA;
 		}
 		else{
+            warn join(q{ }, 'SNP FILTER:', $crRNA->name, $crRNA->sequence, 'Removing...', ), "\n";
 			push @crRNAs_to_delete, $crRNA;
 		}
 	}
