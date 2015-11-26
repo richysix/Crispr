@@ -55,7 +55,7 @@ my $crRNA = Crispr::crRNA->new(
     target => $mock_target_object,
     off_target_hits => $mock_off_target_object,
     coding_scores => \%coding_scores,
-); 
+);
 
 # new crRNA without a chr
 my $crRNA_no_chr = Crispr::crRNA->new(
@@ -73,7 +73,7 @@ my $crRNA_2 = Crispr::crRNA->new(
     sequence => 'GGCCTTCGGGTTTGACCCCATGG',
     target => $mock_target_object_3,
     five_prime_Gs => 1,
-); 
+);
 
 # check crRNA and attributes
 # 1 test
@@ -81,16 +81,22 @@ isa_ok( $crRNA, 'Crispr::crRNA' );
 $tests++;
 
 # check method calls 36 tests
-my @methods = qw( crRNA_id target chr start end
-    strand sequence species five_prime_Gs off_target_hits
-    off_target_info off_target_score coding_scores unique_restriction_sites plasmid_backbone
-    primer_pairs crRNA_adaptor _parse_strand_input _parse_species top_restriction_sites
-    info target_info_plus_crRNA_info target_summary_plus_crRNA_info coding_score_for coding_scores_by_transcript
+my @attributes = ( qw{crRNA_id target chr start end strand sequence species
+    five_prime_Gs off_target_hits off_target_info off_target_score coding_scores
+    unique_restriction_sites plasmid_backbone primer_pairs crRNA_adaptor
+    status } );
+my @methods = qw( _parse_strand_input _parse_species top_restriction_sites
+    info target_info_plus_crRNA_info target_summary_plus_crRNA_info
+    coding_score_for coding_scores_by_transcript
     name base_composition _build_species _build_five_prime_Gs core_sequence
     _build_oligo forward_oligo reverse_oligo _build_backbone coding_score
     score
 );
 
+foreach my $attribute ( @attributes ) {
+    can_ok( $crRNA, $attribute );
+    $tests++;
+}
 foreach my $method ( @methods ) {
     can_ok( $crRNA, $method );
     $tests++;
@@ -251,6 +257,14 @@ warning_like { $crRNA_no_chr->plasmid_backbone } qr/Cannot\sdetermine\svector\sb
 is( $crRNA_no_chr->plasmid_backbone, 'pGERETY-1261', 'Get plasmid_backbone 2' );
 is( $crRNA_2->plasmid_backbone, 'pGERETY-1260', 'Get plasmid_backbone 3' );
 $tests += 5;
+
+# check status
+is( $crRNA->status, 'DESIGNED', 'status default');
+$crRNA->status('PASSED_EMBRYO_SCREENING');
+is( $crRNA->status, 'PASSED_EMBRYO_SCREENING', 'new status');
+throws_ok { Crispr::crRNA->new( status => 'DESIGND', ) }
+    qr/Validation failed/, 'throws on non-allowed status';
+$tests += 2;
 
 # check output of non attribute methods
 # check target_info throws with no target - 2 tests
