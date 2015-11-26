@@ -157,12 +157,13 @@ while(<>){
     }
     my $num_samples = @well_ids ? scalar @well_ids : $args{num_samples};
 
+    my @miseq_well_ids = $miseq_plate->parse_wells( $args{miseq_wells} );
     my @barcodes;
     if( $args{barcodes} ){
         @barcodes = parse_barcodes( $args{barcodes} );
     }
     elsif( $args{barcode_plate_num} ){
-        foreach my $well_id ( @well_ids ){
+        foreach my $well_id ( @miseq_well_ids ){
             my $plate_i = $args{barcode_plate_num} - 1;
             my $barcode = $barcode_plates->[$plate_i]->return_well( $well_id )->contents();
             push @barcodes, $barcode;
@@ -173,8 +174,6 @@ while(<>){
         die join("\n", "Number of barcodes is not the same as the number of wells",
                    $_, ), "\n";
     }
-
-    my @miseq_well_ids = $miseq_plate->parse_wells( $args{miseq_wells} );
 
     # fetch primer_pairs from db
     my @primer_pairs;
