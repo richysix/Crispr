@@ -264,7 +264,7 @@ $crRNA->status('PASSED_EMBRYO_SCREENING');
 is( $crRNA->status, 'PASSED_EMBRYO_SCREENING', 'new status');
 throws_ok { Crispr::crRNA->new( status => 'DESIGND', ) }
     qr/Validation failed/, 'throws on non-allowed status';
-$tests += 2;
+$tests += 3;
 
 # check output of non attribute methods
 # check target_info throws with no target - 2 tests
