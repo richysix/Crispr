@@ -170,7 +170,7 @@ while(<>){
         }
     }
     # check there's the same number of barcodes and wells
-    if( scalar @barcodes != scalar @well_ids ){
+    if( scalar @barcodes != scalar @miseq_well_ids ){
         die join("\n", "Number of barcodes is not the same as the number of wells",
                    $_, ), "\n";
     }
