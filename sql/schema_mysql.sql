@@ -1,3 +1,8 @@
+CREATE TABLE status (
+   status_id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+   status VARCHAR(50)
+) ENGINE = InnoDB;
+
 CREATE TABLE target (
     target_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     target_name VARCHAR(45) NOT NULL,
@@ -12,7 +17,9 @@ CREATE TABLE target (
     gene_name VARCHAR (50),
     requestor VARCHAR(50) NOT NULL,
     ensembl_version SMALLINT UNSIGNED,
-    designed DATE
+    designed DATE,
+    status TINYINT,
+    FOREIGN KEY (status_id) REFERENCES status (status_id)
 ) ENGINE = InnoDB;
 CREATE UNIQUE INDEX `target_target_name_requestor` ON target ( `target_name`, `requestor` );
 
@@ -41,9 +48,11 @@ CREATE TABLE crRNA (
     target_id INT UNSIGNED NOT NULL,
     plate_id INT UNSIGNED,
     well_id CHAR(3),
+    status TINYINT,
     CONSTRAINT `crRNA_plate_id_well_id` UNIQUE (`plate_id`, `well_id`),
     FOREIGN KEY (target_id) REFERENCES target (target_id),
-    FOREIGN KEY (plate_id) REFERENCES plate (plate_id)
+    FOREIGN KEY (plate_id) REFERENCES plate (plate_id),
+    FOREIGN KEY (status_id) REFERENCES status (status_id)
 )  ENGINE = InnoDB;
 CREATE UNIQUE INDEX `crRNA_crRNA_name_target_id_plate_id` ON crRNA ( `crRNA_name`, `target_id`, `plate_id` );
 
@@ -328,5 +337,3 @@ CREATE TABLE kasp (
     FOREIGN KEY (allele_id) REFERENCES allele(allele_id),
     FOREIGN KEY (plate_id) REFERENCES plate(plate_id)
 ) ENGINE = InnoDB;
-
-
