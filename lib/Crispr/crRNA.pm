@@ -83,7 +83,7 @@ subtype 'Crispr::crRNA::DNA',
   Returns     : Int (can be undef)
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -99,7 +99,7 @@ has 'crRNA_id' => (
   Returns     : Crispr::Target object
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -117,7 +117,7 @@ has 'name' => (
   Returns     : Crispr::Target object
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -142,7 +142,7 @@ has 'target' => (
   Returns     : String (can be undef)
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -158,7 +158,7 @@ has 'chr' => (
   Returns     : Int
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -169,7 +169,7 @@ has 'chr' => (
   Returns     : Int
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -185,7 +185,7 @@ has [ 'start', 'end' ] => (
   Returns     : '1', '-1', '+' or '-'
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -202,7 +202,7 @@ has 'strand' => (
   Returns     : String (Must be a DNA sequence - ACGT only)
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -218,7 +218,7 @@ has 'sequence' => (
   Returns     : String (can be undef)
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -236,7 +236,7 @@ has 'species' => (
   Returns     : Int
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -254,7 +254,7 @@ has 'five_prime_Gs' => (
   Returns     : Crispr::OffTarget object
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -274,7 +274,7 @@ has 'off_target_hits' => (
   Returns     : HashRef
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -293,7 +293,7 @@ has 'coding_scores' => (
   Returns     : Crispr::EnzymeInfo object
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -309,7 +309,7 @@ has 'unique_restriction_sites' =>(
   Returns     : 'pDR274', 'pGERETY-1260' or 'pGERETY-1261'
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -327,7 +327,7 @@ has 'plasmid_backbone' => (
   Returns     : ArrayRef of Crispr::PrimerPair objects
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -343,7 +343,7 @@ has 'primer_pairs' => (
   Returns     : Crispr::DB::crRNAAdaptor object
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -352,11 +352,32 @@ has 'crRNA_adaptor' => (
     isa => 'Crispr::DB::crRNAAdaptor',
 );
 
+=method status
+
+  Usage       : $crRNA->status;
+  Purpose     : Setter/Getter for status attribute
+  Returns     : Str
+  Parameters  : None
+  Throws      : If status is not one of the specified ones
+  Comments    :
+
+=cut
+
+has 'status' => (
+    is => 'rw',
+    isa => enum( [ qw{ REQUESTED DESIGNED ORDERED MADE INJECTED
+    MISEQ_EMBYRO_SCREENING PASSED_EMBRYO_SCREENING FAILED_EMBRYO_SCREENING
+    SPERM_FROZEN MISEQ_SPERM_SCREENING PASSED_SPERM_SCREENING
+    FAILED_SPERM_SCREENING SHIPPED SHIPPED_AND_IN_SYSTEM IN_SYSTEM CARRIERS
+    F1_FROZEN  } ] ),
+    default => 'DESIGNED',
+);
+
 around BUILDARGS => sub{
     my $method = shift;
     my $self = shift;
     my %args;
-	
+
     if( !ref $_[0] ){
 		for( my $i = 0; $i < scalar @_; $i += 2 ){
 			my $k = $_[$i];
@@ -394,7 +415,7 @@ around BUILDARGS => sub{
     }
     else{
         confess "method new called without Hash or Hashref.\n";
-    }	
+    }
 };
 
 #_parse_strand_input
@@ -404,7 +425,7 @@ around BUILDARGS => sub{
 #				retruns undef for anything else
 #Returns     : '1' OR '-1'
 #Parameters  : String
-#Throws      : 
+#Throws      :
 #Comments    :
 
 sub _parse_strand_input {
@@ -426,7 +447,7 @@ sub _parse_strand_input {
 #Purpose     : tries to force common names for species
 #Returns     : String
 #Parameters  : String
-#Throws      : 
+#Throws      :
 #Comments    :
 
 sub _parse_species {
@@ -447,7 +468,7 @@ sub _parse_species {
         'Homo_sapiens' => 'human',
         'homo_sapiens' => 'human',
     );
-    
+
     if( !$input ){
         return;
     }
@@ -469,8 +490,8 @@ sub _parse_species {
 				sorted by length of site
   Returns     : String
   Parameters  : Int
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -479,7 +500,7 @@ sub top_restriction_sites {
     if( !$num ){
         $num = 2;
     }
-    
+
     if( $self->unique_restriction_sites ){
         my @restriction_enzymes = map { join(':', $_->name, $_->site) }
                                     sort { length($b->string) <=> length($a->string) } $self->enzymes;
@@ -504,14 +525,14 @@ sub top_restriction_sites {
 				protein_coding_score protein_coding_scores_by_transcript
   Returns     : Array of Strings
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
 sub info {
     my ( $self, ) = @_;
-    
+
     my @info = (
         $self->name,
         $self->chr || 'NULL',
@@ -527,7 +548,7 @@ sub info {
         push @info, 'NULL';
     }
     push @info, $self->sequence, $self->forward_oligo, $self->reverse_oligo;
-    
+
 	# off-target score
     if( defined $self->off_target_hits ){
         push @info, $self->off_target_info;
@@ -535,7 +556,7 @@ sub info {
 	else{
 		push @info, qw{NULL NULL NULL};
 	}
-    
+
 	# protein-coding score and detail on protein-coding scores by transcript
 	if( defined $self->coding_score ){
 		push @info, $num->format_number($self->coding_score), join(';', $self->coding_scores_by_transcript);
@@ -543,7 +564,7 @@ sub info {
     else{
         push @info, qw{NULL NULL};
     }
-    
+
     my $base_comp = $self->base_composition();
     my $gc_content = $base_comp->{C} + $base_comp->{G};
 	push @info, $self->five_prime_Gs, $self->plasmid_backbone, $gc_content;
@@ -562,14 +583,14 @@ sub info {
 				protein_coding_score protein_coding_scores_by_transcript
   Returns     : Array of Strings
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
 sub target_info_plus_crRNA_info {
     my ( $self, ) = @_;
-	
+
     if( !defined $self->target ){
 		confess "crRNA does not have an associated Target!\n";
 	}
@@ -589,8 +610,8 @@ sub target_info_plus_crRNA_info {
 				protein_coding_score protein_coding_scores_by_transcript
   Returns     : Array of Strings
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -611,8 +632,8 @@ sub target_summary_plus_crRNA_info {
   Purpose     : Getter for the putative cut_site of the crRNA
   Returns     : Num
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -627,14 +648,14 @@ sub cut_site {
   Purpose     : Getter/Setter for the coding score for a particular transcript
   Returns     : Num
   Parameters  : Bio::EnsEMBL::Transcript
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
 sub coding_score_for {
     my ( $self, $transcript_id, $score ) = @_;
-    
+
 	#should check transcript id
     my $coding_scores_for = $self->coding_scores;
     if( defined $score ){
@@ -653,8 +674,8 @@ sub coding_score_for {
   Purpose     : Returns the coding scores for all transcripts
   Returns     : Array of Strings
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -675,22 +696,22 @@ sub coding_scores_by_transcript {
 				chr/target_gene_name:start-end:strand
   Returns     : String
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
 sub _build_name {
     my ( $self, ) = @_;
     my $name = 'crRNA:';
-    
+
     if( defined $self->chr ){
         $name .= $self->chr . ':';
     }
     elsif( defined $self->target && defined $self->target_gene_name ){
         $name .= $self->target_gene_name . ':';
     }
-    
+
     $name .= join(':',
         join('-', $self->start, $self->end, ),
         $self->strand,
@@ -704,21 +725,21 @@ sub _build_name {
   Purpose     : Returns the base_composition for the crRNA as a hash keyed by base
   Returns     : HashRef
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
 sub base_composition {
     my ( $self, ) = @_;
-    
+
     my $sequence = substr($self->sequence, 0, 20 );
     my $count_hash;
     $count_hash->{A} = ($sequence =~ tr/A//)/20;
     $count_hash->{C} = ($sequence =~ tr/C//)/20;
     $count_hash->{G} = ($sequence =~ tr/G//)/20;
     $count_hash->{T} = ($sequence =~ tr/T//)/20;
-    
+
     return $count_hash;
 }
 
@@ -730,7 +751,7 @@ sub base_composition {
 #				otherwise returns undef
 #Returns     : String
 #Parameters  : None
-#Throws      : 
+#Throws      :
 #Comments    :
 
 sub _build_species {
@@ -751,7 +772,7 @@ sub _build_species {
 #				if no species returns 1
 #Returns     : Int (EITHER 1 or 2)
 #Parameters  : None
-#Throws      : 
+#Throws      :
 #Comments    :
 
 sub _build_five_prime_Gs {
@@ -782,13 +803,13 @@ sub _build_five_prime_Gs {
   Returns     : String
   Parameters  : None
   Throws      : If sequence attribute is undef or empty
-  Comments    : 
+  Comments    :
 
 =cut
 
 sub core_sequence {
     my ( $self, ) = @_;
-    
+
     if( $self->sequence ){
 		my $offset = $self->five_prime_Gs;
 		my $length = length( $self->sequence ) - 3 - $self->five_prime_Gs;
@@ -806,12 +827,12 @@ sub core_sequence {
 #Purpose     : builder for construction oligos with appropriate overhangs
 #Returns     : String
 #Parameters  : (String, String)
-#Throws      : 
+#Throws      :
 #Comments    : warns if cannot determin the correct overhanges
 
 sub _build_oligo {
     my ( $self, $oligo_seq, $type ) = @_;
-    
+
 	# MAY BE ABLE TO CHANGE THIS TO CHECKING PLASMID BACKBONE ATTRIBUTE - CHECK
     my %five_prime_nuc_for = (
         zebrafish_2G_forward => 'TAGG',
@@ -835,7 +856,7 @@ sub _build_oligo {
         xenopus_tropicalis_0G_forward => 'TAGG',
         xenopus_tropicalis_0G_reverse => 'AAAC',
     );
-    
+
     if( $self->species ){
         my $five_prime_nuc;
 		my $key = $self->species . '_' . $self->five_prime_Gs . 'G_' . $type;
@@ -860,13 +881,13 @@ sub _build_oligo {
   Returns     : String
   Parameters  : None
   Throws      : If sequence attribute is undef or empty
-  Comments    : 
+  Comments    :
 
 =cut
 
 sub forward_oligo {
     my ( $self, ) = @_;
-    
+
     if( $self->sequence ){
         return $self->_build_oligo( $self->core_sequence, 'forward' );
     }
@@ -882,13 +903,13 @@ sub forward_oligo {
   Returns     : String
   Parameters  : None
   Throws      : If sequence attribute is undef or empty
-  Comments    : 
+  Comments    :
 
 =cut
 
 sub reverse_oligo {
     my ( $self, ) = @_;
-    
+
     if( $self->sequence ){
         my $rev_seq = scalar reverse( $self->core_sequence );
         $rev_seq =~ tr/ACGT/TGCA/;
@@ -906,7 +927,7 @@ sub reverse_oligo {
   Returns     : String
   Parameters  : None
   Throws      : If sequence attribute is undef or empty
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -914,7 +935,7 @@ sub t7_hairpin_oligo {
 	my ( $self, ) = @_;
 	my $five_prime_sequence = 'CAAAACAGCATAGCTCTAAAAC';
 	my $t7_hairpin = 'CCTATAGTGAGTCGTATTAACAACATAATACGACTCACTATAGG';
-	
+
     if( $self->sequence ){
         my $rev_comp_seq = uc scalar reverse( $self->core_sequence );
         $rev_comp_seq =~ tr/ACGT/TGCA/;
@@ -923,7 +944,7 @@ sub t7_hairpin_oligo {
     else{
         confess "Can't produce oligo without a crRNA sequence!\n";
     }
-	
+
 }
 
 =method t7_fillin_oligo
@@ -933,7 +954,7 @@ sub t7_hairpin_oligo {
   Returns     : String
   Parameters  : None
   Throws      : If sequence attribute is undef or empty
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -959,7 +980,7 @@ sub t7_fillin_oligo {
 #				if cannot determin vector returns 'pGERETY-1261'
 #Returns     : String (EITHER 'pGERETY-1261','pGERETY-1260', OR 'pDR274')
 #Parameters  : None
-#Throws      : 
+#Throws      :
 #Comments    :
 
 sub _build_backbone {
@@ -973,7 +994,7 @@ sub _build_backbone {
 		mouse_1G => 'pGERETY-1261',
 		mouse_0G => 'pGERETY-1261',
 	);
-	
+
 	my $plasmid;
 	if( $self->species ){
 		my $key = $self->species . '_' . $self->five_prime_Gs . 'G';
@@ -981,7 +1002,7 @@ sub _build_backbone {
 			$plasmid = $plasmids_for{$key};
 		}
 	}
-    
+
 	if( !$plasmid ){
 		warn $self->name, " - Cannot determine vector backbone from species. Guessing pGERETY-1261.\n";
 		$plasmid = 'pGERETY-1261';
@@ -997,15 +1018,15 @@ sub _build_backbone {
 				Average of coding scores for all transcripts
   Returns     : Float
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
 sub coding_score {
     my ( $self, ) = @_;
     my $coding_scores_for = $self->coding_scores;
-    
+
     if( !keys %{$coding_scores_for} ){
         return;
     }
@@ -1026,14 +1047,14 @@ sub coding_score {
 				Cobination of coding_score and off_target_score
   Returns     : Float
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
 sub score {
     my ( $self, ) = @_;
-    
+
     my $score = defined $self->coding_score &&
 					defined $self->off_target_hits &&
 					defined $self->off_target_hits->score		?   $self->coding_score * $self->off_target_hits->score
@@ -1045,7 +1066,7 @@ sub score {
     if( defined $score && ($score < 0 || $score > 1) ){
         $score = 0;
     }
-    
+
     return $score;
 }
 __PACKAGE__->meta->make_immutable;
@@ -1066,5 +1087,3 @@ __PACKAGE__->meta->make_immutable;
 #	primer_pairs => $primer_pairs,
 #	crRNA_adaptor => $crRNA_adaptor,
 #);
-
-
