@@ -2,7 +2,7 @@
 /** crRNA joined to amplicons **/
 CREATE OR REPLACE VIEW crispr2primer_pair AS
     SELECT pl1.plate_name as crRNA_plate_name, cr.well_id as crRNA_well_id, crRNA_name, cr.sequence,
-    pl2.plate_name as primer_plate_name, p.well_id as primer_well_id, 
+    pl2.plate_name as primer_plate_name, p.well_id as primer_well_id,
     concat_ws(":", pp.chr, concat_ws("_", pp.start, pp.end ), pp.strand ) as primer_pair_name,
     pp.type, pp.product_size
         FROM crRNA cr INNER JOIN plate pl1
@@ -48,7 +48,7 @@ CREATE OR REPLACE VIEW plex_injection_sample_analysisView AS
 
 /** Crisprs by plate with target info **/
 CREATE OR REPLACE VIEW crispr_plate_targetView AS
-    SELECT concat_ws("_", plate_name, well_id) as location, crRNA_name, target_name,
+    SELECT plate_name, well_id, crRNA_name, target_name,
     gene_id, gene_name, requestor, designed
         FROM crRNA cr
         INNER JOIN plate pl1
@@ -56,5 +56,3 @@ CREATE OR REPLACE VIEW crispr_plate_targetView AS
         INNER JOIN target t
         ON cr.target_id = t.target_id
         ORDER BY location;
-
-
