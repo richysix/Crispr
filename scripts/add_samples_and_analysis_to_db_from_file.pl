@@ -42,6 +42,13 @@ my $sample_plate = Crispr::Plate->new(
     fill_direction => $options{sample_plate_fill_direction},
 );
 
+# make a minimal plate for parsing well-ranges
+my $miseq_plate = Crispr::Plate->new(
+    plate_category => 'samples',
+    plate_type => $options{miseq_plate_format},
+    fill_direction => $options{miseq_plate_fill_direction},
+);
+
 # Create Plex object and check it exists in the db
 my $plex;
 eval {
@@ -63,11 +70,12 @@ if( $EVAL_ERROR ){
 }
 
 # parse input file, create Sample objects and add them to db
-my @attributes = ( qw{injection_name sample_wells generation sample_type species
-cryo_box sample_plate_num wells barcodes barcode_plate_num amplicons } );
+my @attributes = ( qw{ injection_name sample_wells num_samples
+cryo_box generation sample_type species miseq_plate_num miseq_wells
+barcodes barcode_plate_num amplicons } );
 
-my @required_attributes = ( qw{injection_name generation sample_type species
-sample_plate_num wells amplicons } );
+my @required_attributes = ( qw{ injection_name generation sample_type species
+miseq_plate_num miseq_wells amplicons } );
 
 my $comment_regex = qr/#/;
 my @columns;
@@ -163,10 +171,10 @@ while(<>){
     # check there's the same number of barcodes and wells
     if( scalar @barcodes != scalar @well_ids ){
         die join("\n", "Number of barcodes is not the same as the number of wells",
-                   $_, ), "\n"; 
+                   $_, ), "\n";
     }
-    
-    my @miseq_well_ids = parse_wells( $args{wells} );
+
+    my @miseq_well_ids = $miseq_plate->parse_wells( $args{miseq_wells} );
 
     # fetch primer_pairs from db
     my @primer_pairs;
@@ -209,12 +217,12 @@ while(<>){
             sample => $sample,
             amplicons => \@primer_pairs,
             barcode_id => $barcode_id,
-            plate_number => $args{'sample_plate_num'},
+            plate_number => $args{'miseq_plate_num'},
             well_id => $miseq_well_id,
         );
         push @sample_amplicons, $sample_amplicon;
     }
-    
+
     # make new analysis object
     my $analysis = Crispr::DB::Analysis->new(
         db_id => $args{analysis_id} || undef,
@@ -252,11 +260,11 @@ foreach my $analysis ( @analyses ){
 #               into an array of well ids
 #Returns     :   Array of Str
 #Parameters  :   Str (Either comma-separated list or range like A1-A24)
-#Throws      :   
-#Comments    :   
+#Throws      :
+#Comments    :
 
 sub parse_wells {
-    my ( $wells, ) = @_;
+    my ( $wells, $plate ) = @_;
     my @wells;
     $wells = uc($wells);
     if( $wells =~ m/\A [A-P]\d+             # single well e.g. A1 or B01
@@ -273,7 +281,7 @@ sub parse_wells {
                             \-              # literal hyphen
                             [A-P]\d+        # well_id e.g. A1-B3
                         \z/xms ){
-        @wells = $sample_plate->range_to_well_ids( $wells );
+        @wells = $plate->range_to_well_ids( $wells );
     }
     else{
         die "Couldn't understand wells, $wells!\n";
@@ -283,7 +291,7 @@ sub parse_wells {
             $well =~ substr($well,1,0,"0");
         }
     }
-    
+
     if( $options{debug} > 1 ){
         warn "@wells\n";
     }
@@ -295,8 +303,8 @@ sub parse_wells {
 #Purpose     :   split up either a comma-separated list or a number range into an array
 #Returns     :   Array of Int
 #Parameters  :   Str
-#Throws      :   
-#Comments    :   
+#Throws      :
+#Comments    :
 
 sub parse_barcodes {
     my ( $barcodes, ) = @_;
@@ -313,12 +321,12 @@ sub parse_barcodes {
 #Returns     :   Array of Int
 #Parameters  :   Str (Either comma-separated list or range like 1-24)
 #                Str (Type - Either barcodes or sample_numbers)
-#Throws      :   
-#Comments    :   
+#Throws      :
+#Comments    :
 
 sub parse_number_range {
     my ( $number_range, $type, ) = @_;
-    
+
     my @numbers;
     if( $number_range =~ m/\A \d+ \z/xms ){
         @numbers = ( $number_range );
@@ -348,13 +356,13 @@ sub parse_number_range {
 #                barcode indexes to samples
 #Returns     :   Arrayref of Labware::Plate objects
 #Parameters  :   None
-#Throws      :   
+#Throws      :
 #Comments    :   Assumes there are 384 barcodes.
 #                It will produce 4 x 96 well plates or 1 x 384 well plate
 #                depending on the barcode plate format
 
 sub set_up_barcode_plates {
-    
+
     my @barcode_plates;
     if( $options{barcode_plate_format} eq '96' ){
         # make 4 x 96 well plates
@@ -365,7 +373,7 @@ sub set_up_barcode_plates {
                 plate_type => $options{barcode_plate_format},
                 fill_direction => $options{barcode_plate_fill_direction},
             );
-            
+
             # fill plate with barcode indexes
             my $starting_index = 96 * ($plate_num - 1) + 1;
             my $end_index = 96 * ($plate_num - 1) + 96;
@@ -397,7 +405,7 @@ sub set_up_barcode_plates {
                     die "One of the quadrants is specified more than once in option --barcode_plate_fill_direction $options{barcode_plate_fill_direction}.\n";
                 }
             }
-            
+
             # make 4 x 96 plates and merge by_quadrants
             my @barcode_plates_96;
             foreach my $plate_num ( 1..4 ){
@@ -407,7 +415,7 @@ sub set_up_barcode_plates {
                     plate_type => '96',
                     fill_direction => 'row',
                 );
-                
+
                 # fill plate with barcode indexes
                 my $starting_index = 96 * ($plate_num - 1) + 1;
                 my $end_index = 96 * ($plate_num - 1) + 96;
@@ -415,13 +423,13 @@ sub set_up_barcode_plates {
                 $barcode_plate->fill_wells_from_first_empty_well( \@barcode_indexes );
                 push @barcode_plates_96, $barcode_plate;
             }
-            
+
             my $barcode_plate = Labware::Plate->new(
                 plate_name => 'barcode_plate-1',
                 plate_type => $options{barcode_plate_format},
                 fill_direction => 'row',
             );
-            
+
             foreach my $plate ( @barcode_plates_96 ){
                 my $quadrant = shift @quadrant_order;
                 add_96_well_plate_to_quadrant( $barcode_plate, $plate, $quadrant );
@@ -444,7 +452,7 @@ sub set_up_barcode_plates {
 # add_96_well_plate_to_quadrant
 #Usage       :  add_96_well_plate_to_quadrant( $barcode_plate, $plate, $quadrant )
 #Purpose     :  Takes a 384 well barcode plate and adds a source 96 well barcode plate into a specific quadrant
-#Returns     :  
+#Returns     :
 #Parameters  :  Labware::Plate (barcode plate)
 #               Labware::Plate (96 well barcode plate)
 #               Int (quadrant number)
@@ -457,7 +465,7 @@ sub set_up_barcode_plates {
 
 sub add_96_well_plate_to_quadrant{
     my ( $barcode_plate, $plate, $quadrant ) = @_;
-    
+
     my %quadrant_rows = (
         1 => [ qw{ A C E G I K M O } ],
         2 => [ qw{ A C E G I K M O } ],
@@ -471,7 +479,7 @@ sub add_96_well_plate_to_quadrant{
         4 => [ qw{ 02 04 06 08 10 12 14 16 18 20 22 24 } ],
     );
     my ( $rowi, $coli ) = ( 0, 0 );
-    
+
     foreach my $well ( @{ $plate->return_all_non_empty_wells } ){
         my $barcode_well = $quadrant_rows{$quadrant}->[$rowi] . $quadrant_cols{$quadrant}->[$coli];
         $barcode_plate->fill_well( $well->contents, $barcode_well );
@@ -505,23 +513,25 @@ sub increment_indices {
 # get_and_check_options
 #Usage       :   get_and_check_options();
 #Purpose     :   Get command line options and process them
-#Returns     :   
+#Returns     :
 #Parameters  :   None
 #Throws      :   If plex_name is not set
 #                If run_id is not set
-#Comments    :   
+#Comments    :
 
 sub get_and_check_options {
-    
+
     GetOptions(
         \%options,
-		'crispr_db=s',
+        'crispr_db=s',
         'plex_name=s',
         'run_id=s',
         'analysis_started=s',
         'analysis_finished=s',
         'sample_plate_format=s',
         'sample_plate_fill_direction=s',
+        'miseq_plate_format=s',
+        'miseq_plate_fill_direction=s',
         'barcode_plate_format=s',
         'barcode_plate_fill_direction=s',
         'help',
@@ -529,7 +539,7 @@ sub get_and_check_options {
         'debug+',
         'verbose',
     ) or pod2usage(2);
-    
+
     # Documentation
     if( $options{help} ) {
         pod2usage( -verbose => 0, -exitval => 1, );
@@ -537,7 +547,7 @@ sub get_and_check_options {
     elsif( $options{man} ) {
         pod2usage( -verbose => 2 );
     }
-    
+
     # check that plex_name and run_id are specified
     if( !defined $options{plex_name} ){
         my $msg = join(q{ }, "Option --plex_name is required!\n", ) . "\n";
@@ -547,7 +557,7 @@ sub get_and_check_options {
         my $msg = join(q{ }, "Option --run_id is required!\n", ) . "\n";
         pod2usage( $msg );
     }
-    
+
     # default values
     $options{debug} = defined $options{debug} ? $options{debug} : 0;
     if( $options{debug} > 1 ){
@@ -555,9 +565,11 @@ sub get_and_check_options {
     }
     $options{sample_plate_format} = defined $options{sample_plate_format} ? $options{sample_plate_format} : '96';
     $options{sample_plate_fill_direction} = defined $options{sample_plate_fill_direction} ? $options{sample_plate_fill_direction} : 'row';
+    $options{miseq_plate_format} = defined $options{miseq_plate_format} ? $options{miseq_plate_format} : '96';
+    $options{miseq_plate_fill_direction} = defined $options{miseq_plate_fill_direction} ? $options{miseq_plate_fill_direction} : 'row';
     $options{barcode_plate_format} = defined $options{barcode_plate_format} ? $options{barcode_plate_format} : '96';
     $options{barcode_plate_fill_direction} = defined $options{barcode_plate_fill_direction} ? $options{barcode_plate_fill_direction} : 'row';
-    
+
     print "Settings:\n", map { join(' - ', $_, defined $options{$_} ? $options{$_} : 'off'),"\n" } sort keys %options if $options{verbose};
 }
 
