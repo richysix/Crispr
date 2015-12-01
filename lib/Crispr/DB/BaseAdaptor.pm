@@ -24,7 +24,7 @@ use Crispr::Config;
   Returns     : Crispr::BaseAdaptor object
   Parameters  :     db_connection => Crispr::DB::DBConnection object,
   Throws      : If parameters are not the correct type
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -34,8 +34,8 @@ use Crispr::Config;
   Purpose     : Getter for the db Connection object.
   Returns     : Crispr::DB::DBConnection
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -57,8 +57,8 @@ has 'db_connection' => (
   Returns     : 1 if entry exists, undef if not
   Parameters  : check statement (Str)
                 statement parameters (ArrayRef[Str])
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -67,7 +67,7 @@ sub check_entry_exists_in_db {
     my ( $self, $check_statement, $params ) = @_;
     my $dbh = $self->connection->dbh();
     my $exists;
-    
+
     my $sth = $dbh->prepare( $check_statement );
     $sth->execute( @{$params} );
     my $num_rows = 0;
@@ -86,7 +86,7 @@ sub check_entry_exists_in_db {
             confess "TOO MANY ITEMS";
         }
     }
-    
+
     return $exists;
 }
 
@@ -99,18 +99,18 @@ sub check_entry_exists_in_db {
                 Parameters (ArrayRef)
   Throws      : If no rows are returned from the database.
                 If more than one row is returned.
-  Comments    : 
+  Comments    :
 
 =cut
 
 sub fetch_rows_expecting_single_row {
 	my ( $self, $statement, $params, ) = @_;
-    
+
     my $result;
     eval{
         $result = $self->fetch_rows_for_generic_select_statement( $statement, $params, );
     };
-    
+
     if( $EVAL_ERROR ){
         if( $EVAL_ERROR =~ m/NO\sROWS/xms ){
             die 'NO ROWS';
@@ -122,7 +122,7 @@ sub fetch_rows_expecting_single_row {
     if( scalar @$result > 1 ){
 		die 'TOO MANY ROWS';
     }
-    
+
     return $result->[0];
 }
 
@@ -134,7 +134,7 @@ sub fetch_rows_expecting_single_row {
   Parameters  : MySQL statement (Str)
                 Parameters (ArrayRef)
   Throws      : If no rows are returned from the database.
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -143,7 +143,7 @@ sub fetch_rows_for_generic_select_statement {
     my $dbh = $self->connection->dbh();
     my $sth = $dbh->prepare($statement);
     $sth->execute( @{$params} );
-    
+
     my $results = [];
 	while( my @fields = $sth->fetchrow_array ){
 		push @$results, \@fields;
@@ -154,10 +154,46 @@ sub fetch_rows_for_generic_select_statement {
     return $results;
 }
 
+#_fetch_status_from_id
+#
+#Usage       : $targets = $self->_fetch_status_from_id( $status_id );
+#Purpose     : Fetch a status from the status table using
+#Returns     : ArrayRef of Crispr::Target objects
+#Parameters  : where_clause => Str (SQL where clause)
+#               where_parameters => ArrayRef of parameters to bind to sql statement
+#Throws      :
+#Comments    :
+
+sub _fetch_status_from_id {
+    my ( $self, $status_id ) = @_;
+    my $statement = 'SELECT status FROM status WHERE status_id = ?';
+    my $params = [ $status_id ];
+    my $status = $self->fetch_rows_expecting_single_row( $statement, $params, );
+    return $status->[0];
+}
+
+#_fetch_status_id_from_status
+#
+#Usage       : $targets = $self->_fetch_status_id_from_status( $status );
+#Purpose     : Fetch a status from the status table using
+#Returns     : ArrayRef of Crispr::Target objects
+#Parameters  : where_clause => Str (SQL where clause)
+#               where_parameters => ArrayRef of parameters to bind to sql statement
+#Throws      :
+#Comments    :
+
+sub _fetch_status_id_from_status {
+    my ( $self, $status ) = @_;
+    my $statement = 'SELECT status_id FROM status WHERE status = ?';
+    my $params = [ $status ];
+    my $status_id = $self->fetch_rows_expecting_single_row( $statement, $params, );
+    return $status_id->[0];
+}
+
 sub _prepare_sql {
     my ( $self, $sql, $where_clause, $where_parameters ) = @_;
     my $dbh = $self->connection->dbh();
-    
+
     my $sth = $dbh->prepare($sql);
 
     # Bind any parameters
@@ -177,7 +213,7 @@ sub _prepare_sql {
             confess "Parameters to the where clause must be supplied as an ArrayRef!\n";
         }
     }
-    
+
     return $sth;
 }
 
@@ -189,7 +225,7 @@ my %reports_for = (
     'Crispr::DB::crRNAAdaptor' => {
         'NO ROWS'   => "crRNA does not exist in the database.",
         'ERROR'     => "crRNAAdaptor ERROR",
-    },    
+    },
 );
 
 =method _db_error_handling
@@ -201,14 +237,14 @@ my %reports_for = (
   Parameters  : Error Message (Str)
                 MySQL statement (Str)
                 Parameters (ArrayRef)
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
 sub _db_error_handling{
     my ( $self, $error_msg, $statement, $params,  ) = @_;
-    
+
     my $class = ref $self;
     if( exists $reports_for{ $class } ){
         my ( $error, $message );
@@ -249,4 +285,3 @@ __END__
 This is the parent class for all database adaptors.
 It has an attribute for the already open database connection (Crispr::DB::DBConnection).
 It also provides a set of common database methods that can be used by all adaptor objects.
-
