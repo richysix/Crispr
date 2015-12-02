@@ -14,7 +14,7 @@ Features:
 
 ## Installation
 
-###Download and install prerequisites
+### Download and install prerequisites
 
 These modules rely on other Perl modules which must be installed for the scripts to work.  
 BioPerl v1.6.9 - [Instructions for installing](http://www.bioperl.org/wiki/Installing_BioPerl)  
@@ -27,7 +27,13 @@ Otherwise, they can be installed manually. See **Required Modules** below for a 
 The Crispr modules also use a few other modules not on CPAN.
 These can be installed from github.
 The modules are:  
-####[PCR](http://github.com/richysix/PCR)  
+#### [PCR](http://github.com/richysix/PCR)  
+
+Install [Primer3](http://primer3.sourceforge.net/) first.  
+Download latest [PCR](https://github.com/richysix/PCR/releases) release and
+install using make.
+e.g.  
+
     cd ~/src
     wget https://github.com/richysix/PCR/releases/download/v0.2.2/PCR-0.2.2.tar.gz
     tar -xvzf PCR-0.2.2.tar.gz
@@ -37,7 +43,7 @@ The modules are:
     make test
     make install
 
-####[Labware](http://github.com/richysix/Labware)  
+#### [Labware](http://github.com/richysix/Labware)  
     cd ~/src
     wget https://github.com/richysix/Labware/releases/download/v0.0.4/Labware-0.0.4.tar.gz
     tar -xvzf Labware-0.0.4.tar.gz
@@ -47,20 +53,20 @@ The modules are:
     make test
     make install
 
-####[Tree](http://github.com/richysix/Tree)  
+#### [Tree](http://github.com/richysix/Tree)  
     cd ~/src
     wget https://github.com/richysix/Tree/releases/download/v0.1.2/Tree-0.1.2.tar.gz
     tar -xvzf Tree-0.1.2.tar.gz
     cd Tree-0.1.2
     # install dependencies. This uses cpanm to install any modules that are required for the package in question
     cpanm --installdeps .
-    
+
     perl Makefile.PL
     make
     make test
     make install
 
-###Install the Crispr modules
+### Install the Crispr modules
 
     Download the latest release from github
     cd ~/src
@@ -69,7 +75,7 @@ The modules are:
     cd Crispr-0.1.10
     # install dependencies. This uses cpanm to install any modules that are required for the package in question
     cpanm --installdeps .
-    
+
     perl Makefile.PL
     make
     make test
@@ -162,7 +168,7 @@ An example command is shown below
     ENSDART00000158694
     ENSDARG00000101846
     5:2443741-2444279:1" > targets_file.txt
-    
+
     # run design script
     find_and_score_crispr_sites.pl \
     --target_genome /path/to/genome/file.fa \
@@ -170,10 +176,10 @@ An example command is shown below
     --target_sequence GGNNNNNNNNNNNNNNNNNNNGG \
     --species zebrafish --requestor crispr_test \
     targets_file.txt > crRNAs-scored.txt
-    
+
     # a quick description of options available
     find_and_score_crispr_sites.pl --help
-    
+
     # for a full description of all available options
     find_and_score_crispr_sites.pl --man
 
@@ -249,16 +255,16 @@ An example command is shown below
     crRNA:5:2468559-2468581:-1
     crRNA:5:2435853-2435875:-1
     crRNA:5:2443844-2443866:-1" > crRNA_file.txt
-    
+
     # run design script
     design_pcr_primers_for_illumina_screening.pl \
     --species zebrafish --norestriction_enzymes \
     --primer3file /path/to/config/primer3.cfg \
     --output_file miseq_primers.tsv crRNA_file.txt
-    
+
     # a quick description of options available
     design_pcr_primers_for_illumina_screening.pl --help
-    
+
     # for a full description of all available options
     design_pcr_primers_for_illumina_screening.pl --man
 
@@ -289,7 +295,7 @@ This file is tab-separated with the following columns
 
 We order just the external and internal-illumina_adaptor primers, but the
 internal primers are included on their own in the output for completeness.
-The 
+The
 
 
 ### Screening by amplicon sequencing - Analysis of sequencing
@@ -376,7 +382,7 @@ An example is shown below
 The script is able to call indels in multiple regions allowing gRNAs to be used in
 multiplex. The above file shows 10 samples labelled with barcodes 1-10 in wells A01-A10
 to be analysed in 2 different regions. We routinely run 4 plates worth of samples on a single run.
-The samples are divided into sets (subplex) that are all to be analysed for the same amplicons. 
+The samples are divided into sets (subplex) that are all to be analysed for the same amplicons.
 
     mkdir results
     count_indel_reads_from_bam.pl \
@@ -387,10 +393,10 @@ The samples are divided into sets (subplex) that are all to be analysed for the 
     --dindel_scripts /path/to/packages/dindel-python \
     --dindel_bin /path/to/bin/dindel \
     15708.yml
-    
+
     # a quick description of options available
     count_indel_reads_from_bam.pl --help
-    
+
     # for a full description of all available options
     count_indel_reads_from_bam.pl --man
 
@@ -471,7 +477,7 @@ manual inspection of the variant.
 
     # example line of output
     miseq_15708  1  187  A02  187_2  gene_1  1  15:900-1160:1  DINDEL  crispr  crRNA:15:970-992:-1  15  972  GTGAG  G  4896  73173  0.0669099257923004  TTTAGTTTAATTAAAGAGCTTTTCAAAATAAATTGCTGAATTAAAATAAAGTATTGACCGTGAGTCCCGCAGTCGAGGAGAGAACGTTCATTATTTTGAACACATTTAAGAAAATGAAGGATATTAG  TTTAGTTTAATTAAAGAGCTTTTCAAAATAAATTGCTGAATTAAAATAAAGTATTGACCGTCCCGCAGTCGAGGAGAGAACGTTCATTATTTTGAACACATTTAAGAAAATGAAGGATATTAG
-    
+
     # The consensus sequences can be used to check the alignment and variant call
     TTTAGTTTAATTAAAGAGCTTTTCAAAATAAATTGCTGAATTAAAATAAAGTATTGACCGTGAGTCCCGCAGTCGAGGAGAGAACGTTCATTATTTTGAACACATTTAAGAAAATGAAGGATATTAG
     TTTAGTTTAATTAAAGAGCTTTTCAAAATAAATTGCTGAATTAAAATAAAGTATTGACCG----TCCCGCAGTCGAGGAGAGAACGTTCATTATTTTGAACACATTTAAGAAAATGAAGGATATTAG
@@ -513,7 +519,7 @@ It discards reads/read pairs where one of the reads is shorter than the --length
 
     filter_fastq.pl \
     --length_threshold 60 --interleaved 15708_1#1.trim.fastq
-    
+
 
 #### score_crisprs_from_id.pl
 
@@ -710,7 +716,7 @@ The config file is tab-separated key value pairs.
     pass    pasword
     port    port
     dbname  databasename
-    
+
     # SQLite
     driver  sqlite
     dbname  databasename
@@ -725,11 +731,11 @@ For SQLite: SQLITE_DBFILE, SQLITE_DBNAME
 This is used to add information about targets (i.e. a region of DNA to search for CRISPR target sites).  
 It is designed to take some of the information output by the CRISPR design scripts.  
 The columns target_name, start, end, strand, requires_enzyme and requestor cannot be null.
-    
+
     # make targets file
     head -n1 crRNAs-scored.txt | cut -f1-14 > targets-info.txt
     cut -f1-14 crRNAs-scored.txt | sort -u | grep -v ^# >> targets-info.txt
-    
+
     # add target info to db
     add_targets_to_db_from_file.pl \
     --crispr_db /path/to/config.conf targets-info.txt
@@ -744,7 +750,7 @@ num_five_prime_Gs, and target_id cannot be null.
     # make crispr info file
     echo "target" | cat - crRNA_file.txt | grep -f - crRNAs-scored.txt | \
     cut -f2,8,12,15-31 | sed -e 's|^target|#target|' > crRNA-info.txt
-    
+
     # add crRNA info to db
     add_crRNAs_to_db_from_file.pl \
     --crispr_db /path/to/config.conf \
@@ -783,17 +789,17 @@ Example
     print "#", join("\t", qw{ crisprs left_primer_info right_primer_info product_size } ); }
     else{ print join("\t", $F[1], join(q{,}, @F[3,4]), join(q{,}, @F[5,6]), $F[18], ) }' \
     miseq_primers.tsv > ext_primers.tsv
-    
+
     perl -F"\t" -lane 'if($. == 1){
     print "#", join("\t", qw{ crisprs left_primer_info right_primer_info product_size } ); }
     else{ print join("\t", $F[1], join(q{,}, @F[13,14]), join(q{,}, @F[15,16]), $F[19], ) }' \
     miseq_primers.tsv > int_primers.tsv
-    
+
     # add primers
     add_primer_pair_plus_enzyme_info_for_crRNAs_to_db_from_file.pl \
     --crispr_db /path/to/config.conf --type ext-illumina \
     --plate_num 1 --plate_type 96 --fill_direction row ext_primers.tsv
-    
+
     add_primer_pair_plus_enzyme_info_for_crRNAs_to_db_from_file.pl \
     --crispr_db /path/to/config.conf --type int-illumina_tailed \
     --plate_num 1 --plate_type 96 --fill_direction row int_primers.tsv
@@ -834,7 +840,7 @@ to add dummy sgRNA preps:
     FROM crRNA cr \
     WHERE crRNA_id NOT IN \
     (SELECT crRNA_id FROM guideRNA_prep )"
-    
+
     # SQLite
     echo "INSERT into guideRNA_prep \
     SELECT NULL as guideRNA_prep_id, crRNA_id, 'sgRNA' as guideRNA_type, \
@@ -849,14 +855,14 @@ This adds information on both Cas9 objects and Cas9Preps. If the Cas9 does not e
 
     add_cas9_preps_to_db.pl \
     --crispr_db /path/to/config.conf cas9_prep-test_info.txt
-    
+
 #### add_injection_info_to_db_from_file.pl
 
 An injection represents which Cas9/sgRNAs were used in a particular experiment.
 
     add_injection_info_to_db_from_file.pl \
     --crispr_db /path/to/config.conf  injection-test_info.txt
-    
+
 #### add_samples_to_db_from_sample_manifest.pl
 
 This script adds individual samples to the database.
@@ -980,6 +986,3 @@ This software is Copyright (c) 2014,2015 by Genome Research Ltd.
 This is free software, licensed under:
 
   The GNU General Public License, Version 3, June 2007
-
-
-
