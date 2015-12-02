@@ -365,7 +365,8 @@ $crRNAs = [ $mock_crRNA1, $mock_crRNA2 ];
 # test snps methods - 2 tests
 is( $design_obj->count_var_for_crRNA( $mock_crRNA1, 't/data/test.var.gz' ), 3, 'check count snps for crRNA 1' );
 is( $design_obj->count_var_for_crRNA( $mock_crRNA2, 't/data/test.var.gz' ), 0, 'check count snps for crRNA 2' );
-ok( $design_obj->filter_crRNAs_from_target_by_snps_and_indels($mock_target, 't/data/test.var.gz', 1 ), 'check filter crRNAs by SNPs' );
+warning_like { $design_obj->filter_crRNAs_from_target_by_snps_and_indels($mock_target, 't/data/test.var.gz', 1 ) }
+    qr/SNP FILTER/, 'check filter crRNAs by SNPs';
 is( scalar @{ $mock_target->crRNAs }, 1, 'check crisprs left after filtering by SNPs' );
 
 # check parameter testing of filter method
