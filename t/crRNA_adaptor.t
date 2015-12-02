@@ -192,7 +192,8 @@ foreach my $db_connection ( @{$db_connections} ){
         $mock_target->mock('gene_name', sub { return $gene_name } );
         $mock_target->mock('requestor', sub { return $requestor } );
         $mock_target->mock('ensembl_version', sub { return $ensembl_version } );
-        $mock_target->mock('designed', sub { return undef } );
+        $mock_target->mock('status', sub { return 'REQUESTED'; } );
+        $mock_target->mock('status_changed', sub { return '2015-11-30'; } );
         
         my $c_id;        
         $mock_crRNA->mock('target', sub { return undef } );
@@ -221,6 +222,8 @@ foreach my $db_connection ( @{$db_connections} ){
         $mock_crRNA->mock('exonerate_score', sub { return $mock_off_target->exonerate_score } );
         $mock_crRNA->mock('exonerate_hits', sub { return $mock_off_target->exonerate_hits } );
         $mock_crRNA->mock('five_prime_Gs', sub { return 2 } );
+        $mock_crRNA->mock('status', sub { return 'DESIGNED' } );
+        $mock_crRNA->mock('status_changed', sub { return '2015-11-30'; } );
         
         $mock_well->mock('position', sub { return $well_id } );
         
@@ -364,7 +367,7 @@ foreach my $db_connection ( @{$db_connections} ){
     is( $crRNA_3->target_gene_name , 'tbx5a', 'Get gene name' );
     is( $crRNA_3->target->requestor , 'crispr_test', 'Get requestor' );
     is( $crRNA_3->target->ensembl_version , 70, 'Get version' );
-    is( $crRNA_3->target->designed, DateTime->now()->ymd, 'Get date' );
+    is( $crRNA_3->target->status_changed, $mock_target->status_changed, 'Get date' );
     isa_ok( $crRNA_3->crRNA_adaptor, 'Crispr::DB::crRNAAdaptor', 'check crRNA adaptor');
     
     # check fetch_by_name throws properly if crRNA is not in db
@@ -447,6 +450,8 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_crRNA1->mock( 'coding_score', sub{ return 0.7 });
     $mock_crRNA1->mock( 'target', sub { return $mock_target } );
     $mock_crRNA1->mock( 'target_id', sub { return $mock_target->target_id } );
+    $mock_crRNA1->mock( 'status', sub { return 'INJECTED' } );
+    $mock_crRNA1->mock( 'status_changed', sub { return '2015-12-02' } );
 
     $mock_well->mock('contents', sub { return $mock_crRNA1 } );
     $mock_well->mock('position', sub { return 'H12' } );

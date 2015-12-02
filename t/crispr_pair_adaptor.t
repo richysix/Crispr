@@ -89,6 +89,8 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_target->mock('target_id', sub{ '1' } );
     $mock_target->mock('info', sub{ return ( qw{ 1 name Zv9 5 50000 50500 1
         zebrafish n  ENSDARG0100101 gene_name crispr_test 71 2013-08-09 } ) } );
+    $mock_target->mock( 'status', sub { return 'DESIGNED' } );
+    $mock_target->mock( 'status_changed', sub { return '2015-12-02' } );
     
     # crRNAs
     my $mock_crRNA_1 = Test::MockObject->new();
@@ -117,6 +119,8 @@ foreach my $db_connection ( @{$db_connections} ){
         50405 -1 0.853 GGAATAGAGAGATAGAGAGTCGG ATGGGGAATAGAGAGATAGAGAGT
         AAACACTCTCTATCTCTCTATTCC NULL NULL NULL NULL NULL NULL NULL 2 pDR274 } ); });
     $mock_crRNA_1->mock( 'five_prime_Gs', sub { return 0 } );
+    $mock_crRNA_1->mock( 'status', sub { return 'SHIPPED' } );
+    $mock_crRNA_1->mock( 'status_changed', sub { return '2015-12-02' } );
     
     my $mock_crRNA_2 = Test::MockObject->new();
     $mock_crRNA_2->set_isa('Crispr::crRNA');
@@ -144,6 +148,8 @@ foreach my $db_connection ( @{$db_connections} ){
         50425 1 0.853 GGAATAGAGAGATAGAGAGTCGG ATGGGGAATAGAGAGATAGAGAGT
         AAACACTCTCTATCTCTCTATTCC NULL NULL NULL NULL NULL NULL NULL 2 pDR274 } ); });
     $mock_crRNA_2->mock( 'five_prime_Gs', sub { return 0 } );
+    $mock_crRNA_2->mock( 'status', sub { return 'SHIPPED' } );
+    $mock_crRNA_2->mock( 'status_changed', sub { return '2015-12-02' } );
     
     my $p_id = undef;
     my $mock_crispr_pair = Test::MockObject->new();
