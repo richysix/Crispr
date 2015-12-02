@@ -39,7 +39,8 @@ subtype 'Crispr::Target::NOT_EMPTY',
 					gene_name => 'hspa5,
 					requestor => 'richard.white',
 					ensembl_version => 75,
-					designed => '2014-03-02',
+                    status => 'REQUESTED'
+					status_changed => '2014-03-02',
                     crRNAs => \@crRNAs,
 					target_adaptor => $target_adaptor,
                 );
@@ -58,7 +59,7 @@ subtype 'Crispr::Target::NOT_EMPTY',
                 gene_name => String
                 requestor => String
                 ensembl_version => Int
-                designed => DateTime or String (yyyy-mm-dd)
+                status_changed => DateTime or String (yyyy-mm-dd)
                 crRNAs => ArrayRef of Crispr::crRNA objects
 				target_adaptor => Crispr::DB::targetAdaptor,
   Throws      : If parameters are not the correct type
@@ -72,8 +73,8 @@ subtype 'Crispr::Target::NOT_EMPTY',
   Purpose     : Getter for target_id (database id) attribute
   Returns     : Int (can be undef)
   Parameters  : Int
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -87,9 +88,9 @@ has 'target_id' => (
   Usage       : $target->target_name;
   Purpose     : Getter for target_name attribute
   Returns     : String
-  Parameters  : 
+  Parameters  :
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -103,9 +104,9 @@ has 'target_name' => (
   Usage       : $target->assembly;
   Purpose     : Getter for assembly attribute
   Returns     : String
-  Parameters  : 
+  Parameters  :
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -119,9 +120,9 @@ has 'assembly' => (
   Usage       : $target->chr;
   Purpose     : Getter for chr attribute
   Returns     : String
-  Parameters  : 
+  Parameters  :
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -135,9 +136,9 @@ has 'chr' => (
   Usage       : $target->start;
   Purpose     : Getter for start attribute
   Returns     : Int
-  Parameters  : 
+  Parameters  :
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -146,9 +147,9 @@ has 'chr' => (
   Usage       : $target->end;
   Purpose     : Getter for end attribute
   Returns     : Int
-  Parameters  : 
+  Parameters  :
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -163,9 +164,9 @@ has [ 'start', 'end' ] => (
   Usage       : $target->strand;
   Purpose     : Getter for strand attribute
   Returns     : String
-  Parameters  : 
+  Parameters  :
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -180,9 +181,9 @@ has 'strand' => (
   Usage       : $target->species;
   Purpose     : Getter for species attribute
   Returns     : String
-  Parameters  : 
+  Parameters  :
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -197,8 +198,8 @@ has 'species' => (
   Purpose     : Getter for requires_enzyme attribute
   Returns     : Bool
   Parameters  : Bool    1 for y, 0 for n
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -213,9 +214,9 @@ has 'requires_enzyme' => (
   Usage       : $target->gene_id;
   Purpose     : Getter for gene_id attribute
   Returns     : String
-  Parameters  : 
+  Parameters  :
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -229,9 +230,9 @@ has 'gene_id' => (
   Usage       : $target->gene_name;
   Purpose     : Getter for gene_name attribute
   Returns     : String
-  Parameters  : 
+  Parameters  :
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -245,9 +246,9 @@ has 'gene_name' => (
   Usage       : $target->requestor;
   Purpose     : Getter for requestor attribute
   Returns     : String
-  Parameters  : 
+  Parameters  :
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -261,9 +262,9 @@ has 'requestor' => (
   Usage       : $target->ensembl_version;
   Purpose     : Getter for ensembl_version attribute
   Returns     : String
-  Parameters  : 
+  Parameters  :
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -272,18 +273,40 @@ has 'ensembl_version' => (
     isa => 'Maybe[Int]',
 );
 
-=method designed
+=method status
 
-  Usage       : $target->designed;
-  Purpose     : Getter/Setter for designed attribute
-  Returns     : DateTime
-  Parameters  : Either DateTime object or Str of form yyyy-mm-dd
-  Throws      : 
-  Comments    : 
+  Usage       : $crRNA->status;
+  Purpose     : Setter/Getter for status attribute
+  Returns     : Str
+  Parameters  : None
+  Throws      : If status is not one of the specified ones
+  Comments    :
 
 =cut
 
-has 'designed' => (
+has 'status' => (
+    is => 'rw',
+    isa => enum( [ qw{ REQUESTED DESIGNED ORDERED MADE INJECTED
+    MISEQ_EMBYRO_SCREENING PASSED_EMBRYO_SCREENING FAILED_EMBRYO_SCREENING
+    SPERM_FROZEN MISEQ_SPERM_SCREENING PASSED_SPERM_SCREENING
+    FAILED_SPERM_SCREENING SHIPPED SHIPPED_AND_IN_SYSTEM IN_SYSTEM CARRIERS
+    F1_FROZEN  } ] ),
+#    builder => '_build_status',
+    default => 'REQUESTED',
+);
+
+=method status_changed
+
+  Usage       : $target->status_changed;
+  Purpose     : Getter/Setter for status_changed attribute
+  Returns     : DateTime
+  Parameters  : Either DateTime object or Str of form yyyy-mm-dd
+  Throws      :
+  Comments    :
+
+=cut
+
+has 'status_changed' => (
     is => 'rw',
     isa => 'Maybe[DateTime]',
     default => undef,
@@ -295,8 +318,8 @@ has 'designed' => (
   Purpose     : Getter/Setter for crRNAs attribute
   Returns     : ArrayRef of Crispr::crRNA objects
   Parameters  : ArrayRef of Crispr::crRNA objects
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -311,8 +334,8 @@ has 'crRNAs' => (
   Purpose     : Getter/Setter for target_adaptor attribute
   Returns     : Crispr::DB::TargetAdaptor
   Parameters  : Crispr::DB::TargetAdaptor
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -325,12 +348,12 @@ around BUILDARGS => sub{
     my $method = shift;
     my $self = shift;
     my %args;
-    
+
     if( !ref $_[0] ){
         for( my $i = 0; $i < scalar @_; $i += 2){
             my $k = $_[$i];
             my $v = $_[$i+1];
-            if( $k eq 'designed' ){
+            if( $k eq 'status_changed' ){
                 if( defined $v && ( !ref $v || ref $v ne 'DateTime' ) ){
                     my $date_obj = $self->_parse_date( $v );
                     $v = $date_obj;
@@ -357,11 +380,11 @@ around BUILDARGS => sub{
         return $self->$method( \%args );
     }
     elsif( ref $_[0] eq 'HASH' ){
-        if( exists $_[0]->{'designed'} ){
-            if( defined $_[0]->{'designed'} &&
-                ( !ref $_[0]->{'designed'} || ref $_[0]->{'designed'} ne 'DateTime' ) ){
-                my $date_obj = $self->_parse_date( $_[0]->{'designed'} );
-                $_[0]->{'designed'} = $date_obj;
+        if( exists $_[0]->{'status_changed'} ){
+            if( defined $_[0]->{'status_changed'} &&
+                ( !ref $_[0]->{'status_changed'} || ref $_[0]->{'status_changed'} ne 'DateTime' ) ){
+                my $date_obj = $self->_parse_date( $_[0]->{'status_changed'} );
+                $_[0]->{'status_changed'} = $date_obj;
             }
         }
         if( exists $_[0]->{'chr'} && ( defined $_[0]->{'chr'} && $_[0]->{'chr'} eq '' ) ){
@@ -397,7 +420,7 @@ around BUILDARGS => sub{
 #				retruns undef for anything else
 #Returns     : '1' OR '-1'
 #Parameters  : String
-#Throws      : 
+#Throws      :
 #Comments    :
 
 sub _parse_strand_input {
@@ -465,7 +488,7 @@ around 'requires_enzyme' => sub {
 #               Default value is 1
 #Returns     : 1 OR 0
 #Parameters  : String
-#Throws      : 
+#Throws      :
 #Comments    :
 
 sub _parse_requires_enzyme_input {
@@ -485,14 +508,14 @@ sub _parse_requires_enzyme_input {
   Purpose     : Getter for region attribute
   Returns     : String ( [CHR:]START-END:STRAND )
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
 sub region {
     my ( $self, ) = @_;
-    
+
     my $region;
     if( !defined $self->chr ){
         $region = join('-', $self->start, $self->end, ) . ":" . $self->strand;
@@ -516,8 +539,8 @@ sub region {
   Purpose     : Returns the length of the target sequence
   Returns     : Int
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -532,7 +555,7 @@ sub length {
   Purpose     : Returns a short summary of the target info
   Returns     : Array
   Parameters  : None
-  Throws      : 
+  Throws      :
   Comments    : undef attributes are replaced with NULL
 
 =cut
@@ -543,7 +566,7 @@ sub summary {
     push @info, ( $self->gene_id || 'NULL' );
     push @info, ( $self->gene_name || 'NULL' );
     push @info, ( $self->requestor || 'NULL' );
-    
+
     return @info;
 }
 
@@ -553,7 +576,7 @@ sub summary {
   Purpose     : Returns target info
   Returns     : Array
   Parameters  : None
-  Throws      : 
+  Throws      :
   Comments    : undef attributes are replaced with NULL
 
 =cut
@@ -561,7 +584,7 @@ sub summary {
 sub info {
     my ( $self, ) = @_;
     my @info;
-    
+
     push @info, ( $self->target_id || 'NULL' );
     push @info,   $self->target_name;
     push @info, ( $self->assembly || 'NULL' );
@@ -575,18 +598,18 @@ sub info {
     push @info, ( $self->gene_name || 'NULL');
     push @info, ( $self->requestor || 'NULL' );
     push @info, ( $self->ensembl_version || 'NULL' );
-    push @info, ( $self->designed || 'NULL' );
-    
+    push @info, ( $self->status_changed || 'NULL' );
+
     return @info;
 }
 
-# around designed
+# around status_changed
 # This is to accept either a DateTime object or a string in form yyyy-mm-dd
 #
-around 'designed' => sub {
+around 'status_changed' => sub {
     my ( $method, $self, $input ) = @_;
     my $date_obj;
-    
+
     if( $input ){
         #is the input already a DateTime object
         if( ref $input eq 'DateTime' ){
@@ -631,7 +654,7 @@ __END__
 =pod
 
 =head1 SYNOPSIS
- 
+
     use Crispr::Target;
     my $target = Crispr::Target->new(
         target_name => 'SLC39A14',
@@ -646,26 +669,26 @@ __END__
         gene_name => 'SLC39A14',
         requestor => 'richard.white',
         ensembl_version => 75,
-        designed => '2014-03-02',
+        status => 'PASSED_EMBRYO_SCREENING'
+        status_changed => '2014-03-02',
     );
-    
+
     # print out target summary or info
     print join("\t", $target->summary ), "\n";
     print join("\t", $target->info ), "\n";
-    
+
 
 =head1 DESCRIPTION
- 
-Object of this class represent a target stretch of DNA to search for potential crispr target sites. 
- 
+
+Object of this class represent a target stretch of DNA to search for potential crispr target sites.
+
 =head1 DIAGNOSTICS
- 
- 
+
+
 =head1 CONFIGURATION AND ENVIRONMENT
- 
- 
+
+
 =head1 DEPENDENCIES
- 
- 
+
+
 =head1 INCOMPATIBILITIES
- 

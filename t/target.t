@@ -15,13 +15,13 @@ use DateTime;
 my $date_obj = DateTime->now();
 my $todays_date = $date_obj->ymd;
 
-plan tests => 4 + 2 + 1 + 17 + 4 + 4 + 2 + 5 + 6 + 6 + 2 + 8 + 2 + 2 + 2 + 2 + 6 + 9 + 4;
+plan tests => 4 + 2 + 1 + 19 + 4 + 4 + 2 + 5 + 6 + 6 + 2 + 8 + 2 + 2 + 2 + 2 + 9 + 9 + 4;
 
 my $species = 'zebrafish';
 
 use Crispr::Target;
 
-# make a new target - designed should be undef
+# make a new target - status_changed should be undef
 # have not defined crRNAs
 my $target = Crispr::Target->new(
     target_name => 'KAT5_exon1',
@@ -36,9 +36,9 @@ my $target = Crispr::Target->new(
     gene_name => 'KAT5 (1 of 2)',
     requestor => 'crispr_test',
     ensembl_version => 71,
-); 
+);
 
-## make a new Mock cRNAs object
+## make new Mock cRNAs object
 use Crispr::crRNA;
 my @crRNAs;
 for ( 1..3 ){
@@ -72,7 +72,8 @@ my $target_2 = Crispr::Target->new(
     end => 60,
     species => 'Aequorea_victoria',
     requestor => 'crispr_test',
-    designed => '2012-07-18',
+    status => 'MISEQ_EMBYRO_SCREENING',
+    status_changed => '2012-07-18',
 );
 
 # check target_adaptor - 2 tests
@@ -83,12 +84,15 @@ is( $target_2->target_adaptor, undef, 'target_adaptor2');
 # 1 test
 isa_ok( $target, 'Crispr::Target' );
 
-# check method calls 17 tests
-my @methods = qw( target_id target_name assembly chr start
+# check method calls 15 + 4 tests
+my @attributes = ( qw{ target_id target_name assembly chr start
     end strand species requires_enzyme gene_id
-    gene_name requestor ensembl_version designed target_adaptor
-    region info );
+    gene_name requestor ensembl_version status_changed target_adaptor } );
+foreach my $attribute ( @attributes ) {
+    can_ok( $target, $attribute );
+}
 
+my @methods = qw( region length summary info );
 foreach my $method ( @methods ) {
     can_ok( $target, $method );
 }
@@ -180,18 +184,22 @@ is( $target_2->requestor, 'crispr_test', 'requestor2');
 is( $target->ensembl_version, 71, 'ensembl_version1');
 is( $target_2->ensembl_version, undef, 'ensembl_version2');
 
-# designed - 6 tests
-is( $target->designed, undef, 'check default date' );
-$target->designed( '2012-05-23' );
-is( $target->designed, '2012-05-23', 'check date set' );
+# status/status_changed - 9 tests
+is( $target->status, 'REQUESTED', 'check default status' );
+is( $target_2->status, 'MISEQ_EMBYRO_SCREENING', 'check status' );
+throws_ok { Crispr::Target->new( status => 'DONE' ) } qr/Validation failed/, 'Wrong status';
+
+is( $target->status_changed, undef, 'check default date' );
+$target->status_changed( '2012-05-23' );
+is( $target->status_changed, '2012-05-23', 'check date set' );
 # set date with DateTime object
-$target->designed( $date_obj );
-is( $target->designed, $todays_date, 'check date set using DateTime object' );
+$target->status_changed( $date_obj );
+is( $target->status_changed, $todays_date, 'check date set using DateTime object' );
 
-throws_ok { $target->designed( '20120228' ) } qr/valid format/, 'Invalid date format';
-throws_ok { $target->designed( '2012-02-30' ) } qr/Invalid/, 'Impossible date';
+throws_ok { $target->status_changed( '20120228' ) } qr/valid format/, 'Invalid date format';
+throws_ok { $target->status_changed( '2012-02-30' ) } qr/Invalid/, 'Impossible date';
 
-is( $target_2->designed, '2012-07-18', 'designed2');
+is( $target_2->status_changed, '2012-07-18', 'status_changed2');
 
 # 9 tests - check output of non attribute methods
 is( $target->region, '5:18067321-18083466:-1', 'check region');
@@ -243,4 +251,3 @@ is( $target_3->target_name, 'gfp_50_100', 'check target_name is set with hash ca
 is( $target_4->target_name, 'gfp_50_100', 'check target_name is set with hashref calling style' );
 is( $target_3->chr, undef, 'check chr is set with hash calling style' );
 is( $target_4->chr, undef, 'check chr is set with hashref calling style' );
-

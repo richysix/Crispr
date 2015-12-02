@@ -43,41 +43,43 @@ my %target_cache;
                 If there is an error during the execution of the SQL statements
                     In this case the transaction will be rolled back
   Comments    : None
-   
+
 =cut
 
 sub store_targets {
     my $self = shift;
     my $targets = shift;
     my $dbh = $self->connection->dbh();
-    
+
 	confess "Supplied argument must be an ArrayRef of Target objects.\n" if( ref $targets ne 'ARRAY');
 	foreach ( @{$targets} ){
         if( !ref $_ || !$_->isa('Crispr::Target') ){
             confess "Argument must be Crispr::Target objects.\n";
         }
     }
-	
-    my $statement = "insert into target values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );"; 
-    
+
+    my $statement = "insert into target values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );";
+
     $self->connection->txn(  fixup => sub {
 		my $sth = $dbh->prepare($statement);
-		
+
 		foreach my $target ( @$targets ){
+            my $status_id = $self->_fetch_status_id_from_status( $target->status );
 			$sth->execute($target->target_id, $target->target_name,
 				$target->assembly, $target->chr, $target->start, $target->end, $target->strand,
 				$target->species, $target->requires_enzyme,
 				$target->gene_id, $target->gene_name,
-				$target->requestor, $target->ensembl_version, $target->designed, );
-			
+				$target->requestor, $target->ensembl_version,
+                $status_id, $target->status_changed, );
+
 			my $last_id;
 			$last_id = $dbh->last_insert_id( 'information_schema', $self->dbname(), 'target', 'target_id' );
 			$target->target_id( $last_id );
 		}
-		
+
 		$sth->finish();
     } );
-    
+
     return $targets;
 }
 
@@ -99,7 +101,7 @@ sub store {
 	# make an arrayref with this one target and call store_targets
 	my @targets = ( $target );
 	my $targets = $self->store_targets( \@targets );
-	
+
 	return $targets->[0];
 }
 
@@ -119,7 +121,7 @@ sub store {
 sub update_designed {
     my ( $self, $target ) = @_;
     my $dbh = $self->connection->dbh();
-	
+
 	# check whether designed is defined - Makes no sense to update if it is not
 	my $date;
 	if( !defined $target->designed ){
@@ -131,9 +133,9 @@ sub update_designed {
 	else{
 		$date = $target->designed;
 	}
-	
+
 	my $update_st = "update target set designed = ? where target_id = ?;";
-	
+
     $self->connection->txn(  fixup => sub {
 		my $sth = $dbh->prepare($update_st);
 		$sth->execute( $date, $target->target_id );
@@ -175,10 +177,10 @@ sub update_designed {
 #    elsif( $update_by eq 'target_id' ){
 #	$statement = $statement .  "where target_id = '" . $target->target_id() . "';";
 #    }
-#    
+#
 #    $statement =~ s/'NULL'/ NULL/g;
 #    #print $statement, "\n";
-#    
+#
 #    my $sth = $dbh->prepare($statement);
 #    $sth->execute();
 #
@@ -207,7 +209,7 @@ sub update_designed {
 ##    }
 ##    if( !$sth->{'Executed'} ){
 ##	die "Could not add transcripts for target_id:$target_id to transcript table.\n";
-##    }    
+##    }
 ##    $sth->finish();
 ##}
 
@@ -248,7 +250,7 @@ sub fetch_by_ids {
     foreach my $id ( @{$ids} ){
         push @targets, $self->fetch_by_id( $id );
     }
-	
+
     return \@targets;
 }
 
@@ -288,12 +290,12 @@ sub fetch_by_name_and_requestor {
 sub fetch_by_names_and_requestors {
     my ( $self, $names_and_requestors ) = @_;
 	my @targets;
-    
+
     foreach my $info ( @{$names_and_requestors} ){
         my $target = $self->fetch_by_name_and_requestor( @{$info} );
         push @targets, $target;
     }
-	
+
     return \@targets;
 }
 
@@ -310,7 +312,7 @@ sub fetch_by_names_and_requestors {
 
 sub fetch_by_crRNA {
 	my ( $self, $crRNA, ) = @_;
-	
+
 	# try to retrieve target_id by crRNA_id
     my $target;
     if( defined $crRNA->crRNA_id ){
@@ -319,7 +321,7 @@ sub fetch_by_crRNA {
     else{
         die "Method: fetch_by_crRNA. Cannot fetch target because crRNA_id is not defined!\n";
     }
-    
+
     return $target;
 }
 
@@ -337,7 +339,7 @@ sub fetch_by_crRNA {
 sub fetch_by_crRNA_id {
 	my ( $self, $crRNA_id, ) = @_;
     my $dbh = $self->connection->dbh();
-    
+
     my $sql = <<'END_SQL';
         SELECT
             t.target_id, target_name, assembly,
@@ -356,14 +358,14 @@ END_SQL
     my ( $target_id, $target_name, $assembly, $chr, $start, $end, $strand,
         $species, $requires_enzyme, $gene_id, $gene_name, $requestor,
         $ensembl_version, $designed );
-    
+
     $sth->bind_columns( \( $target_id, $target_name, $assembly, $chr, $start,
                           $end, $strand, $species, $requires_enzyme, $gene_id,
                           $gene_name, $requestor, $ensembl_version, $designed ) );
 
     my @targets = ();
     while ( $sth->fetch ) {
-        
+
         my $target;
         if( !exists $target_cache{ $target_id } ){
             $target = Crispr::Target->new(
@@ -388,7 +390,7 @@ END_SQL
         else{
             $target = $target_cache{ $target_id };
         }
-        
+
         push @targets, $target;
     }
 
@@ -408,7 +410,7 @@ END_SQL
 
 sub fetch_gene_name_by_primer_pair {
     my ( $self, $primer_pair ) = @_;
-    
+
     my $where_parameters;
     if( !defined $primer_pair->primer_pair_id ){
         die "Supplied primer pair does not have a database id";
@@ -427,13 +429,13 @@ END_SQL
     if ($where_clause) {
         $sql .= 'AND ' . $where_clause;
     }
-    
+
     my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
     $sth->execute();
 
     my ( $target_name, $gene_name );
     $sth->bind_columns( \( $target_name, $gene_name, ) );
-    
+
     my $name;
     while ( $sth->fetch ) {
         $name = $gene_name ? $gene_name : $target_name;
@@ -448,13 +450,13 @@ END_SQL
 #Returns     : ArrayRef of Crispr::Target objects
 #Parameters  : where_clause => Str (SQL where clause)
 #               where_parameters => ArrayRef of parameters to bind to sql statement
-#Throws      : 
-#Comments    : 
+#Throws      :
+#Comments    :
 
 sub _fetch {
     my ( $self, $where_clause, $where_parameters ) = @_;
     my $dbh = $self->connection->dbh();
-    
+
     my $sql = <<'END_SQL';
         SELECT
             t.target_id, target_name, assembly,
@@ -467,21 +469,21 @@ END_SQL
     if ($where_clause) {
         $sql .= 'WHERE ' . $where_clause;
     }
-    
+
     my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
     $sth->execute();
 
     my ( $target_id, $target_name, $assembly, $chr, $start, $end, $strand,
         $species, $requires_enzyme, $gene_id, $gene_name, $requestor,
         $ensembl_version, $designed );
-    
+
     $sth->bind_columns( \( $target_id, $target_name, $assembly, $chr, $start,
                           $end, $strand, $species, $requires_enzyme, $gene_id,
                           $gene_name, $requestor, $ensembl_version, $designed ) );
 
     my @targets = ();
     while ( $sth->fetch ) {
-        
+
         my $target;
         if( !exists $target_cache{ $target_id } ){
             $target = Crispr::Target->new(
@@ -506,11 +508,11 @@ END_SQL
         else{
             $target = $target_cache{ $target_id };
         }
-        
+
         push @targets, $target;
     }
 
-    return \@targets;    
+    return \@targets;
 }
 
 #_make_new_object_from_db
@@ -519,7 +521,7 @@ END_SQL
 #Purpose     : Create a new object from a db entry
 #Returns     : Crispr::Target object
 #Parameters  : ArrayRef of Str
-#Throws      : 
+#Throws      :
 #Comments    : This method is required when consuming the DBAttributes Role.
 
 sub _make_new_object_from_db {
@@ -533,20 +535,20 @@ sub _make_new_object_from_db {
 #Purpose     : Create a new Crispr::Target object from a db entry
 #Returns     : Crispr::Target object
 #Parameters  : ArrayRef of Str
-#Throws      : 
+#Throws      :
 #Comments    :
 
 sub _make_new_target_from_db {
     my ( $self, $fields ) = @_;
     my $target;
-	
+
 	my %bool_for = (
 		y => 1,
 		n => 0,
         1 => 1,
         0 => 0,
 	);
-	
+
 	my %args = (
 		target_id => $fields->[0],
 		target_name => $fields->[1],
@@ -563,24 +565,24 @@ sub _make_new_target_from_db {
 	$args{ 'gene_name' } = $fields->[10] if( defined $fields->[10] );
 	$args{ 'ensembl_version' } = $fields->[12] if( defined $fields->[12] );
 	$args{ 'designed' } = $fields->[13] if( defined $fields->[13] );
-	
+
 	$target = Crispr::Target->new( %args );
     $target->target_adaptor( $self );
-	
+
     return $target;
 }
 
 #sub fetch_all_by_date {
 #	my ( $self, $date ) = @_;
 #	my $statement = "select * from target where date_created = ?";
-#	
+#
 #    my $dbh = $self->connection->dbh();
 #    my @targets;
 #    $self->connection->txn(  fixup => sub {
 #	my $sth = $dbh->prepare($statement);
 #	my $num_rows;
 #    $num_rows = $sth->execute( $date );
-#	
+#
 #	if( $num_rows == 0 ){
 #	    die "There are no targets created on ", $date, ".\n";
 #	}
@@ -591,7 +593,7 @@ sub _make_new_target_from_db {
 #	    }
 #	}
 #    } );
-#    
+#
 #    return \@targets;
 #}
 #
@@ -618,7 +620,7 @@ sub _make_new_target_from_db {
 #    else{
 #	$statement = "select * from target where designed = 'n' order by date_created;";
 #    }
-#    
+#
 #    my $dbh = $self->connection->dbh();
 #    my @targets;
 #    $self->connection->txn(  fixup => sub {
@@ -630,7 +632,7 @@ sub _make_new_target_from_db {
 #	else{
 #	    $num_rows = $sth->execute();
 #	}
-#	
+#
 #	if( $num_rows == 0 ){
 #	    die "There are no targets without talen designs.\n";
 #	}
@@ -641,7 +643,7 @@ sub _make_new_target_from_db {
 #	    }
 #	}
 #    } );
-#    
+#
 #    return \@targets;
 #}
 
@@ -649,7 +651,7 @@ sub _make_new_target_from_db {
 #    my $self = shift;
 #    my $target = shift;
 #    my $error_msg = shift;
-#    
+#
 #    if( $error_msg =~ m /Duplicate entry/ && $error_msg =~ m /key 'name'/ ){
 #	warn "Target name already exists in the database... \nUpdating...\n";
 #	$self->update( $target, 'name' );
@@ -662,24 +664,24 @@ sub _make_new_target_from_db {
   Purpose     : Delete a target from the database
   Returns     : Crispr::DB::Target object
   Parameters  : Crispr::DB::Target object
-  Throws      : 
+  Throws      :
   Comments    : Not implemented yet.
 
 =cut
 
 sub delete_target_from_db {
 	my ( $self, $target ) = @_;
-	
+
 	# first check target exists in db
-	
+
 	# delete primers and primer pairs
-	
+
 	# delete transcripts
-	
+
 	# if target has talen pairs, delete tale and talen pairs
-	
-	
-	
+
+
+
 }
 
 
@@ -690,7 +692,7 @@ sub delete_target_from_db {
   Returns     : Str
   Parameters  : None
   Throws      : If driver is not either mysql or sqlite
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -700,8 +702,8 @@ sub delete_target_from_db {
   Purpose     : Getter for the db host name.
   Returns     : Str
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -711,8 +713,8 @@ sub delete_target_from_db {
   Purpose     : Getter for the db port.
   Returns     : Str
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -722,8 +724,8 @@ sub delete_target_from_db {
   Purpose     : Getter for the database (schema) name.
   Returns     : Str
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -733,8 +735,8 @@ sub delete_target_from_db {
   Purpose     : Getter for the db user name.
   Returns     : Str
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -744,8 +746,8 @@ sub delete_target_from_db {
   Purpose     : Getter for the db password.
   Returns     : Str
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -755,8 +757,8 @@ sub delete_target_from_db {
   Purpose     : Getter for the name of the SQLite database file.
   Returns     : Str
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -766,8 +768,8 @@ sub delete_target_from_db {
   Purpose     : Getter for the db Connection object.
   Returns     : DBIx::Connector
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -778,8 +780,8 @@ sub delete_target_from_db {
                 used internally to share the db params around Adaptor objects
   Returns     : HashRef
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -792,8 +794,8 @@ sub delete_target_from_db {
   Returns     : 1 if entry exists, undef if not
   Parameters  : check statement (Str)
                 statement parameters (ArrayRef[Str])
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -806,7 +808,7 @@ sub delete_target_from_db {
                 Parameters (ArrayRef)
   Throws      : If no rows are returned from the database.
                 If more than one row is returned.
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -818,7 +820,7 @@ sub delete_target_from_db {
   Parameters  : MySQL statement (Str)
                 Parameters (ArrayRef)
   Throws      : If no rows are returned from the database.
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -831,8 +833,8 @@ sub delete_target_from_db {
   Parameters  : Error Message (Str)
                 MySQL statement (Str)
                 Parameters (ArrayRef)
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -842,9 +844,9 @@ __PACKAGE__->meta->make_immutable;
 __END__
 
 =pod
- 
+
 =head1 SYNOPSIS
- 
+
     use Crispr::DB::DBAdaptor;
     my $db_adaptor = Crispr::DB::DBAdaptor->new(
         host => 'HOST',
@@ -854,33 +856,32 @@ __END__
         pass => 'PASS',
         connection => $dbc,
     );
-  
+
     my $target_adaptor = $db_adaptor->get_adaptor( 'target' );
-    
+
     # store a target object in the db
     $target_adaptor->store( $target );
-    
+
     # retrieve a target by id or name/requestor
     my $target = $target_adaptor->fetch_by_id( '214' );
-  
+
     # retrieve a target by combination of name and requestor
     my $target = $target_adaptor->fetch_by_name_and_requestor( 'ENSDARG0000124562', 'crispr_test' );
-    
+
 
 =head1 DESCRIPTION
- 
+
  A TargetAdaptor is an object used for storing and retrieving Target objects in an SQL database.
  The recommended way to use this module is through the DBAdaptor object as shown above.
  This allows a single open connection to the database which can be shared between multiple database adaptors.
- 
+
 =head1 DIAGNOSTICS
- 
- 
+
+
 =head1 CONFIGURATION AND ENVIRONMENT
- 
- 
+
+
 =head1 DEPENDENCIES
- 
- 
+
+
 =head1 INCOMPATIBILITIES
- 
