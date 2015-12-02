@@ -105,10 +105,10 @@ sub store {
 	return $targets->[0];
 }
 
-=method update_designed
+=method update_status_changed
 
-  Usage       : $target = $target_adaptor->update_designed( $target );
-  Purpose     : Updates the designed column of the target table in the db
+  Usage       : $target = $target_adaptor->update_status_changed( $target );
+  Purpose     : Updates the status_changed column of the target table in the db
   Returns     : Crispr::Target object
   Parameters  : Crispr::Target object
   Throws      : If argument is not a Target object
@@ -118,23 +118,23 @@ sub store {
 
 =cut
 
-sub update_designed {
+sub update_status_changed {
     my ( $self, $target ) = @_;
     my $dbh = $self->connection->dbh();
 
-	# check whether designed is defined - Makes no sense to update if it is not
+	# check whether status_changed is defined - Makes no sense to update if it is not
 	my $date;
-	if( !defined $target->designed ){
+	if( !defined $target->status_changed ){
 		# use today's date
 		my $date_obj = DateTime->now();
 		$date = $date_obj->ymd;
-		$target->designed( $date_obj );
+		$target->status_changed( $date_obj );
 	}
 	else{
-		$date = $target->designed;
+		$date = $target->status_changed;
 	}
 
-	my $update_st = "update target set designed = ? where target_id = ?;";
+	my $update_st = "update target set status_changed = ? where target_id = ?;";
 
     $self->connection->txn(  fixup => sub {
 		my $sth = $dbh->prepare($update_st);
@@ -170,7 +170,7 @@ sub update_designed {
 #				join(" '", "target =", $target->ensembl_version() ) . "', " .
 #				join(" '", "target =", $target->sequence() ) . "', " .
 #				join(" '", "target =", $target->date_created() ) . "', " .
-#				join(" '", "target =", $target->designed() ) . "' ";
+#				join(" '", "target =", $target->status_changed() ) . "' ";
 #    if( $update_by eq 'name' ){
 #	$statement = $statement .  "where name = '" . $target->target_name() . "';";
 #    }
@@ -345,7 +345,7 @@ sub fetch_by_crRNA_id {
             t.target_id, target_name, assembly,
             t.chr, t.start, t.end, t.strand, species,
             requires_enzyme, gene_id, gene_name,
-            requestor, ensembl_version, designed
+            requestor, ensembl_version, t.status_id, t.status_changed
         FROM target t, crRNA cr
         WHERE t.target_id = cr.target_id
         AND cr.crRNA_id = ?
@@ -357,16 +357,18 @@ END_SQL
 
     my ( $target_id, $target_name, $assembly, $chr, $start, $end, $strand,
         $species, $requires_enzyme, $gene_id, $gene_name, $requestor,
-        $ensembl_version, $designed );
+        $ensembl_version, $status_id, $status_changed );
 
     $sth->bind_columns( \( $target_id, $target_name, $assembly, $chr, $start,
                           $end, $strand, $species, $requires_enzyme, $gene_id,
-                          $gene_name, $requestor, $ensembl_version, $designed ) );
+                          $gene_name, $requestor, $ensembl_version, $status_id,
+                          $status_changed ) );
 
     my @targets = ();
     while ( $sth->fetch ) {
 
         my $target;
+        my $status = $self->_fetch_status_from_id( $status_id );
         if( !exists $target_cache{ $target_id } ){
             $target = Crispr::Target->new(
                 target_id => $target_id,
@@ -382,7 +384,8 @@ END_SQL
                 gene_name => $gene_name,
                 requestor => $requestor,
                 ensembl_version => $ensembl_version,
-                designed => $designed,
+                status => $status,
+                status_changed => $status_changed,
             );
             $target->target_adaptor( $self );
             $target_cache{ $target_id } = $target;
@@ -462,7 +465,7 @@ sub _fetch {
             t.target_id, target_name, assembly,
             t.chr, t.start, t.end, t.strand, species,
             requires_enzyme, gene_id, gene_name,
-            requestor, ensembl_version, designed
+            requestor, ensembl_version, status_id, status_changed
         FROM target t
 END_SQL
 
@@ -475,16 +478,18 @@ END_SQL
 
     my ( $target_id, $target_name, $assembly, $chr, $start, $end, $strand,
         $species, $requires_enzyme, $gene_id, $gene_name, $requestor,
-        $ensembl_version, $designed );
+        $ensembl_version, $status_id, $status_changed );
 
     $sth->bind_columns( \( $target_id, $target_name, $assembly, $chr, $start,
                           $end, $strand, $species, $requires_enzyme, $gene_id,
-                          $gene_name, $requestor, $ensembl_version, $designed ) );
+                          $gene_name, $requestor, $ensembl_version, $status_id,
+                          $status_changed ) );
 
     my @targets = ();
     while ( $sth->fetch ) {
 
         my $target;
+        my $status = $self->_fetch_status_from_id( $status_id );
         if( !exists $target_cache{ $target_id } ){
             $target = Crispr::Target->new(
                 target_id => $target_id,
@@ -500,7 +505,8 @@ END_SQL
                 gene_name => $gene_name,
                 requestor => $requestor,
                 ensembl_version => $ensembl_version,
-                designed => $designed,
+                status => $status,
+                status_changed => $status_changed,
             );
             $target->target_adaptor( $self );
             $target_cache{ $target_id } = $target;
@@ -564,7 +570,8 @@ sub _make_new_target_from_db {
 	$args{ 'gene_id' } = $fields->[9] if( defined $fields->[9] );
 	$args{ 'gene_name' } = $fields->[10] if( defined $fields->[10] );
 	$args{ 'ensembl_version' } = $fields->[12] if( defined $fields->[12] );
-	$args{ 'designed' } = $fields->[13] if( defined $fields->[13] );
+    $args{ 'status' } = $self->_fetch_status_from_id( $fields->[13] );
+	$args{ 'status_changed' } = $fields->[14] if( defined $fields->[14] );
 
 	$target = Crispr::Target->new( %args );
     $target->target_adaptor( $self );
@@ -615,10 +622,10 @@ sub _make_new_target_from_db {
 #    my ( $self, $limit ) = @_;
 #    my $statement;
 #    if( $limit ){
-#	$statement = "select * from target where designed = 'n' order by date_created limit ?;";
+#	$statement = "select * from target where status_changed = 'n' order by date_created limit ?;";
 #    }
 #    else{
-#	$statement = "select * from target where designed = 'n' order by date_created;";
+#	$statement = "select * from target where status_changed = 'n' order by date_created;";
 #    }
 #
 #    my $dbh = $self->connection->dbh();
