@@ -15,7 +15,7 @@ use DateTime;
 my $date_obj = DateTime->now();
 my $todays_date = $date_obj->ymd;
 
-plan tests => 4 + 2 + 1 + 19 + 4 + 4 + 2 + 5 + 6 + 6 + 2 + 8 + 2 + 2 + 2 + 2 + 9 + 9 + 4;
+plan tests => 4 + 2 + 1 + 20 + 4 + 4 + 2 + 5 + 6 + 6 + 2 + 8 + 2 + 2 + 2 + 2 + 9 + 9 + 4;
 
 my $species = 'zebrafish';
 
@@ -84,10 +84,10 @@ is( $target_2->target_adaptor, undef, 'target_adaptor2');
 # 1 test
 isa_ok( $target, 'Crispr::Target' );
 
-# check method calls 15 + 4 tests
+# check method calls 16 + 4 tests
 my @attributes = ( qw{ target_id target_name assembly chr start
     end strand species requires_enzyme gene_id
-    gene_name requestor ensembl_version status_changed target_adaptor } );
+    gene_name requestor ensembl_version status status_changed target_adaptor } );
 foreach my $attribute ( @attributes ) {
     can_ok( $target, $attribute );
 }
