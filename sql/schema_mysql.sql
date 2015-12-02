@@ -17,7 +17,7 @@ CREATE TABLE target (
     gene_name VARCHAR (50),
     requestor VARCHAR(50) NOT NULL,
     ensembl_version SMALLINT UNSIGNED,
-    status_id TINYINT,
+    status_id TINYINT UNSIGNED NOT NULL,
     status_changed DATE,
     FOREIGN KEY (status_id) REFERENCES status (status_id)
 ) ENGINE = InnoDB;
@@ -48,7 +48,7 @@ CREATE TABLE crRNA (
     target_id INT UNSIGNED NOT NULL,
     plate_id INT UNSIGNED,
     well_id CHAR(3),
-    status_id TINYINT,
+    status_id TINYINT UNSIGNED NOT NULL,
     status_changed DATE,
     CONSTRAINT `crRNA_plate_id_well_id` UNIQUE (`plate_id`, `well_id`),
     FOREIGN KEY (target_id) REFERENCES target (target_id),
