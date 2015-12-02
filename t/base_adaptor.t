@@ -157,5 +157,5 @@ foreach my $db_connection ( @{$db_connections} ){
         qr/too many rows/, "$driver: _db_error_handling - error message not in caps";
 
     # drop database
-#    $db_connection->destroy();
+    $db_connection->destroy();
 }
