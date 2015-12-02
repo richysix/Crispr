@@ -2,7 +2,6 @@ Crispr-*
 *CR_*.tsv
 tmp/*
 cover_db/*
-t/data/mock_*
 t/data/zv9_*
 t/data/e*_annotation.gff
 .build/
