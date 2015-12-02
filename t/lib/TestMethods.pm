@@ -97,9 +97,9 @@ sub check_for_annotation {
     my $annotation_file = $annotation_file_name   ?     $annotation_file_name
         :                                               'mock_annotation.gff';
     my $annotation_file_path = File::Spec->catfile( 't/data', $annotation_file );
-    my $slice = $self->slice_adaptor->fetch_by_region( 'toplevel', '3',  );
     
     if( !-e $annotation_file_path ){
+        my $slice = $self->slice_adaptor->fetch_by_region( 'toplevel', '3',  );
         # output annotation to gff
         my %exon_seen;
         my %intron_seen;
