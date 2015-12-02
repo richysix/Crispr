@@ -1,0 +1,16 @@
+test_chr1	test	exon	101	150	.	+	.	exon_id=gene1_ex1;gene_id=gene1
+test_chr1	test	intron	151	200	.	+	.	gene_id=gene1;transcript_id=trans1;intron_id=trans1_in1
+test_chr1	test	exon	201	250	.	+	.	exon_id=gene1_ex2;gene_id=gene1
+test_chr2	test	exon	21	80	.	+	.	exon_id=gene2_ex1;gene_id=gene2
+test_chr2	test	intron	81	140	.	+	.	gene_id=gene2;transcript_id=trans2;intron_id=trans2_in1
+test_chr2	test	exon	141	180	.	+	.	exon_id=gene2_ex2;gene_id=gene2
+test_chr2	test	intron	181	240	.	+	.	gene_id=gene2;transcript_id=trans2;intron_id=trans2_in2
+test_chr2	test	exon	241	300	.	+	.	exon_id=gene2_ex2;gene_id=gene2
+test_chr3	test	exon	21	80	.	+	.	exon_id=gene3_ex1;gene_id=gene3
+test_chr3	test	intron	81	140	.	+	.	gene_id=gene3;transcript_id=trans3;intron_id=trans3_in1
+test_chr3	test	exon	141	180	.	+	.	exon_id=gene3_ex2;gene_id=gene3
+test_chr3	test	exon	241	300	.	+	.	exon_id=gene4_ex1;gene_id=gene4
+test_chr3	test	intron	301	330	.	+	.	gene_id=gene4;transcript_id=trans4;intron_id=trans4_in1
+test_chr3	test	exon	331	360	.	+	.	exon_id=gene4_ex2;gene_id=gene4
+test_chr3	test	intron	361	400	.	+	.	gene_id=gene4;transcript_id=trans4;intron_id=trans4_in2
+test_chr3	test	exon	401	420	.	+	.	exon_id=gene4_ex3;gene_id=gene4
