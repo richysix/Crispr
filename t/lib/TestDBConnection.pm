@@ -192,6 +192,7 @@ sub db_params {
 sub create {
     my ( $self, ) = @_;
     $self->alter_schema( 1 );
+    $self->add_statuses();    
     return $self->connection;
 }
 
@@ -259,6 +260,32 @@ sub alter_schema {
         }
     }
     
+}
+
+sub add_statuses {
+    my ( $self,) = @_;
+    my $dbh = $self->connection->dbh();
+    my $sql = <<END_ST;
+    insert into status values
+(NULL, "REQUESTED"),
+(NULL, "DESIGNED"),
+(NULL, "ORDERED"),
+(NULL, "MADE"),
+(NULL, "INJECTED"),
+(NULL, "MISEQ_EMBRYO_SCREENING"),
+(NULL, "PASSED_EMBRYO_SCREENING"),
+(NULL, "FAILED_EMBRYO_SCREENING"),
+(NULL, "SPERM_FROZEN"),
+(NULL, "MISEQ_SPERM_SCREENING"),
+(NULL, "PASSED_SPERM_SCREENING"),
+(NULL, "FAILED_SPERM_SCREENING"),
+(NULL, "SHIPPED"),
+(NULL, "SHIPPED_AND_IN_SYSTEM"),
+(NULL, "IN_SYSTEM"),
+(NULL, "CARRIERS"),
+(NULL, "F1_FROZEN")
+END_ST
+    $dbh->do( $sql );
 }
 
 no Moose;

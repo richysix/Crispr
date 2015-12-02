@@ -132,19 +132,8 @@ foreach my $db_connection ( @{$db_connections} ){
         qr/An unexpected problem occurred/, "$driver: check fetch_rows_expecting_single_row throws on unexpected error";
 
     # check _fetch_status_from_id and _fetch_status_id_from_status methods - 2 tests
-    # add statuses to db
-    $statement = 'insert into status values(?,?)';
-    $sth = $dbh->prepare($statement);
-    my @statuses = ( qw{REQUESTED DESIGNED ORDERED MADE INJECTED
-    MISEQ_EMBYRO_SCREENING PASSED_EMBRYO_SCREENING FAILED_EMBRYO_SCREENING
-    SPERM_FROZEN MISEQ_SPERM_SCREENING PASSED_SPERM_SCREENING
-    FAILED_SPERM_SCREENING SHIPPED SHIPPED_AND_IN_SYSTEM IN_SYSTEM CARRIERS
-    F1_FROZEN} );
-    foreach my $status ( @statuses ){
-        $sth->execute( undef, $status );
-    }
     is($base_adaptor->_fetch_status_from_id(1), 'REQUESTED', 'check _fetch_status_from_id');
-    is($base_adaptor->_fetch_status_id_from_status('MISEQ_EMBYRO_SCREENING'), 6, 'check _fetch_status_id_from_status');
+    is($base_adaptor->_fetch_status_id_from_status('MISEQ_EMBRYO_SCREENING'), 6, 'check _fetch_status_id_from_status');
 
     # check _prepare method - 4 tests
     $select_statement = 'select * from cas9';
@@ -168,5 +157,5 @@ foreach my $db_connection ( @{$db_connections} ){
         qr/too many rows/, "$driver: _db_error_handling - error message not in caps";
 
     # drop database
-    $db_connection->destroy();
+#    $db_connection->destroy();
 }
