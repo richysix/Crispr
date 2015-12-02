@@ -49,7 +49,7 @@ my ( $db_connection_params, $db_connections ) = $test_method_obj->create_test_db
 
 SKIP: {
     skip 'No database connections available', $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite} if !@{$db_connections};
-    
+
     if( @{$db_connections} == 1 ){
         skip 'Only one database connection available', $TESTS_FOREACH_DBC{sqlite} if $db_connections->[0]->driver eq 'mysql';
         skip 'Only one database connection available', $TESTS_FOREACH_DBC{mysql} if $db_connections->[0]->driver eq 'sqlite';
@@ -61,7 +61,7 @@ foreach my $db_connection ( @{$db_connections} ){
     my $dbh = $db_connection->connection->dbh;
     # $dbh is a DBI database handle
     local $Test::DatabaseRow::dbh = $dbh;
-    
+
     # make a mock DBConnection object
     my $mock_db_connection = Test::MockObject->new();
     $mock_db_connection->set_isa( 'Crispr::DB::DBConnection' );
@@ -69,7 +69,7 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_db_connection->mock( 'connection', sub { return $db_connection->connection } );
     # make a new real Cas9 Adaptor
     my $cas9_adaptor = Crispr::DB::Cas9Adaptor->new( db_connection => $mock_db_connection, );
-    
+
     # make mock Cas9 and Cas9Prep objects
     my $type = 'ZfnCas9n';
     my $vector ='pCS2';
@@ -98,7 +98,7 @@ foreach my $db_connection ( @{$db_connections} ){
         $mock_cas9_object->vector,
         $mock_cas9_object->species,
     );
-    
+
     my $type_2 = 'ZfnCas9-D10An';
     my $name_2 = join(q{-}, $vector, $type_2, );
     my $mock_cas9_object_2 = Test::MockObject->new();
@@ -112,7 +112,7 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_cas9_object_2->mock( 'PAM', sub{ return $pam } );
     $mock_cas9_object_2->mock( 'crispr_target_seq', sub{ return $crispr_target_seq } );
     $mock_cas9_object_2->mock( 'info', sub{ return ( $type_2, $species, $crispr_target_seq ) } );
-    
+
     my $prep_type = 'rna';
     my $made_by = 'cr_test';
     my $todays_date_obj = DateTime->now();
@@ -126,8 +126,8 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_cas9_prep_object_1->mock( 'type', sub{ return $mock_cas9_object->type } );
     $mock_cas9_prep_object_1->mock( 'notes', sub{ return 'some notes' } );
     #$mock_cas9_prep_object_1->mock( 'cas9_adaptor', sub{ return $cas9_adaptor } );
-    
-    
+
+
     my $mock_cas9_prep_object_2 = Test::MockObject->new();
     my $prep_type_2 = 'protein';
     $mock_cas9_prep_object_2->set_isa( 'Crispr::DB::Cas9Prep' );
@@ -171,7 +171,7 @@ foreach my $db_connection ( @{$db_connections} ){
     );
     # 1 test
     isa_ok( $cas9_prep_adaptor, 'Crispr::DB::Cas9PrepAdaptor', "$driver: check object class is ok" );
-    
+
     # check attributes and methods exist 3 + 18 tests
     foreach my $attribute ( @attributes ) {
         can_ok( $cas9_prep_adaptor, $attribute );
@@ -179,7 +179,7 @@ foreach my $db_connection ( @{$db_connections} ){
     foreach my $method ( @methods ) {
         can_ok( $cas9_prep_adaptor, $method );
     }
-    
+
     # check store methods 12 tests
     throws_ok { $cas9_prep_adaptor->store('Cas9PrepObject') } qr/Argument\smust\sbe\sCrispr::DB::Cas9Prep\sobject/, "$driver: store throws on string input";
     ok( $cas9_prep_adaptor->store( $mock_cas9_prep_object_1 ), "$driver: store" );
@@ -196,23 +196,25 @@ foreach my $db_connection ( @{$db_connections} ){
        },
        label => "$driver: cas9_prep stored",
     );
-        
+
 
     throws_ok { $cas9_prep_adaptor->store_cas9_prep('Cas9PrepObject') }
         qr/Argument\smust\sbe\sCrispr::DB::Cas9Prep\sobject/, "$driver: store_cas9_prep throws on string input";
-    
+
     # check throws ok on attempted duplicate entry
     # for this we need to suppress the warning that is generated as well, hence the nested warning_like test
     # This does not affect the apparent number of tests run
+    # my $regex = $driver eq 'mysql' ?   qr/Duplicate\sentry/xms
+    #     :                           qr/PRIMARY\sKEY\smust\sbe\sunique/xms;
     my $regex = $driver eq 'mysql' ?   qr/Duplicate\sentry/xms
-        :                           qr/PRIMARY\sKEY\smust\sbe\sunique/xms;
-    
+        :                           qr/unique/xmsi;
+
     throws_ok {
         warning_like { $cas9_prep_adaptor->store_cas9_prep( $mock_cas9_prep_object_1) }
             $regex;
     }
     $regex, "$driver: store_cas9_prep throws because of duplicate entry";
-    
+
     ok( $cas9_prep_adaptor->store_cas9_prep( $mock_cas9_prep_object_2 ), "$driver: store_cas9_prep" );
     row_ok(
        table => 'cas9_prep',
@@ -234,7 +236,7 @@ foreach my $db_connection ( @{$db_connections} ){
     throws_ok { $cas9_prep_adaptor->store_cas9_preps( [ 'Cas9PrepObject' ] ) }
         qr/Argument\smust\sbe\sCrispr::DB::Cas9Prep\sobject/,
         "$driver: store_cas9_preps throws on string input";
-    
+
     ok( $cas9_prep_adaptor->store_cas9_preps( [ $mock_cas9_prep_object_3, $mock_cas9_prep_object_4 ] ), "$driver: store_cas9_preps" );
     row_ok(
        table => 'cas9_prep',
@@ -293,7 +295,7 @@ foreach my $db_connection ( @{$db_connections} ){
             $mock_cas9_prep_object_5->cas9->vector, $mock_cas9_prep_object_5->cas9->species, ]
     ), '_make_new_cas9_prep_from_db');
     check_attributes( $cas9_from_db_1, $mock_cas9_prep_object_5, $driver, '_make_new_cas9_prep_from_db' );
-    
+
     # _make_new_object_from_db - 9 tests
     ok( $cas9_from_db_1 = $cas9_prep_adaptor->_make_new_object_from_db(
         [ 6, 'protein', 'cr_test2', $todays_date_obj->ymd, 'some notes', 1,
@@ -301,22 +303,22 @@ foreach my $db_connection ( @{$db_connections} ){
             $mock_cas9_prep_object_6->cas9->vector, $mock_cas9_prep_object_6->cas9->species, ]
     ), '_make_new_cas9_prep_from_db');
     check_attributes( $cas9_from_db_1, $mock_cas9_prep_object_6, $driver, '_make_new_object_from_db' );
-    
+
     # fetch_by_id - 9 tests
     throws_ok{ $cas9_prep_adaptor->fetch_by_id( 10 ) } qr/Couldn't retrieve cas9_prep/, "$driver: Cas9prep does not exist in db";
-    
+
     SKIP: {
         my $cas9_from_db = $cas9_prep_adaptor->fetch_by_id( 1 );
-        
+
         skip "No cas9 returned from db!", 8 if !$cas9_from_db;
         # test attributes
         check_attributes( $cas9_from_db, $mock_cas9_prep_object_1, $driver, 'fetch_by_id' );
     }
-    
+
     # fetch_by_ids - 16 tests
     SKIP:{
         my $cas9_objects_from_db = $cas9_prep_adaptor->fetch_by_ids( [ 3, 4 ] );
-        
+
         skip "No cas9 objects returned from db!", 16 if !defined $cas9_objects_from_db->[0];
         my @cas9_preps = ( $mock_cas9_prep_object_3, $mock_cas9_prep_object_4 );
         foreach my $i ( 0..1 ){
@@ -325,7 +327,7 @@ foreach my $db_connection ( @{$db_connections} ){
             check_attributes( $cas9_from_db, $prep, $driver, 'fetch_by_ids' );
         }
     }
-    
+
     # check other fetch methods - 10 test
     my $cas9_preps;
     ok( $cas9_preps = $cas9_prep_adaptor->fetch_all_by_type_and_date( 'ZfnCas9n', $todays_date_obj->ymd ), "$driver: fetch_all_by_type_and_date");
@@ -338,15 +340,15 @@ foreach my $db_connection ( @{$db_connections} ){
     is( scalar @{$cas9_preps}, 2, "$driver: check number returned by fetch_all_by_made_by");
     ok( $cas9_preps = $cas9_prep_adaptor->fetch_all_by_prep_type( 'rna' ), "$driver: fetch_all_by_prep_type");
     is( scalar @{$cas9_preps}, 2, "$driver: check number returned by fetch_all_by_prep_type");
-    
+
     #TODO 1 tests
 TODO: {
     local $TODO = 'methods not implemented yet.';
-    
+
     ok( $cas9_prep_adaptor->delete_cas9_prep_from_db ( 'rna' ), 'delete_cas9_prep_from_db');
 }
     $db_connection->destroy;
-    
+
 }
 
 sub check_attributes {
