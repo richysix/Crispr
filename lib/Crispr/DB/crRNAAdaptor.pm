@@ -958,6 +958,8 @@ END_SQL
 
         my $crRNA;
         if( !exists $crRNA_cache{ $crRNA_id } ){
+            # fetch target by target_id
+            my $target = $self->target_adaptor->fetch_by_id( $target_id );
             $crRNA = Crispr::DB::crRNA->new(
                 crRNA_id => $crRNA_id,
                 target => $target,
@@ -967,10 +969,6 @@ END_SQL
                 strand => $strand,
                 sequence => $sequence,
                 five_prime_Gs => $num_five_prime_Gs,
-                off_target_hits => $off_target_hits,
-                coding_scores => $coding_scores,
-                unique_restriction_sites => $enzyme_collection,
-                plasmid_backbone => $plasmid_backbone,
                 crRNA_adaptor => $self,
                 status => $status,
             );

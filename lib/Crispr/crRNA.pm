@@ -19,6 +19,8 @@ use Carp;
 use Number::Format;
 my $num = new Number::Format( DECIMAL_DIGITS => 3, );
 
+with 'Crispr::SharedMethods';
+
 enum 'Crispr::crRNA::Strand', [qw( 1 -1 )];
 
 subtype 'Crispr::crRNA::DNA',
@@ -373,6 +375,23 @@ has 'status' => (
     default => 'DESIGNED',
 );
 
+=method status_changed
+
+  Usage       : $target->status_changed;
+  Purpose     : Getter/Setter for status_changed attribute
+  Returns     : DateTime
+  Parameters  : Either DateTime object or Str of form yyyy-mm-dd
+  Throws      :
+  Comments    :
+
+=cut
+
+has 'status_changed' => (
+    is => 'rw',
+    isa => 'Maybe[DateTime]',
+    default => undef,
+);
+
 around BUILDARGS => sub{
     my $method = shift;
     my $self = shift;
@@ -382,6 +401,12 @@ around BUILDARGS => sub{
 		for( my $i = 0; $i < scalar @_; $i += 2 ){
 			my $k = $_[$i];
 			my $v = $_[$i+1];
+            if( $k eq 'status_changed' ){
+                if( defined $v && ( !ref $v || ref $v ne 'DateTime' ) ){
+                    my $date_obj = $self->_parse_date( $v );
+                    $v = $date_obj;
+                }
+            }
 			if( $k eq 'species' ){
 				my $species = $self->_parse_species( $v );
 				$v = $species;
@@ -398,6 +423,13 @@ around BUILDARGS => sub{
 	    return $self->$method( \%args );
 	}
     elsif( ref $_[0] eq 'HASH' ){
+        if( exists $_[0]->{'status_changed'} ){
+            if( defined $_[0]->{'status_changed'} &&
+                ( !ref $_[0]->{'status_changed'} || ref $_[0]->{'status_changed'} ne 'DateTime' ) ){
+                my $date_obj = $self->_parse_date( $_[0]->{'status_changed'} );
+                $_[0]->{'status_changed'} = $date_obj;
+            }
+        }
         if( exists $_[0]->{'species'} ){
             if( defined $_[0]->{'species'} ){
 				my $species = $self->_parse_species( $_[0]->{'species'} );
