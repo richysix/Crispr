@@ -77,9 +77,9 @@ foreach my $db_connection ( @{$db_connections} ){
     }
     
     # add target info directly to db 
-    my $statement = "insert into target values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );";
+    my $statement = "insert into target values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );";
     my $sth = $dbh->prepare($statement);
-    $sth->execute( 1, 'test_target', 'Zv9', '4', 1, 200, '1', 'zebrafish', 'y', 'GENE0001', 'gene001', 'crispr_test', 75, '2014-10-13');
+    $sth->execute( 1, 'test_target', 'Zv9', '4', 1, 200, '1', 'zebrafish', 'y', 'GENE0001', 'gene001', 'crispr_test', 75, 7, '2014-10-13');
     
     # plate
     my $mock_plate = Test::MockObject->new();
@@ -103,13 +103,14 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_crRNA->mock('crRNA_id', sub{ return 1 } );
     $mock_crRNA->mock('target_id', sub{ '1' } );
     
-    $statement = "insert into crRNA values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );";
+    $statement = "insert into crRNA values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );";
     $sth = $dbh->prepare($statement);
     $sth->execute( $mock_crRNA->crRNA_id, 'crRNA:5:50383-50405:1', '5',
         50383, 50405, '1',
         'GGAATAGAGAGATAGAGAGTCGG', 0,
         0.853, 1, 0.853,
         $mock_crRNA->target_id, 1, 'A01',
+        8, '2015-01-01',
     );
     
     my ( $l_p_id, $r_p_id, $pair_id ) = ( -1, 0, 0 );

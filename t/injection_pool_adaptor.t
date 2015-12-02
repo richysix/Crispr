@@ -159,9 +159,9 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_gRNA_2->mock( 'well', sub{ return $mock_well_2 } );
     
     # target
-    $statement = "insert into target values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );";
+    $statement = "insert into target values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );";
     $sth = $dbh->prepare($statement);
-    $sth->execute( 1, 'test_target', 'Zv9', '4', 1, 200, '1', 'zebrafish', 'y', 'GENE0001', 'gene001', 'crispr_test', 75, '2014-10-13');
+    $sth->execute( 1, 'test_target', 'Zv9', '4', 1, 200, '1', 'zebrafish', 'y', 'GENE0001', 'gene001', 'crispr_test', 75, 2, '2014-10-13');
     # plate 
     $statement = "insert into plate values( ?, ?, ?, ?, ?, ? );";
     $sth = $dbh->prepare($statement);
@@ -169,10 +169,10 @@ foreach my $db_connection ( @{$db_connections} ){
     $sth->execute( 2, 'CR_000001h', '96', 'guideRNA_prep', undef, undef, );
 
     # crRNA
-    $statement = "insert into crRNA values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );";
+    $statement = "insert into crRNA values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );";
     $sth = $dbh->prepare($statement);
-    $sth->execute( 1, 'crRNA:4:1-23:-1', '4', 1, 23, '-1', 'CACAGATGACAGATAGACAGCGG', 0, 0.81, 0.9, 0.9, 1, 1, 'A01' );
-    $sth->execute( 2, 'crRNA:4:21-43:1', '4', 21, 43, '1', 'TAGATCAGTAGATCGATAGTAGG', 0, 0.81, 0.9, 0.9, 1, 1, 'B01' );
+    $sth->execute( 1, 'crRNA:4:1-23:-1', '4', 1, 23, '-1', 'CACAGATGACAGATAGACAGCGG', 0, 0.81, 0.9, 0.9, 1, 1, 'A01', 3, '2014-12-02' );
+    $sth->execute( 2, 'crRNA:4:21-43:1', '4', 21, 43, '1', 'TAGATCAGTAGATCGATAGTAGG', 0, 0.81, 0.9, 0.9, 1, 1, 'B01', 4, '2015-11-30' );
     # guideRNA
     $statement = "insert into guideRNA_prep values( ?, ?, ?, ?, ?, ?, ?, ? );";
     $sth = $dbh->prepare($statement);
