@@ -1,5 +1,10 @@
+CREATE TABLE status (
+   status_id integer PRIMARY KEY,
+   status VARCHAR(50)
+);
+
 CREATE TABLE target (
-    target_id integer   PRIMARY KEY,
+    target_id integer PRIMARY KEY,
     target_name VARCHAR(45) NOT NULL,
     assembly VARCHAR(20),
     chr VARCHAR(30),
@@ -12,7 +17,9 @@ CREATE TABLE target (
     gene_name VARCHAR (50),
     requestor VARCHAR(50) NOT NULL,
     ensembl_version  integer UNSIGNED,
-    designed DATE
+    status_id integer,
+    status_changed DATE,
+    FOREIGN KEY (status_id) REFERENCES status (status_id)
 );
 CREATE UNIQUE INDEX `target_target_name_requestor` ON target ( `target_name`, `requestor` );
 
@@ -41,9 +48,12 @@ CREATE TABLE crRNA (
     target_id integer  NOT NULL,
     plate_id integer UNSIGNED,
     well_id CHAR(3),
+    status_id integer,
+    status_changed DATE,
     CONSTRAINT `crRNA_plate_id_well_id` UNIQUE (`plate_id`, `well_id`),
     FOREIGN KEY (target_id) REFERENCES target (target_id),
-    FOREIGN KEY (plate_id) REFERENCES plate (plate_id)
+    FOREIGN KEY (plate_id) REFERENCES plate (plate_id),
+    FOREIGN KEY (status_id) REFERENCES status (status_id)
 );
 CREATE UNIQUE INDEX `crRNA_crRNA_name_target_id_plate_id` ON crRNA ( `crRNA_name`, `target_id`, `plate_id` );
 

@@ -1,4 +1,4 @@
-insert into enzyme values
+insert into status values
 (NULL, "REQUESTED"),
 (NULL, "DESIGNED"),
 (NULL, "ORDERED"),
