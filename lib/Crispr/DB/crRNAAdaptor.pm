@@ -194,7 +194,7 @@ sub store_crRNAs {
             my $well_id = shift @well_ids;
 
             # insert values into table crRNA
-            my $statement = "insert into crRNA values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );";
+            my $statement = "insert into crRNA values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );";
 
             # check target exists - check_entry_exists_in_db inherited from BaseAdaptor.
             my ( $check_target_st, $target_params );
@@ -220,13 +220,14 @@ sub store_crRNAs {
             my $off_target_score = defined $crRNA->off_target_hits ? $crRNA->off_target_score : undef;
             my $coding_score = defined $crRNA->coding_score ?
                 $crRNA->coding_score : undef;
+            my $status_id = $self->_fetch_status_id_from_status( $crRNA->status );
             $sth->execute($crRNA->crRNA_id, $crRNA->name,
                 $crRNA->chr, $crRNA->start, $crRNA->end, $crRNA->strand,
                 $crRNA->sequence, $crRNA->five_prime_Gs,
                 $crRNA->score, $off_target_score,
                 $coding_score,
                 $crRNA->target_id, $plate_id, $well_id,
-                $crRNA->status,
+                $status_id, $crRNA->status_changed,
             );
 
             my $last_id;
@@ -234,7 +235,7 @@ sub store_crRNAs {
             $crRNA->crRNA_id( $last_id );
             $sth->finish();
 
-            $self->target_adaptor->update_designed( $crRNA->target );
+            $self->target_adaptor->update_status_changed( $crRNA->target );
 
         }
     } );
@@ -622,23 +623,10 @@ sub check_plasmid_backbone_exists {
 sub fetch_by_id {
     my ( $self, $id ) = @_;
 
-    my $statement = "select * from target t, crRNA c where crRNA_id = ? and c.target_id = t.target_id;";
-    my $params = [ $id ];
-    my $results;
-    my $crRNA;
-    eval {
-        $results = $self->fetch_rows_expecting_single_row( $statement, $params, );
-    };
-    if( $EVAL_ERROR ){
-        $self->_db_error_handling( $EVAL_ERROR, $statement, $params, );
+    my $crRNA = $self->_fetch( 'crRNA_id = ?', [ $id ] )->[0];
+    if( !$crRNA ){
+        confess "Couldn't retrieve crRNA, $id, from database.\n";
     }
-    else{
-        my @crRNA_fields = @{ $results->[0]->[14..28] };
-        $crRNA = $self->_make_new_crRNA_from_db( \@crRNA_fields, );
-        my @target_fields = @{ $results->[0]->[0..13] };
-        $crRNA->target( $self->target_adaptor->_make_new_target_from_db( \@target_fields ) );
-    }
-
     return $crRNA;
 }
 
@@ -655,7 +643,6 @@ sub fetch_by_id {
 
 sub fetch_by_ids {
     my ( $self, $ids ) = @_;
-    my $dbh = $self->connection->dbh();
     my @crRNAs;
 
     foreach my $id ( @{$ids} ){
@@ -680,27 +667,11 @@ sub fetch_by_ids {
 sub fetch_all_by_name {
     my ( $self, $name, ) = @_;
 
-    my $statement = <<END_ST;
-select * from crRNA c where
-c.crRNA_name = ?;
-END_ST
-    my $params = [ $name, ];
-    my $results;
-    my $crRNA;
-    eval {
-        $results = $self->fetch_rows_for_generic_select_statement( $statement, $params, );
-    };
-    if( $EVAL_ERROR ){
-        $self->_db_error_handling( $EVAL_ERROR, $statement, $params, );
+    my $crRNAs = $self->_fetch( 'crRNA_name = ?', [ $name, ] );
+    if( !$crRNAs ){
+        confess "Couldn't retrieve crRNA, $name, from database.\n";
     }
-
-    my @crRNAs;
-    foreach my $row ( @{$results} ){
-        my @crRNA_fields = @{ $row }[0..13];
-        push @crRNAs, $self->_make_new_crRNA_from_db( \@crRNA_fields, );
-    }
-
-    return \@crRNAs;
+    return $crRNAs;
 }
 
 =method fetch_by_name_and_target
@@ -731,9 +702,9 @@ END_ST
         $self->_db_error_handling( $EVAL_ERROR, $statement, $params, );
     }
     else{
-        my @crRNA_fields = @{ $results }[14..24];
+        my @crRNA_fields = @{ $results }[15..30];
         $crRNA = $self->_make_new_crRNA_from_db( \@crRNA_fields, );
-        my @target_fields = @{ $results }[0..13];
+        my @target_fields = @{ $results }[0..14];
         $crRNA->target( $self->target_adaptor->_make_new_target_from_db( \@target_fields ) );
     }
 
@@ -776,25 +747,11 @@ sub fetch_by_names_and_targets {
 
 sub fetch_all_by_target {
     my ( $self, $target, ) = @_;
-    my $dbh = $self->connection->dbh();
 
-    # retrieve crRNAs by target id
-    my $statement = "select * from crRNA where target_id = ?;";
-    my $sth = $dbh->prepare($statement);
-    $sth->execute( $target->target_id );
-
-    my $crRNAs;
-    my $num_rows = 0;
-    while( my @fields = $sth->fetchrow_array ){
-        $num_rows++;
-        my $crRNA = $self->_make_new_crRNA_from_db( \@fields, );
-        push @{$crRNAs}, $crRNA;
+    my $crRNAs = $self->_fetch( 'target_id = ?', [ $target->target_id, ] );
+    if( !$crRNAs ){
+        confess "Couldn't retrieve crRNAs for target, ", $target->name, " from database.\n";
     }
-    if( $num_rows == 0 ){
-        die "Couldn't retrieve crRNAs for target, ", $target->name, " from database.\n";
-    }
-    $target->crRNAs( $crRNAs );
-
     return $crRNAs;
 }
 
@@ -847,7 +804,7 @@ END_ST
         $self->_db_error_handling( $EVAL_ERROR, $db_statement, $params, );
     }
     else{
-        $crRNA = $self->_make_new_crRNA_from_db( [ @{$results}[ 0..9 ] ] );
+        $crRNA = $self->_make_new_crRNA_from_db( [ @{$results}[ 0..15 ] ] );
     }
 
     return $crRNA;
@@ -879,7 +836,7 @@ sub fetch_all_by_primer_pair {
     my $sql = <<END_ST;
     SELECT cr.crRNA_id, crRNA_name, chr, start, end, strand, sequence,
     num_five_prime_Gs, score, off_target_score, coding_score, target_id,
-    plate_id, well_id
+    plate_id, well_id, status_id, status_changed
     FROM crRNA cr, amplicon_to_crRNA amp
 END_ST
 
@@ -892,17 +849,18 @@ END_ST
 
     my ( $crRNA_id, $crRNA_name, $chr, $start, $end, $strand, $sequence,
         $num_five_prime_Gs, $score, $off_target_score, $coding_score,
-        $target_id, $plate_id, $well_id );
+        $target_id, $plate_id, $well_id, $status_id, $status_changed, );
 
     $sth->bind_columns( \( $crRNA_id, $crRNA_name, $chr, $start, $end, $strand, $sequence,
         $num_five_prime_Gs, $score, $off_target_score, $coding_score,
-        $target_id, $plate_id, $well_id ) );
+        $target_id, $plate_id, $well_id, $status_id, $status_changed, ) );
 
     while ( $sth->fetch ) {
         if( !exists $crRNA_cache{ $crRNA_id } ){
             my $crRNA = $self->_make_new_crRNA_from_db(
                 [ $crRNA_id, $crRNA_name, $chr, $start, $end, $strand,
-                $sequence, $num_five_prime_Gs, ] );
+                $sequence, $num_five_prime_Gs, $score, $off_target_score, $coding_score,
+                $target_id, $plate_id, $well_id, $status_id, $status_changed, ] );
             push @crRNAs, $crRNA;
         }
         else{
@@ -933,7 +891,7 @@ sub _fetch {
         SELECT
         crRNA_id, crRNA_name, chr, start, end, strand, sequence,
         num_five_prime_Gs, score, off_target_score, coding_score,
-        target_id, plate_id, well_id, status,
+        target_id, plate_id, well_id, status_id, status_changed
         FROM crRNA
 END_SQL
 
@@ -946,16 +904,16 @@ END_SQL
 
     my ( $crRNA_id, $crRNA_name, $chr, $start, $end, $strand, $sequence,
             $num_five_prime_Gs, $score, $off_target_score, $coding_score,
-            $target_id, $plate_id, $well_id, $status,
+            $target_id, $plate_id, $well_id, $status_id, $status_changed
     );
 
     $sth->bind_columns( \( $crRNA_id, $crRNA_name, $chr, $start, $end, $strand,
         $sequence, $num_five_prime_Gs, $score, $off_target_score, $coding_score,
-        $target_id, $plate_id, $well_id, $status, ) );
+        $target_id, $plate_id, $well_id, $status_id, $status_changed, ) );
 
     my @crRNAs = ();
     while ( $sth->fetch ) {
-
+        my $status = $self->_fetch_status_from_id( $status_id );
         my $crRNA;
         if( !exists $crRNA_cache{ $crRNA_id } ){
             # fetch target by target_id
@@ -971,6 +929,7 @@ END_SQL
                 five_prime_Gs => $num_five_prime_Gs,
                 crRNA_adaptor => $self,
                 status => $status,
+                status_changed => $status_changed,
             );
             $crRNA_cache{ $crRNA_id } = $crRNA;
         }
@@ -997,8 +956,9 @@ END_SQL
 
 sub _make_new_crRNA_from_db {
     my ( $self, $fields ) = @_;
+    my $status = $self->_fetch_status_from_id( $fields->[14] );
+    
     my $crRNA;
-
     my %args = (
         crRNA_id => $fields->[0],
         name => $fields->[1],
@@ -1007,7 +967,8 @@ sub _make_new_crRNA_from_db {
         strand => $fields->[5],
         sequence => $fields->[6],
         five_prime_Gs => $fields->[7],
-        status => $fields->[14]
+        status => $status,
+        status_changed => $fields->[15]
     );
     $args{ 'chr' } = $fields->[2] if( defined $fields->[2] );
 
