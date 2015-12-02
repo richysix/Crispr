@@ -88,7 +88,7 @@ is( $sample->cryo_box, 'Cr_Sperm12', 'check cryo_box');
 $tests += 6;
 
 # check sample_name
-is( $sample->sample_name, '170_A01', 'check sample name' );
+is( $sample->sample_name, '170_1', 'check sample name' );
 $tests++;
 
 # check default sample_name
