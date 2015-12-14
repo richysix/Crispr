@@ -375,8 +375,20 @@ foreach my $id ( @ids ){
     }
     
     # output primer info including Tm etc. to STDOUT
-    print join("\t", $target_info->{ext_primers}->primer_pair_info,
-               $target_info->{int_primers}->primer_pair_info, ), "\n";
+    my ( $ext_primer_info, $int_primer_info, );
+    if( defined $target_info->{ext_primers} ){
+        $ext_primer_info = join("\t", $target_info->{ext_primers}->primer_pair_info );
+    }
+    else{
+        $ext_primer_info = 'NO EXT PRIMERS';
+    }
+    if( defined $target_info->{int_primers} ){
+        $int_primer_info = join("\t", $target_info->{int_primers}->primer_pair_info );
+    }
+    else{
+        $int_primer_info = 'NO INT PRIMERS';
+    }
+    print join("\t", $ext_primer_info, $int_primer_info, ), "\n";
 }
 
 
@@ -611,22 +623,24 @@ sub reset_excluded_regions {
             my $target_start = $targets->{ $id }->{target_start};
             my $target_end = $targets->{ $id }->{target_end};
             my $ext_p    = $targets->{$id}->{ext_primers};
-            $targets->{$id}->{int_amp}[5] = [];
-            if( $exclude_ext_primers ){
+            if( defined $ext_p ){
+                $targets->{$id}->{int_amp}[5] = [];
+                if( defined $ext_p && $exclude_ext_primers ){
+                    push @{$targets->{$id}->{int_amp}[5]},
+                        [ 1, $ext_p->left_primer->length - 10 ],
+                        [ $ext_p->product_size - 10, 10 ];
+                }
                 push @{$targets->{$id}->{int_amp}[5]},
-                    [ 1, $ext_p->left_primer->length - 10 ],
-                    [ $ext_p->product_size - 10, 10 ];
-            }
-            push @{$targets->{$id}->{int_amp}[5]},
-                [ $target_start - $target_offset, ($target_end + $target_offset) - ($target_start - $target_offset) + 1 ];
-            
-            if( $target_start > $DISTANCE_TO_TARGET && $side_to_constrain eq 'left' ){
-                push @{$targets->{$id}->{int_amp}[5]},
-                    [ 1, $target_start - $DISTANCE_TO_TARGET ];
-            }
-            if( $targets->{$id}->{int_end} - $targets->{$id}->{end} > $DISTANCE_TO_TARGET && $side_to_constrain eq 'right' ){
-                push @{$targets->{$id}->{int_amp}[5]},
-                    [ $target_end + $DISTANCE_TO_TARGET, $targets->{$id}->{int_end} - $targets->{$id}->{end} - $DISTANCE_TO_TARGET ];
+                    [ $target_start - $target_offset, ($target_end + $target_offset) - ($target_start - $target_offset) + 1 ];
+                
+                if( $target_start > $DISTANCE_TO_TARGET && $side_to_constrain eq 'left' ){
+                    push @{$targets->{$id}->{int_amp}[5]},
+                        [ 1, $target_start - $DISTANCE_TO_TARGET ];
+                }
+                if( $targets->{$id}->{int_end} - $targets->{$id}->{end} > $DISTANCE_TO_TARGET && $side_to_constrain eq 'right' ){
+                    push @{$targets->{$id}->{int_amp}[5]},
+                        [ $target_end + $DISTANCE_TO_TARGET, $targets->{$id}->{int_end} - $targets->{$id}->{end} - $DISTANCE_TO_TARGET ];
+                }
             }
         }
     }
