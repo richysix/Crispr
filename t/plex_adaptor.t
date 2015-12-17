@@ -124,7 +124,7 @@ foreach my $db_connection ( @{$db_connections} ){
     # for this we need to suppress the warning that is generated as well, hence the nested warning_like test
     # This does not affect the apparent number of tests run
     my $regex = $driver eq 'mysql' ?   qr/Duplicate\sentry/xms
-        :                           qr/PRIMARY\sKEY\smust\sbe\sunique/xms;
+        :                           qr/unique/xmsi;
     
     throws_ok {
         warning_like { $plex_adaptor->store_plex( $mock_plex) }
