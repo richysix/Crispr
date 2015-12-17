@@ -299,6 +299,54 @@ sub fetch_by_names_and_requestors {
     return \@targets;
 }
 
+=method fetch_all_by_gene_name
+
+  Usage       : $target = $target_adaptor->fetch_all_by_gene_name( 'gene' );
+  Purpose     : Fetch all targets in the db for a given gene name
+  Returns     : Crispr::Target object
+  Parameters  : Gene Name (Str)
+  Throws      : If no rows are returned from the database
+  Comments    : None
+
+=cut
+
+sub fetch_all_by_gene_name {
+    my ( $self, $gene_name ) = @_;
+    
+}
+
+=method fetch_all_by_gene_id
+
+  Usage       : $target = $target_adaptor->fetch_all_by_gene_id( 'gene' );
+  Purpose     : Fetch all targets in the db for a given gene name
+  Returns     : Crispr::Target object
+  Parameters  : Gene Name (Str)
+  Throws      : If no rows are returned from the database
+  Comments    : None
+
+=cut
+
+sub fetch_all_by_gene_id {
+    my ( $self, $gene_name ) = @_;
+    
+}
+
+=method fetch_all_by_requestor
+
+  Usage       : $target = $target_adaptor->fetch_all_by_requestor( 'gene' );
+  Purpose     : Fetch all targets in the db for a given gene name
+  Returns     : Crispr::Target object
+  Parameters  : Gene Name (Str)
+  Throws      : If no rows are returned from the database
+  Comments    : None
+
+=cut
+
+sub fetch_all_by_requestor {
+    my ( $self, $gene_name ) = @_;
+    
+}
+
 =method fetch_by_crRNA
 
   Usage       : $target = $target_adaptor->fetch_by_crRNA( $crRNA );

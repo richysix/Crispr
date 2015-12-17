@@ -15,7 +15,7 @@ use Readonly;
 use Crispr::DB::TargetAdaptor;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 21 + 2 + 15 + 15 + 16 + 14 + 1 + 1 + 14 + 14 + 1;
+Readonly my $TESTS_IN_COMMON => 1 + 24 + 2 + 15 + 15 + 16 + 3 + 14 + 1 + 1 + 14 + 14 + 1;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
@@ -80,14 +80,15 @@ foreach my $db_connection ( @{$db_connections} ){
     # 1 test
     isa_ok( $target_adaptor, 'Crispr::DB::TargetAdaptor', "$driver: check object class is ok" );
 
-    # check attributes and methods - 3 + 18 tests
+    # check attributes and methods - 3 + 21 tests
     my @object_attributes = ( qw{ dbname db_connection connection } );
     
     my @methods = (
         qw{ store store_targets update_status_changed fetch_by_id fetch_by_ids
-            fetch_by_name_and_requestor fetch_by_names_and_requestors fetch_by_crRNA fetch_by_crRNA_id fetch_gene_name_by_primer_pair
-            _fetch _make_new_object_from_db _make_new_target_from_db delete_target_from_db check_entry_exists_in_db
-            fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement _db_error_handling }
+            fetch_by_name_and_requestor fetch_by_names_and_requestors fetch_all_by_gene_name fetch_all_by_gene_id fetch_all_by_requestor
+            fetch_by_crRNA fetch_by_crRNA_id fetch_gene_name_by_primer_pair _fetch _make_new_object_from_db
+            _make_new_target_from_db delete_target_from_db check_entry_exists_in_db fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement
+            _db_error_handling }
     );
     
     foreach my $attribute ( @object_attributes ) {
@@ -204,6 +205,27 @@ foreach my $db_connection ( @{$db_connections} ){
     my $target_3 = $target_adaptor->fetch_by_name_and_requestor( 'SLC39A14', 'crispr_test' );
     check_object_attributes( $target_3, $mock_target, $driver, 'fetch_by_name_and_requestor' );
     
+    my $target_tmp;
+TODO: {
+    local $TODO = 'fetch_all_by_gene_name method not written yet.';
+    #fetch targets by gene name
+    ok($target_tmp = $target_adaptor->fetch_all_by_gene_name( 'SLC39A14', ) );
+    #check_object_attributes( $target_tmp, $mock_target, $driver, 'fetch_all_by_gene_name' );
+}
+
+TODO: {
+    local $TODO = 'fetch_all_by_gene_id method not written yet.';
+    #fetch targets by gene id
+    ok( $target_tmp = $target_adaptor->fetch_all_by_gene_id( 'SLC39A14', ) );
+    #check_object_attributes( $target_tmp, $mock_target, $driver, 'fetch_all_by_gene_id' );
+}
+
+TODO: {
+    local $TODO = 'fetch_all_by_requestor method not written yet.';
+    #fetch targets by requestor
+    ok( $target_tmp = $target_adaptor->fetch_all_by_requestor( 'crispr_test', ) );
+    #check_object_attributes( $target_tmp, $mock_target, $driver, 'fetch_all_by_requestor' );
+}
     # add primers, primer pairs, amp_to_crRNA to test fetch_gene_name_by_primer_pair;
     # make mock primer and primer pair objects
     my $mock_left_primer = Test::MockObject->new();
