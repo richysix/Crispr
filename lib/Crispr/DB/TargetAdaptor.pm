@@ -311,8 +311,12 @@ sub fetch_by_names_and_requestors {
 =cut
 
 sub fetch_all_by_gene_name {
-    my ( $self, $gene_name ) = @_;
-    
+	my ( $self, $gene_name, ) = @_;
+    my $targets = $self->_fetch( 'gene_name = ?', [ $gene_name, ]);
+    # if( scalar @{$targets} == 0 ){
+    #     confess "Couldn't retrieve target for $gene_name, from database.\n";
+    # }
+    return $targets;
 }
 
 =method fetch_all_by_gene_id
@@ -327,8 +331,9 @@ sub fetch_all_by_gene_name {
 =cut
 
 sub fetch_all_by_gene_id {
-    my ( $self, $gene_name ) = @_;
-    
+    my ( $self, $gene_id ) = @_;
+    my $targets = $self->_fetch( 'gene_id = ?', [ $gene_id, ]);
+    return $targets;    
 }
 
 =method fetch_all_by_requestor
@@ -343,28 +348,9 @@ sub fetch_all_by_gene_id {
 =cut
 
 sub fetch_all_by_requestor {
-    my ( $self, $gene_name ) = @_;
-    
-}
-
-=method fetch_by_crRNA
-
-  Usage       : $target = $target_adaptor->fetch_all_by_gene_name( $crRNA );
-  Purpose     : Fetch a target given a crRNA object
-  Returns     : Crispr::Target object
-  Parameters  : Crispr::crRNA object
-  Throws      : If no rows are returned from the database
-  Comments    : None
-
-=cut
-
-sub fetch_all_by_gene_name {
-	my ( $self, $gene_name, ) = @_;
-    my $targets = $self->_fetch( 'gene_name = ?', [ $gene_name, ]);
-    # if( scalar @{$targets} == 0 ){
-    #     confess "Couldn't retrieve target for $gene_name, from database.\n";
-    # }
-    return $targets;
+    my ( $self, $requestor ) = @_;
+    my $targets = $self->_fetch( 'requestor = ?', [ $requestor, ]);
+    return $targets;    
 }
 
 =method fetch_by_crRNA
