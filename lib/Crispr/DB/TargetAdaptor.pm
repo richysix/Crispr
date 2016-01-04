@@ -10,7 +10,6 @@ use Crispr::Target;
 use DateTime;
 use Carp qw( cluck confess );
 use English qw( -no_match_vars );
-
 extends 'Crispr::DB::BaseAdaptor';
 
 # cache for targets from db
@@ -299,6 +298,23 @@ sub fetch_by_names_and_requestors {
     return \@targets;
 }
 
+=method fetch_all_by_name
+
+  Usage       : $targets = $target_adaptor->fetch_all_by_name( $name );
+  Purpose     : Fetch a list of targets given a target name
+  Returns     : Arrayref of Crispr::Target objects
+  Parameters  : Str (target_name)
+  Throws      : If no rows are returned from the database
+  Comments    : None
+
+=cut
+
+sub fetch_all_by_name {
+    my ( $self, $name ) = @_;    
+    my $targets = $self->_fetch( 'target_name = ?', [ $name, ] );
+    return $targets;
+}
+
 =method fetch_all_by_gene_name
 
   Usage       : $target = $target_adaptor->fetch_all_by_gene_name( 'gene' );
@@ -336,13 +352,47 @@ sub fetch_all_by_gene_id {
     return $targets;    
 }
 
+=method fetch_all_by_target_name_gene_id_gene_name
+
+  Usage       : $targets = $target_adaptor->fetch_all_by_target_name_gene_id_gene_name( 'gene' );
+  Purpose     : Fetch all targets in the db given a target name/gene_name/gene_id
+  Returns     : ArrayRef[ Crispr::Target ]
+  Parameters  : Gene Name (Str)
+  Throws      : If no rows are returned from the database
+  Comments    : None
+
+=cut
+
+sub fetch_all_by_target_name_gene_id_gene_name {
+    my ( $self, $name ) = @_;
+    my @targets;
+    
+    push @targets, @{$self->fetch_all_by_name( $name )};
+    
+    push @targets, @{$self->fetch_all_by_gene_name( $name )};
+    
+    push @targets, @{$self->fetch_all_by_gene_id( $name )};
+    
+    # remove duplicates
+    my %target_seen;
+    my $targets = [];
+    foreach my $target ( @targets ){
+        if( !exists $target_seen{ $target->target_id } ){
+            push @{$targets}, $target;
+            $target_seen{ $target->target_id } = 1;
+        }
+    }
+    
+    return $targets;
+}
+
 =method fetch_all_by_requestor
 
   Usage       : $target = $target_adaptor->fetch_all_by_requestor( 'gene' );
   Purpose     : Fetch all targets in the db for a given gene name
   Returns     : Crispr::Target object
   Parameters  : Gene Name (Str)
-  Throws      : If no rows are returned from the database
+  Throws      : 
   Comments    : None
 
 =cut
@@ -351,6 +401,80 @@ sub fetch_all_by_requestor {
     my ( $self, $requestor ) = @_;
     my $targets = $self->_fetch( 'requestor = ?', [ $requestor, ]);
     return $targets;    
+}
+
+=method fetch_all_by_status
+
+  Usage       : $target = $target_adaptor->fetch_all_by_status( 'gene' );
+  Purpose     : Fetch all targets in the db for a given gene name
+  Returns     : Crispr::Target object
+  Parameters  : Gene Name (Str)
+  Throws      : If no rows are returned from the database
+  Comments    : None
+
+=cut
+
+sub fetch_all_by_status {
+    my ( $self, $status ) = @_;
+    my $dbh = $self->connection->dbh();
+
+    my $sql = <<'END_SQL';
+        SELECT
+            t.target_id, target_name, assembly,
+            t.chr, t.start, t.end, t.strand, species,
+            requires_enzyme, gene_id, gene_name,
+            requestor, ensembl_version, t.status_id, t.status_changed
+        FROM target t, status st
+        WHERE t.status_id = st.status_id
+        AND st.status = ?
+END_SQL
+
+    my $where_clause = 'AND st.status_id = ?';
+    my $sth = $self->_prepare_sql( $sql, $where_clause, [ $status ] );
+    $sth->execute();
+
+    my ( $target_id, $target_name, $assembly, $chr, $start, $end, $strand,
+        $species, $requires_enzyme, $gene_id, $gene_name, $requestor,
+        $ensembl_version, $status_id, $status_changed, );
+
+    $sth->bind_columns( \( $target_id, $target_name, $assembly, $chr, $start,
+                          $end, $strand, $species, $requires_enzyme, $gene_id,
+                          $gene_name, $requestor, $ensembl_version, $status_id,
+                          $status_changed, ) );
+
+    my @targets = ();
+    while ( $sth->fetch ) {
+
+        my $target;
+        if( !exists $target_cache{ $target_id } ){
+            $target = Crispr::Target->new(
+                target_id => $target_id,
+                target_name => $target_name,
+                assembly => $assembly,
+                chr => $chr,
+                start => $start,
+                end => $end,
+                strand => $strand,
+                species => $species,
+                requires_enzyme => $requires_enzyme,
+                gene_id => $gene_id,
+                gene_name => $gene_name,
+                requestor => $requestor,
+                ensembl_version => $ensembl_version,
+                status => $status,
+                status_changed => $status_changed,
+            );
+            $target->target_adaptor( $self );
+            $target_cache{ $target_id } = $target;
+        }
+        else{
+            $target = $target_cache{ $target_id };
+        }
+
+        push @targets, $target;
+    }
+
+    return \@targets;
 }
 
 =method fetch_by_crRNA

@@ -15,7 +15,7 @@ use Readonly;
 use Crispr::DB::TargetAdaptor;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 24 + 2 + 15 + 15 + 15 + 16 + 14 + 15 + 15 + 15 + 1 + 1 + 14 + 14 + 1;
+Readonly my $TESTS_IN_COMMON => 1 + 27 + 2 + 15 + 15 + 15 + 16 + 14 + 15 + 15 + 16 + 15 + 1 + 1 + 14 + 14 + 1 + 16;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
@@ -61,15 +61,15 @@ foreach my $db_connection ( @{$db_connections} ){
     # 1 test
     isa_ok( $target_adaptor, 'Crispr::DB::TargetAdaptor', "$driver: check object class is ok" );
 
-    # check attributes and methods - 3 + 21 tests
+    # check attributes and methods - 3 + 24 tests
     my @object_attributes = ( qw{ dbname db_connection connection } );
 
     my @methods = (
         qw{ store store_targets update_status_changed fetch_by_id fetch_by_ids
-            fetch_by_name_and_requestor fetch_by_names_and_requestors fetch_all_by_gene_name fetch_all_by_gene_id fetch_all_by_requestor
-            fetch_by_crRNA fetch_by_crRNA_id fetch_gene_name_by_primer_pair _fetch _make_new_object_from_db
-            _make_new_target_from_db delete_target_from_db check_entry_exists_in_db fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement
-            _db_error_handling }
+            fetch_by_name_and_requestor fetch_by_names_and_requestors fetch_all_by_name fetch_all_by_gene_name fetch_all_by_gene_id
+            fetch_all_by_target_name_gene_id_gene_name fetch_all_by_requestor fetch_all_by_status fetch_by_crRNA fetch_by_crRNA_id
+            fetch_gene_name_by_primer_pair _fetch _make_new_object_from_db _make_new_target_from_db delete_target_from_db
+            check_entry_exists_in_db fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement _db_error_handling }
     );
 
     foreach my $attribute ( @object_attributes ) {
@@ -190,15 +190,20 @@ foreach my $db_connection ( @{$db_connections} ){
     check_object_attributes( $target_3, $mock_target, $driver, 'fetch_by_name_and_requestor' );
     
     my $targets_tmp;
-    #fetch targets by gene name - 15 tests
-    ok($targets_tmp = $target_adaptor->fetch_all_by_gene_name( 'SLC39A14', ), 'fetch_all_by_gene_name' );
-    check_object_attributes( $targets_tmp->[0], $mock_target, $driver, 'fetch_all_by_gene_name' );
+    #fetch targets by target name - 15 tests
+    ok($targets_tmp = $target_adaptor->fetch_all_by_name( 'SLC39A14', ), "$driver: test fetch_all_by_name method" );
+    check_object_attributes( $targets_tmp->[0], $mock_target, $driver, 'fetch_all_by_name' );
 
     #fetch targets by gene id - 15 tests
     ok( $targets_tmp = $target_adaptor->fetch_all_by_gene_id( 'ENSDARG00000090174', ), 'fetch_all_by_gene_id' );
     check_object_attributes( $targets_tmp->[0], $mock_target, $driver, 'fetch_all_by_gene_id' );
 
-    #fetch targets by requestor
+    #fetch targets by target_name, gene_id or gene_name - 16 tests
+    ok( $targets_tmp = $target_adaptor->fetch_all_by_target_name_gene_id_gene_name( 'SLC39A14', ), "$driver: fetch_all_by_target_name_gene_id_gene_name" );
+    is( scalar @{$targets_tmp}, 1, "$driver: fetch_all_by_target_name_gene_id_gene_name - correct number returned" );
+    check_object_attributes( $targets_tmp->[0], $mock_target, $driver, 'fetch_all_by_target_name_gene_id_gene_name' );
+
+    #fetch targets by requestor - 15 tests
     ok( $targets_tmp = $target_adaptor->fetch_all_by_requestor( 'crispr_test', ), 'fetch_all_by_requestor' );
     check_object_attributes( $targets_tmp->[0], $mock_target, $driver, 'fetch_all_by_requestor' );
 
@@ -340,6 +345,11 @@ foreach my $db_connection ( @{$db_connections} ){
        'gfp',
        "$driver: fetch_gene_name_by_primer_pair - no gene name" );
 
+    #fetch targets by status - 16 tests
+    ok( $targets_tmp = $target_adaptor->fetch_all_by_status( 'REQUESTED', ), "$driver: fetch_all_by_status" );
+    is( scalar @{$targets_tmp}, 1, "$driver: fetch_all_by_status - check number returned");
+    check_object_attributes( $targets_tmp->[0], $mock_target_2, $driver, 'fetch_all_by_requestor' );
+    
     ## drop database
     $db_connection->destroy();
 }
