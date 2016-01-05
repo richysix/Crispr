@@ -67,7 +67,7 @@ around BUILDARGS => sub {
     my %db_connection_params = (
         mysql => {
             driver => 'mysql',
-            dbname => $ENV{MYSQL_DBNAME},
+            dbname => $ENV{MYSQL_TEST_DBNAME},
             host => $ENV{MYSQL_DBHOST},
             port => $ENV{MYSQL_DBPORT},
             user => $ENV{MYSQL_DBUSER},
@@ -91,7 +91,7 @@ around BUILDARGS => sub {
             }
             else{
                 if( $_[0] eq 'mysql' ){
-                    if( !$ENV{MYSQL_DBNAME} || !$ENV{MYSQL_DBHOST} ||
+                    if( !$ENV{MYSQL_TEST_DBNAME} || !$ENV{MYSQL_DBHOST} ||
                        !$ENV{MYSQL_DBPORT} || !$ENV{MYSQL_DBUSER} ||
                        !$ENV{MYSQL_DBPASS} ){
                         die "ENVIRONMENT VARIABLES";
