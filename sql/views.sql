@@ -49,10 +49,12 @@ CREATE OR REPLACE VIEW plex_injection_sample_analysisView AS
 /** Crisprs by plate with target info **/
 CREATE OR REPLACE VIEW crispr_plate_targetView AS
     SELECT plate_name, well_id, crRNA_name, target_name,
-    gene_id, gene_name, requestor, designed
+    gene_id, gene_name, requestor, st.status, cr.status_changed
         FROM crRNA cr
-        INNER JOIN plate pl1
-        ON pl1.plate_id = cr.plate_id
+        INNER JOIN plate pl
+        ON pl.plate_id = cr.plate_id
         INNER JOIN target t
         ON cr.target_id = t.target_id
-        ORDER BY location;
+        INNER JOIN status st
+        ON cr.status_id = st.status_id
+        ORDER BY plate_name, well_id;
