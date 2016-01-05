@@ -736,7 +736,7 @@ sub fetch_by_names_and_targets {
 
 =method fetch_all_by_target
 
-    Usage       : $crRNAs = $crRNA_adaptor->fetch_all_by_target( $target );
+    Usage       : $crRNAs = $crRNA_adaptor->{fetch_all_by_t}arget( $target );
     Purpose     : Fetch a list of crRNAs given a Crispr::Target objects
     Returns     : Arrayref of Crispr::crRNA objects
     Parameters  : Crispr::Target
@@ -755,6 +755,30 @@ sub fetch_all_by_target {
     return $crRNAs;
 }
 
+=method fetch_all_by_targets
+
+    Usage       : $crRNAs = $crRNA_adaptor->fetch_all_by_targets( $targets );
+    Purpose     : Fetch a list of crRNAs given Crispr::Target objects
+    Returns     : Arrayref of Crispr::crRNA objects
+    Parameters  : Crispr::Target
+    Throws      : If no rows are returned from the database
+    Comments    : None
+
+=cut
+
+sub fetch_all_by_targets {
+    my ( $self, $targets, ) = @_;
+
+    my @crRNAs;
+    foreach my $target ( @{$targets} ){
+        my $crRNAs = $self->_fetch( 'target_id = ?', [ $target->target_id, ] );
+        if( @{$crRNAs} ){
+            push @crRNAs, @{$crRNAs};
+        }
+    }
+    return \@crRNAs;
+}
+
 =method fetch_by_plate_num_and_well
 
   Usage       : $crRNAs = $crRNA_adaptor->fetch_by_plate_num_and_well( $plate_num, $well_id );
@@ -770,7 +794,7 @@ sub fetch_all_by_target {
 sub fetch_by_plate_num_and_well {
     my ( $self, $plate_num, $well_id ) = @_;
 
-    my $crRNA;
+    my @crRNAs;
     # check that plate is a number
     my $plate_name;
     if( looks_like_number( $plate_num ) ){
@@ -788,14 +812,21 @@ sub fetch_by_plate_num_and_well {
     }
 
     my $db_statement = <<END_ST;
-select * from crRNA cr, plate pl where plate_name = ? and
-cr.plate_id = pl.plate_id and well_id = ?;
+SELECT * FROM crRNA cr, plate pl WHERE plate_name = ? AND
+cr.plate_id = pl.plate_id
 END_ST
 
-    my $params = [ $plate_name, $well_id ];
+    my $params;
+    if( $well_id ){
+        $db_statement .= 'AND well_id = ?';
+        $params = [ $plate_name, $well_id ];
+    }
+    else{
+        $params = [ $plate_name ];
+    }
     my $results;
     eval {
-        $results = $self->fetch_rows_expecting_single_row(
+        $results = $self->fetch_rows_for_generic_select_statement(
             $db_statement,
             $params,
         );
@@ -804,10 +835,23 @@ END_ST
         $self->_db_error_handling( $EVAL_ERROR, $db_statement, $params, );
     }
     else{
-        $crRNA = $self->_make_new_crRNA_from_db( [ @{$results}[ 0..15 ] ] );
+        foreach my $result ( @{$results} ){
+            my $crRNA = $self->_make_new_crRNA_from_db( [ @{$result}[ 0..15 ] ] );
+            push @crRNAs, $crRNA;
+        }
     }
 
-    return $crRNA;
+    if( $well_id ){
+        if( scalar @crRNAs > 1 ){
+            die "Got more than one crispr for a single well!";
+        }
+        else{
+            return $crRNAs[0];
+        }
+    }
+    else{
+        return \@crRNAs;
+    }
 }
 
 =method fetch_all_by_primer_pair
@@ -871,6 +915,75 @@ END_ST
     return \@crRNAs;
 }
 
+=method fetch_all_by_status
+
+  Usage       : $target = $target_adaptor->fetch_all_by_status( 'gene' );
+  Purpose     : Fetch all targets in the db for a given gene name
+  Returns     : Crispr::Target object
+  Parameters  : Gene Name (Str)
+  Throws      : If no rows are returned from the database
+  Comments    : None
+
+=cut
+
+sub fetch_all_by_status {
+    my ( $self, $status ) = @_;
+    my $dbh = $self->connection->dbh();
+
+    my $sql = <<'END_SQL';
+        SELECT
+            crRNA_id, crRNA_name, chr, start, end, strand, sequence,
+            num_five_prime_Gs, score, off_target_score, coding_score,
+            target_id, plate_id, well_id, cr.status_id, status_changed
+        FROM crRNA cr, status st
+        WHERE cr.status_id = st.status_id
+        AND st.status = ?
+END_SQL
+
+    my $where_clause = 'AND st.status = ?';
+    my $sth = $self->_prepare_sql( $sql, $where_clause, [ $status ] );
+    $sth->execute();
+
+    my ( $crRNA_id, $crRNA_name, $chr, $start, $end, $strand, $sequence,
+            $num_five_prime_Gs, $score, $off_target_score, $coding_score,
+            $target_id, $plate_id, $well_id, $status_id, $status_changed
+    );
+
+    $sth->bind_columns( \( $crRNA_id, $crRNA_name, $chr, $start, $end, $strand,
+        $sequence, $num_five_prime_Gs, $score, $off_target_score, $coding_score,
+        $target_id, $plate_id, $well_id, $status_id, $status_changed, ) );
+
+    my @crRNAs = ();
+    while ( $sth->fetch ) {
+        my $crRNA;
+        if( !exists $crRNA_cache{ $crRNA_id } ){
+            # fetch target by target_id
+            my $target = $self->target_adaptor->fetch_by_id( $target_id );
+            $crRNA = Crispr::crRNA->new(
+                crRNA_id => $crRNA_id,
+                target => $target,
+                chr => $chr,
+                start => $start,
+                end => $end,
+                strand => $strand,
+                sequence => $sequence,
+                five_prime_Gs => $num_five_prime_Gs,
+                crRNA_adaptor => $self,
+                status => $status,
+                status_changed => $status_changed,
+            );
+            $crRNA_cache{ $crRNA_id } = $crRNA;
+        }
+        else{
+            $crRNA = $crRNA_cache{ $crRNA_id };
+        }
+
+        push @crRNAs, $crRNA;
+    }
+
+    return \@crRNAs;
+}
+
 # =method _fetch
 #
 #   Usage       : $crRNAs = $crRNA_adaptor->_fetch( $where_clause, $where_parameters );
@@ -918,7 +1031,7 @@ END_SQL
         if( !exists $crRNA_cache{ $crRNA_id } ){
             # fetch target by target_id
             my $target = $self->target_adaptor->fetch_by_id( $target_id );
-            $crRNA = Crispr::DB::crRNA->new(
+            $crRNA = Crispr::crRNA->new(
                 crRNA_id => $crRNA_id,
                 target => $target,
                 chr => $chr,

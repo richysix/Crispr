@@ -32,7 +32,7 @@ my $transcript_count = qx/$cmd/;
 chomp $transcript_count;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 16 + 2 + $count_output * 13 + 1 + $transcript_count + 2 + 13 + 1 + 15 + 10;
+Readonly my $TESTS_IN_COMMON => 1 + 21 + 2 + $count_output * 13 + 1 + $transcript_count + 2 + 13 + 1 + 15 + 9 + 9 + 9 + 9 + 9 + 19 + 11 + 10;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
@@ -82,11 +82,12 @@ foreach my $db_connection ( @{$db_connections} ){
     # 1 test
     isa_ok( $crRNA_adaptor, 'Crispr::DB::crRNAAdaptor', "$driver: check object class is ok" );
     
-    # check method calls 16 tests
+    # check method calls 21 tests
     my @methods = qw(
         target_adaptor store store_restriction_enzyme_info store_coding_scores store_off_target_info
-        store_expression_construct_info store_construction_oligos fetch_by_id fetch_by_ids fetch_by_name_and_target
-        fetch_by_names_and_targets fetch_all_by_target fetch_by_plate_num_and_well _make_new_crRNA_from_db delete_crRNA_from_db
+        store_expression_construct_info store_construction_oligos fetch_by_id fetch_by_ids fetch_all_by_name
+        fetch_by_name_and_target fetch_by_names_and_targets fetch_all_by_target fetch_all_by_targets fetch_by_plate_num_and_well
+        fetch_all_by_primer_pair fetch_all_by_status _fetch _make_new_crRNA_from_db delete_crRNA_from_db
         _build_target_adaptor
     );
     
@@ -124,7 +125,6 @@ foreach my $db_connection ( @{$db_connections} ){
     
     my $mock_plate = Test::MockObject->new();
     $mock_plate->set_isa( 'Crispr::Plate' );
-    $mock_plate->mock('plate_id', sub { return 1 } );
     $mock_plate->mock('plate_name', sub { return 'CR_000001-' } );
     my $mock_well = Test::MockObject->new();
     $mock_well->set_isa( 'Labware::Well' );
@@ -134,6 +134,8 @@ foreach my $db_connection ( @{$db_connections} ){
     my $test_warning = 1;
     # 12 tests per crRNA
     while(<$fh>){
+        $mock_plate->mock('plate_id', sub { return 1 } );
+        
         $count++;
         my $well_id = $rows[ $rowi ] . $cols[ $coli ];
         chomp;
@@ -347,7 +349,9 @@ foreach my $db_connection ( @{$db_connections} ){
         $last_target_id = $mock_crRNA->target_id;
         ( $rowi, $coli ) = increment( $rowi, $coli );
     }
-
+    
+    $mock_plate->mock('plate_id', sub { return 1 } );
+    
     # check exists_in_db method - 2 tests
     is( $crRNA_adaptor->exists_in_db( $mock_crRNA->name ), 1, 'check exists_in_db - crRNA is in db' );
     is( $crRNA_adaptor->exists_in_db( 'crRNA:5:109-131:-1' ), undef, "check exists_in_db - crRNA isn't in db" );
@@ -479,6 +483,42 @@ foreach my $db_connection ( @{$db_connections} ){
         is( $row->{annotation}, $ex->[3], "$driver: off_target_info check annotation" );
     }
     
+    # test _fetch - 9 tests
+    my $crRNAs_tmp;
+    ok($crRNAs_tmp = $crRNA_adaptor->_fetch( 'crRNA_id = ?', [ 100 ], ), "$driver: test _fetch method" );
+    check_attributes( $crRNAs_tmp->[0], $mock_crRNA1, $driver, '_fetch' );
+
+    # test fetch_by_id - 9 tests
+    my $crRNA_tmp;
+    ok($crRNA_tmp = $crRNA_adaptor->fetch_by_id( 100, ), "$driver: test fetch_by_id method" );
+    check_attributes( $crRNA_tmp, $mock_crRNA1, $driver, 'fetch_by_id' );
+    
+    # test fetch_all_by_name - 9 tests
+    ok($crRNAs_tmp = $crRNA_adaptor->fetch_all_by_name( 'crRNA:test_chr1:101-123:1', ), "$driver: test fetch_all_by_name method" );
+    check_attributes( $crRNAs_tmp->[0], $mock_crRNA1, $driver, 'fetch_all_by_name' );
+
+    # test fetch_by_name_and_target - 9 tests
+    ok($crRNA_tmp = $crRNA_adaptor->fetch_by_name_and_target( 'crRNA:test_chr1:101-123:1', $mock_target ), "$driver: test fetch_by_name_and_target method" );
+    check_attributes( $crRNA_tmp, $mock_crRNA1, $driver, 'fetch_by_name_and_target' );
+
+    # test fetch_all_by_target - 9 tests
+    ok($crRNAs_tmp = $crRNA_adaptor->fetch_all_by_target( $mock_target, ), "$driver: test fetch_all_by_target method" );
+    check_attributes( $crRNAs_tmp->[0], $mock_crRNA1, $driver, 'fetch_all_by_target' );
+    
+    # test fetch_by_plate_num_and_well - 21 tests
+    ok($crRNAs_tmp = $crRNA_adaptor->fetch_by_plate_num_and_well( 1, ), "$driver: test fetch_by_plate_num_and_well method" );
+    is( scalar @{$crRNAs_tmp}, 14, "$driver: fetch_by_plate_num_and_well - check number returned" );
+    check_attributes( $crRNAs_tmp->[13], $mock_crRNA1, $driver, 'fetch_by_plate_num_and_well' );
+    
+    ok($crRNA_tmp = $crRNA_adaptor->fetch_by_plate_num_and_well( 1, 'H12' ), "$driver: test fetch_by_plate_num_and_well method" );
+    check_attributes( $crRNA_tmp, $mock_crRNA1, $driver, 'fetch_by_plate_num_and_well' );
+
+    # test fetch_all_by_status - 11 tests
+    ok($crRNAs_tmp = $crRNA_adaptor->fetch_all_by_status( 'DESIGNED', ), "$driver: test fetch_all_by_status method" );
+    is( scalar @{$crRNAs_tmp}, 13, "$driver: fetch_all_by_status method - check number returned" );
+    ok($crRNAs_tmp = $crRNA_adaptor->fetch_all_by_status( 'INJECTED', ), "$driver: test fetch_all_by_status method" );
+    check_attributes( $crRNAs_tmp->[0], $mock_crRNA1, $driver, 'fetch_all_by_status' );
+
     # make mock primer and primer pair objects
     my $mock_left_primer = Test::MockObject->new();
     my $l_p_id = 1;
@@ -558,7 +598,7 @@ foreach my $db_connection ( @{$db_connections} ){
     check_attributes( $crRNAs_from_db->[0], $mock_crRNA1, $driver, 'fetch_all_by_primer_pair' );
     
     # destroy database
-    $db_connection->destroy();
+    #$db_connection->destroy();
 }
 
 sub increment {
