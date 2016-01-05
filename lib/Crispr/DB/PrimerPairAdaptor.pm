@@ -165,6 +165,34 @@ sub fetch_all_by_crRNA {
     return $primer_pairs;
 }
 
+=method fetch_all_by_crRNAs
+
+  Usage       : $primer_pair_adaptor->fetch_all_by_crRNAs( $crRNAs );
+  Purpose     : method to retrieve primer pairs for a crRNAs using it's db id.
+  Returns     : Crispr::PrimerPair
+  Parameters  : Crispr::crRNAs
+  Throws      : If input is not correct type
+  Comments    : 
+
+=cut
+
+sub fetch_all_by_crRNAs {
+    my ( $self, $crRNAs, ) = @_;
+    my $where_clause = 'amp.crRNA_id = ?';
+    my %pairs_seen;
+    my @primer_pairs;
+    foreach my $crRNA ( @{$crRNAs} ){
+        my $primer_pairs = $self->fetch_all_by_crRNA_id( $crRNA->crRNA_id );
+        foreach my $primer_pair ( @{$primer_pairs} ){
+            if( !exists $pairs_seen{ $primer_pair->primer_pair_id } ){
+                push @primer_pairs, $primer_pair;
+                $pairs_seen{ $primer_pair->primer_pair_id } = 1;
+            }
+        }
+    }
+    return \@primer_pairs;
+}
+
 =method fetch_all_by_crRNA_id
 
   Usage       : $primer_pair_adaptor->fetch_all_by_crRNA_id( '1' );
@@ -215,7 +243,7 @@ sub fetch_by_id {
 
 sub fetch_by_plate_name_and_well {
     my ( $self, $plate_name, $well_id, ) = @_;
-    my $primer_pair;
+    my $primer_pairs;
     
     my $sql = <<"END_SQL";
 SELECT pp.primer_pair_id, type, left_primer_id, right_primer_id,
@@ -226,14 +254,18 @@ FROM primer_pair pp, primer p1, amplicon_to_crRNA amp, plate pl
 WHERE pp.primer_pair_id = amp.primer_pair_id
 AND pp.left_primer_id = p1.primer_id
 AND pl.plate_id = p1.plate_id
-AND pl.plate_name = ? AND p1.well_id = ?;
 END_SQL
-
-    my $sth = $self->_prepare_sql(
-        $sql,
-        'p1.plate_name = ? AND p1.well_id = ?',
-        [ $plate_name, $well_id ],
-    );
+    
+    my $where_clause = 'pl.plate_name = ?';
+    $sql .= 'AND pl.plate_name = ?';
+    my $where_params = [ $plate_name ];
+    
+    if( $well_id ){
+        $sql .= ' AND p1.well_id = ?';
+        $where_clause .= ' AND p1.well_id = ?';
+        push @{$where_params}, $well_id;
+    }
+    my $sth = $self->_prepare_sql( $sql, $where_clause, $where_params, );
     $sth->execute();
     
     my ( $primer_pair_id, $type, $left_primer_id, $right_primer_id,
@@ -270,7 +302,7 @@ END_SQL
             my $right_primer = $self->primer_adaptor->fetch_by_id( $right_primer_id );
             my $pair_name = join(":", $chr, join("-", $start, $end, ), $strand, );
             
-            $primer_pair = Crispr::PrimerPair->new(
+            my $primer_pair = Crispr::PrimerPair->new(
                 primer_pair_id => $primer_pair_id,
                 left_primer => $left_primer,
                 right_primer => $right_primer,
@@ -279,12 +311,13 @@ END_SQL
                 type => $type,
             );
             $primer_pair_cache{ $primer_pair_id } = $primer_pair;
+            push @{$primer_pairs}, $primer_pair;
         }
         else{
-            $primer_pair = $primer_pair_cache{ $primer_pair_id };
+            push @{$primer_pairs}, $primer_pair_cache{ $primer_pair_id };
         }
     }
-    return $primer_pair;
+    return $primer_pairs;
 }
 
 =method _fetch

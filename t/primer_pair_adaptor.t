@@ -14,7 +14,7 @@ use Readonly;
 use File::Spec;
 use English qw( -no_match_vars );
 
-Readonly my $TESTS_FOREACH_DBC => 1 + 13 + 9 + 22 + 22;
+Readonly my $TESTS_FOREACH_DBC => 1 + 13 + 9 + 22 + 22 + 23 + 22;
 if( $ENV{NO_DB} ) {
     plan skip_all => 'Not testing database';
 }
@@ -224,16 +224,26 @@ foreach my $db_connection ( @{$db_connections} ){
     # test fetch methods
     # _fetch - 22 tests
     my $where_clause = 'pp.primer_pair_id = ?';
-    my $primer_pair_from_db;
-    ok( $primer_pair_from_db = $primer_pair_ad->_fetch( $where_clause, [ 1 ] ), 'Test _fetch method' );
-    check_primer_pair_attributes( $primer_pair_from_db->[0], $mock_primer_pair, $driver, '_fetch' );
+    my $primer_pairs_from_db;
+    ok( $primer_pairs_from_db = $primer_pair_ad->_fetch( $where_clause, [ 1 ] ), 'Test _fetch method' );
+    check_primer_pair_attributes( $primer_pairs_from_db->[0], $mock_primer_pair, $driver, '_fetch' );
+    
+    # fetch_all_by_crRNA 22 tests
+    ok( $primer_pairs_from_db = $primer_pair_ad->fetch_all_by_crRNA( $mock_crRNA ), 'Test fetch_all_by_crRNA method' );
+    check_primer_pair_attributes( $primer_pairs_from_db->[0], $mock_primer_pair, $driver, '_fetch' );
+    
+    # fetch_all_by_crRNAs - 23 tests
+    ok( $primer_pairs_from_db = $primer_pair_ad->fetch_all_by_crRNAs( [ $mock_crRNA, $mock_crRNA ] ), 'Test fetch_all_by_crRNA method' );
+    is( scalar @{$primer_pairs_from_db}, 1, "$driver: check number returned from fatch_all_by_crRNAs" );
+    check_primer_pair_attributes( $primer_pairs_from_db->[0], $mock_primer_pair, $driver, '_fetch' );
+    
     
     # fetch_by_plate_and_well - 22 tests
-    ok( $primer_pair_from_db = $primer_pair_ad->fetch_by_plate_name_and_well( $mock_plate->plate_name, 'A01' ), 'Test fetch_by_plate_name_and_well method' );
+    ok( $primer_pairs_from_db = $primer_pair_ad->fetch_by_plate_name_and_well( $mock_plate->plate_name, 'A01' ), 'Test fetch_by_plate_name_and_well method' );
     SKIP: {
-        skip 'No primer pair returned from db', 1 if !defined $primer_pair_from_db;
+        skip 'No primer pair returned from db', 1 if !scalar @{$primer_pairs_from_db};
         
-        check_primer_pair_attributes( $primer_pair_from_db, $mock_primer_pair, $driver, 'fetch_by_plate_name_and_well' );
+        check_primer_pair_attributes( $primer_pairs_from_db->[0], $mock_primer_pair, $driver, 'fetch_by_plate_name_and_well' );
     }
     
     $db_connection->destroy();
