@@ -493,12 +493,18 @@ around 'requires_enzyme' => sub {
 
 sub _parse_requires_enzyme_input {
 	my ( $self, $requires_enzyme ) = @_;
-	my $enzyme = $requires_enzyme eq '1'	    ?	1
-		:		$requires_enzyme eq '0'		?	0
-		:		$requires_enzyme eq 'y'		?	1
-		:		$requires_enzyme eq 'n'		?	0
-		:										undef
-		;
+    
+    my $enzyme;
+    if( defined $requires_enzyme ){
+        $enzyme = $requires_enzyme eq '1'	    ?	1
+            :		$requires_enzyme eq '0'		?	0
+            :		$requires_enzyme eq 'y'		?	1
+            :		$requires_enzyme eq 'n'		?	0
+            :										undef
+            ;
+    } else {
+        $enzyme = undef;
+    }
 	return $enzyme;
 }
 
