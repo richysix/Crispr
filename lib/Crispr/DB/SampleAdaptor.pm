@@ -67,6 +67,23 @@ has 'injection_pool_adaptor' => (
     builder => '_build_injection_pool_adaptor',
 );
 
+=method allele_adaptor
+
+  Usage       : $self->allele_adaptor();
+  Purpose     : Getter for a allele_adaptor.
+  Returns     : Crispr::DB::AlleleAdaptor
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
+has 'allele_adaptor' => (
+    is => 'ro',
+    isa => 'Crispr::DB::AlleleAdaptor',
+    lazy => 1,
+    builder => '_build_allele_adaptor',
+);
 
 =method store
 
@@ -193,6 +210,77 @@ sub store_samples {
     } );
     
     return $samples;
+}
+
+=method store_alleles_for_sample
+
+  Usage       : $samples = $sample_adaptor->store_alleles_for_sample( $sample );
+  Purpose     : Store a set of samples in the database
+  Returns     : ArrayRef of Crispr::DB::Sample objects
+  Parameters  : ArrayRef of Crispr::DB::Sample objects
+  Throws      : If argument is not an ArrayRef
+                If objects in ArrayRef are not Crispr::DB::Sample objects
+                If there is an error during the execution of the SQL statements
+                    In this case the transaction will be rolled back
+  Comments    : None
+   
+=cut
+
+sub store_alleles_for_sample {
+    my ( $self, $sample, ) = @_;
+    my $dbh = $self->connection->dbh();
+    
+    if( !defined $sample ){
+        die "store_alleles_for_sample: UNDEFINED SAMPLE";
+    }
+    elsif( !defined $sample->alleles ){
+        die "store_alleles_for_sample: UNDEFINED ALLELES";
+    }
+    my $add_allele_statement = "insert into sample_allele values( ?, ?, ? );"; 
+    
+    # start transaction
+    $self->connection->txn(  fixup => sub {
+        my $sth = $dbh->prepare($add_allele_statement);
+        # go through alleles
+        foreach my $allele ( @{ $sample->alleles } ){
+            # check that it exists in the db
+            my ( $allele_check_statement, $allele_params );
+            if( defined $allele->db_id ){
+                $allele_check_statement = "SELECT count(*) FROM allele WHERE allele_id = ?;";
+                $allele_params = [ $allele->db_id ];
+            }
+            elsif( defined $allele->allele_number ){
+                $allele_check_statement = "SELECT count(*) FROM allele WHERE allele_number = ?;";
+                $allele_params = [ $allele->allele_number ];
+            }
+            else{
+                die join("\n", "store_alleles_for_sample: The Sample contains an Allele object with neither a db_id nor an allele_number.",
+                    "This is required to able to add the allele to the database.", ), "\n";
+            }
+            # check allele exists in db
+            if( !$self->check_entry_exists_in_db( $allele_check_statement, $allele_params ) ){
+                # try storing it
+                my $allele = $self->allele_adaptor->store( $allele );
+            }
+            else{
+                if( !defined $allele->db_id ){
+                    # get id from db
+                    $allele = $self->allele_adaptor->fetch_by_allele_number( $allele->allele_number )
+                }
+            }
+            
+            # add sample and allele ids to sample_allele table
+            $sth->execute(
+                $sample->db_id,
+                $allele->db_id,
+                $allele->percent_of_reads,
+            );
+        }
+        
+        $sth->finish();
+    } );
+    
+    
 }
 
 =method fetch_by_id
@@ -645,36 +733,6 @@ sub delete_sample_from_db {
   Comments    : 
 
 =cut
-
-#_build_analysis_adaptor
-
-  #Usage       : $analysis_adaptor = $self->_build_analysis_adaptor();
-  #Purpose     : Internal method to create a new Crispr::DB::AnalysisAdaptor
-  #Returns     : Crispr::DB::AnalysisAdaptor
-  #Parameters  : None
-  #Throws      : 
-  #Comments    : 
-
-sub _build_analysis_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'analysis' );
-}
-
-#_build_injection_pool_adaptor
-
-  #Usage       : $injection_pool_adaptor = $self->_build_injection_pool_adaptor();
-  #Purpose     : Internal method to create a new Crispr::DB::InjectionPoolAdaptor
-  #Returns     : Crispr::DB::InjectionPoolAdaptor
-  #Parameters  : None
-  #Throws      : 
-  #Comments    : 
-
-sub _build_injection_pool_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'injection_pool' );
-}
-
-
 
 __PACKAGE__->meta->make_immutable;
 1;

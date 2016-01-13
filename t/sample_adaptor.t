@@ -17,7 +17,7 @@ use Crispr::DB::SampleAdaptor;
 use Crispr::DB::DBConnection;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 21 + 4 + 7 + 5 + 3 + 1 + 10 + 9 + 18 + 38 + 11 + 19 + 21 + 2;
+Readonly my $TESTS_IN_COMMON => 1 + 21 + 4 + 7 + 5 + 3 + 4 + 1 + 10 + 9 + 18 + 38 + 11 + 19 + 21 + 2;
 #Readonly my $TESTS_IN_COMMON => 1 + 20 + 4 + 13 + 2 + 3 + 24 + 24 + 48 + 25 + 2;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
@@ -269,6 +269,7 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_sample->mock( 'well', sub { return undef } );
     $mock_sample->mock( 'cryo_box', sub { return undef } );
     $mock_sample->mock( 'sample_name', sub{ return join("_", $mock_injection_pool->pool_name, $mock_sample->sample_number, ) } );
+    $mock_sample->mock( 'alleles', sub{ return undef; } );
     
     # check db adaptor attributes - 4 tests
     my $analysis_adaptor;
@@ -441,6 +442,32 @@ foreach my $db_connection ( @{$db_connections} ){
            },
        },
        label => "$driver: sample stored 4",
+    );
+    
+    # check store alleles for sample - 4 tests
+    throws_ok{ $sample_adaptor->store_alleles_for_sample() }
+        qr/UNDEFINED SAMPLE/, "$driver: store_alleles_for_sample throws on undefined sample";
+    throws_ok{ $sample_adaptor->store_alleles_for_sample( $mock_sample ) }
+        qr/UNDEFINED ALLELES/, "$driver: store_alleles_for_sample throws on undefined alleles";
+    
+    # get new mock allele object
+    my ( $mock_allele, $mock_allele_id, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( $db_connection, 'allele',
+            { mock_crRNA => $mock_crRNA_object_1, } );
+    # add it to the mock sample
+    $mock_sample->mock('alleles', sub { return [ $mock_allele ]; } );
+    
+    ok( $sample_adaptor->store_alleles_for_sample( $mock_sample ), "$driver: store_alleles_for_sample");
+    row_ok(
+       table => 'sample_allele',
+       where => [ sample_id => $mock_sample->db_id ],
+       tests => {
+           '==' => {
+                allele_id => $mock_allele->db_id,
+                percentage_of_reads => $mock_allele->percent_of_reads,
+           },
+       },
+       label => "$driver: allele stored 1",
     );
     
     # 1 test

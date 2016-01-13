@@ -273,6 +273,48 @@ sub _db_error_handling{
     }
 }
 
+#_build_analysis_adaptor
+
+  #Usage       : $analysis_adaptor = $self->_build_analysis_adaptor();
+  #Purpose     : Internal method to create a new Crispr::DB::AnalysisAdaptor
+  #Returns     : Crispr::DB::AnalysisAdaptor
+  #Parameters  : None
+  #Throws      : 
+  #Comments    : 
+
+sub _build_analysis_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'analysis' );
+}
+
+#_build_injection_pool_adaptor
+
+  #Usage       : $injection_pool_adaptor = $self->_build_injection_pool_adaptor();
+  #Purpose     : Internal method to create a new Crispr::DB::InjectionPoolAdaptor
+  #Returns     : Crispr::DB::InjectionPoolAdaptor
+  #Parameters  : None
+  #Throws      : 
+  #Comments    : 
+
+sub _build_injection_pool_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'injection_pool' );
+}
+
+#_build_allele_adaptor
+
+  #Usage       : $allele_adaptor = $self->_build_allele_adaptor();
+  #Purpose     : Internal method to create a new Crispr::DB::InjectionPoolAdaptor
+  #Returns     : Crispr::DB::InjectionPoolAdaptor
+  #Parameters  : None
+  #Throws      : 
+  #Comments    : 
+
+sub _build_allele_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'allele' );
+}
+
 __PACKAGE__->meta->make_immutable;
 1;
 
