@@ -296,16 +296,12 @@ CREATE TABLE sequencing_results (
 );
 
 CREATE TABLE allele (
-    allele_id integer   PRIMARY KEY,
+    allele_id integer PRIMARY KEY,
+    allele_number integer NOT NULL,
     chr VARCHAR(30) NOT NULL,
     pos integer  NOT NULL,
     ref_allele VARCHAR(200) NOT NULL,
-    alt_allele VARCHAR(200) NOT NULL,
-    ref_seq VARCHAR(200),
-    alt_seq VARCHAR(200),
-    primer_pair_id integer  NOT NULL,
-    type ,
-    FOREIGN KEY (primer_pair_id) REFERENCES primer_pair(primer_pair_id)
+    alt_allele VARCHAR(200) NOT NULL
 );
 
 CREATE TABLE allele_to_crispr (
@@ -327,7 +323,6 @@ CREATE TABLE sample_allele (
 CREATE TABLE kasp (
     kasp_id VARCHAR(10) PRIMARY KEY,
     allele_id integer  NOT NULL,
-    allele_number VARCHAR(10) NOT NULL,
     allele_specific_primer_1 VARCHAR(50) NOT NULL,
     allele_specific_primer_2 VARCHAR(50) NOT NULL,
     common_primer_1 VARCHAR(50) NOT NULL,
