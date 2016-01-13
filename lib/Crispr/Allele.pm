@@ -27,12 +27,13 @@ subtype 'Crispr::Allele::DNA',
 =method new
 
   Usage       : my $allele = Crispr::Allele->new(
-					db_id => undef,
+                    db_id => undef,
                     chr => 'Zv9_scaffold12',
-					pos => 25364,
-					ref_allele => 'GT',
-					alt_allele => 'GACAG',
-                    sa_number => 'sa564',
+                    pos => 25364,
+                    ref_allele => 'GT',
+                    alt_allele => 'GACAG',
+                    crisprs => $crisprs,
+                    allele_number => 'sa564',
                     percent_of_reads => 10.5,
                     kaspar_assay => $kasp_assay,
                 );
@@ -43,7 +44,8 @@ subtype 'Crispr::Allele::DNA',
                 pos => Int,
                 ref_allele => Str,
                 alt_allele => Str,
-                sa_number => Str,
+                crisprs => ArrayRef[ Crispr::crRNA ],
+                allele_number => Str,
                 percent_of_reads => Num,
                 kaspar_assay => $kasp_assay,
   Throws      : If parameters are not the correct type
@@ -57,8 +59,8 @@ subtype 'Crispr::Allele::DNA',
   Purpose     : Getter/Setter for Allele db_id attribute
   Returns     : Int (can be undef)
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -74,7 +76,7 @@ has 'db_id' => (
   Returns     : ArrayRef
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -91,7 +93,7 @@ has 'crisprs' => (
   Returns     : Str
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -108,7 +110,7 @@ has 'chr' => (
   Returns     : Int
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -126,13 +128,13 @@ has 'pos' => (
   Parameters  : None
   Throws      : If input is given
                 If input is not a valid DNA sequence (ACGT)
-  Comments    : 
+  Comments    :
 
 =cut
 
 has 'ref_allele' => (
     is => 'ro',
-	isa =>  'Crispr::Allele::DNA',
+    isa =>  'Crispr::Allele::DNA',
     required => 1,
 );
 
@@ -144,30 +146,30 @@ has 'ref_allele' => (
   Parameters  : None
   Throws      : If input is given
                 If input is not a valid DNA sequence (ACGT)
-  Comments    : 
+  Comments    :
 
 =cut
 
 has 'alt_allele' => (
     is => 'ro',
-	isa =>  'Crispr::Allele::DNA',
+    isa =>  'Crispr::Allele::DNA',
     required => 1,
 );
 
-=method sa_number
+=method allele_number
 
-  Usage       : $allele->sa_number;
-  Purpose     : Getter for Allele sa_number attribute
+  Usage       : $allele->allele_number;
+  Purpose     : Getter for Allele allele_number attribute
   Returns     : Str
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
-has 'sa_number' => (
+has 'allele_number' => (
     is => 'ro',
-    isa => 'Maybe[Str]',
+    isa => 'Int',
 );
 
 =method percent_of_reads
@@ -177,7 +179,7 @@ has 'sa_number' => (
   Returns     : Num
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -193,7 +195,7 @@ has 'percent_of_reads' => (
   Returns     : Crispr::Kasp object
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -214,8 +216,8 @@ has 'kaspar_assay' => (
   Purpose     : Getter for Allele name attribute
   Returns     : Str  (CHR:POS:REF:ALT)
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -230,8 +232,8 @@ sub allele_name {
   Purpose     : add crispr object to crisprs attribute
   Returns     : 1 if successful
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -251,7 +253,7 @@ __END__
 =pod
 
 =head1 SYNOPSIS
- 
+
     use Crispr::Allele;
     my $allele = Crispr::Allele->new(
         db_id => undef,
@@ -259,23 +261,21 @@ __END__
         pos => 25364,
         ref_allele => 'GT',
         alt_allele => 'GACAG',
-        sa_number => 'sa564',
+        allele_number => 'sa564',
         percent_of_reads => 10.5,
         crisprs => [ $crRNA1, $crRNA2 ],
         kaspar_assay => $kasp_assay,
-    );    
-    
+    );
+
 =head1 DESCRIPTION
- 
+
 Objects of this class represent a variant allele.
 
 =head1 DIAGNOSTICS
 
 
 =head1 DEPENDENCIES
- 
- Moose
- 
-=head1 INCOMPATIBILITIES
- 
 
+ Moose
+
+=head1 INCOMPATIBILITIES

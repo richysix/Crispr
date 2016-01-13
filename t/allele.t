@@ -19,6 +19,7 @@ my $chr = '5';
 my $pos = 2094757;
 my $ref_allele = 'GT';
 my $alt_allele = 'GACGATAGACTAGT';
+my $allele_number = 31127;
 
 throws_ok {
     Crispr::Allele->new(
@@ -53,6 +54,7 @@ my %args = (
     pos => $pos,
     ref_allele => $ref_allele,
     alt_allele => $alt_allele,
+    allele_number => $allele_number,
 );
 
 my $allele = Crispr::Allele->new( %args );
@@ -62,7 +64,7 @@ $tests++;
 
 # check attributes and methods - 9 tests
 my @attributes = (
-    qw{ db_id crisprs chr pos ref_allele alt_allele sa_number percent_of_reads kaspar_assay }
+    qw{ db_id crisprs chr pos ref_allele alt_allele allele_number percent_of_reads kaspar_assay }
 );
 
 my @methods = ( qw{ allele_name add_crispr } );
@@ -108,8 +110,8 @@ throws_ok { Crispr::Allele->new( %new_args ) } qr/ref_allele.*Not\sa\svalid\sDNA
 $new_args{ alt_allele } = undef;
 throws_ok { Crispr::Allele->new( %new_args ) } qr/alt_allele.*Not\sa\svalid\sDNA\ssequence/, 'check alt_allele throws on undef';
 %new_args = %args;
-$new_args{ sa_number } = undef;
-ok ( Crispr::Allele->new( %new_args ), 'check alt_allele throws on undef' );
+$new_args{ allele_number } = undef;
+throws_ok { Crispr::Allele->new( %new_args ) } qr/allele_number.*Validation\sfailed/, 'check allele_number throws on undef';
 $tests += 5;
 
 
