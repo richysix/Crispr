@@ -28,6 +28,7 @@ use Crispr::DB::PlexAdaptor;
 use Crispr::DB::AnalysisAdaptor;
 use Crispr::DB::SampleAdaptor;
 use Crispr::DB::SampleAmpliconAdaptor;
+use Crispr::DB::AlleleAdaptor;
 
 =method new
 
@@ -420,6 +421,8 @@ sub get_adaptor {
         sampleadaptor => 'Crispr::DB::SampleAdaptor',
         sampleamplicon => 'Crispr::DB::SampleAmpliconAdaptor',
         sampleampliconadaptor => 'Crispr::DB::SampleAmpliconAdaptor',
+        allele => 'Crispr::DB::AlleleAdaptor',
+        alleleadaptor => 'Crispr::DB::AlleleAdaptor',
     );
     
     my %args = (
