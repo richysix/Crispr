@@ -12,11 +12,13 @@ use English qw( -no_match_vars );
 use List::MoreUtils qw( any );
 use Crispr::DB::Sample;
 use Labware::Well;
+use Readonly;
+use Data::Dumper;
 
 extends 'Crispr::DB::BaseAdaptor';
 
 my %sample_cache; # Cache for Sample objects. HashRef keyed on sample_id (db_id)
-
+Readonly my $PC_THRESHOLD => 10;
 =method new
 
   Usage       : my $sample_adaptor = Crispr::DB::SampleAdaptor->new(
@@ -37,8 +39,8 @@ my %sample_cache; # Cache for Sample objects. HashRef keyed on sample_id (db_id)
   Purpose     : Getter for a analysis_adaptor.
   Returns     : Crispr::DB::AnalysisAdaptor
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -55,8 +57,8 @@ has 'analysis_adaptor' => (
   Purpose     : Getter for a injection_pool_adaptor.
   Returns     : Crispr::DB::InjectionPoolAdaptor
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -73,8 +75,8 @@ has 'injection_pool_adaptor' => (
   Purpose     : Getter for a allele_adaptor.
   Returns     : Crispr::DB::AlleleAdaptor
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -94,7 +96,7 @@ has 'allele_adaptor' => (
   Throws      : If argument is not a Sample object
                 If there is an error during the execution of the SQL statements
                     In this case the transaction will be rolled back
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -103,7 +105,7 @@ sub store {
 	# make an arrayref with this one sample and call store_samples
 	my @samples = ( $sample );
 	my $samples = $self->store_samples( \@samples );
-	
+
 	return $samples->[0];
 }
 
@@ -136,13 +138,13 @@ sub store_sample {
                 If there is an error during the execution of the SQL statements
                     In this case the transaction will be rolled back
   Comments    : None
-   
+
 =cut
 
 sub store_samples {
     my ( $self, $samples, ) = @_;
     my $dbh = $self->connection->dbh();
-    
+
 	confess "Supplied argument must be an ArrayRef of Sample objects.\n" if( ref $samples ne 'ARRAY');
 	foreach my $sample ( @{$samples} ){
         if( !ref $sample ){
@@ -152,9 +154,9 @@ sub store_samples {
             confess "Argument must be Crispr::DB::Sample objects.\n";
         }
     }
-    
-    my $add_sample_statement = "insert into sample values( ?, ?, ?, ?, ?, ?, ?, ?, ? );"; 
-    
+
+    my $add_sample_statement = "insert into sample values( ?, ?, ?, ?, ?, ?, ?, ?, ? );";
+
     $self->connection->txn(  fixup => sub {
         my $sth = $dbh->prepare($add_sample_statement);
         foreach my $sample ( @{$samples} ){
@@ -193,7 +195,7 @@ sub store_samples {
                 my $injection_pool = $self->injection_pool_adaptor->fetch_by_name( $sample->injection_pool->pool_name );
                 $injection_id = $injection_pool->db_id;
             }
-            
+
             my $well_id = defined $sample->well ? $sample->well->position : undef;
             # add sample
             $sth->execute(
@@ -201,14 +203,14 @@ sub store_samples {
                 $injection_id, $sample->generation, $sample->sample_type,
                 $sample->species, $well_id, $sample->cryo_box,
             );
-            
+
             my $last_id;
             $last_id = $dbh->last_insert_id( 'information_schema', $self->dbname(), 'sample', 'sample_id' );
             $sample->db_id( $last_id );
         }
         $sth->finish();
     } );
-    
+
     return $samples;
 }
 
@@ -223,21 +225,21 @@ sub store_samples {
                 If there is an error during the execution of the SQL statements
                     In this case the transaction will be rolled back
   Comments    : None
-   
+
 =cut
 
 sub store_alleles_for_sample {
     my ( $self, $sample, ) = @_;
     my $dbh = $self->connection->dbh();
-    
+
     if( !defined $sample ){
         die "store_alleles_for_sample: UNDEFINED SAMPLE";
     }
     elsif( !defined $sample->alleles ){
         die "store_alleles_for_sample: UNDEFINED ALLELES";
     }
-    my $add_allele_statement = "insert into sample_allele values( ?, ?, ? );"; 
-    
+    my $add_allele_statement = "insert into sample_allele values( ?, ?, ? );";
+
     # start transaction
     $self->connection->txn(  fixup => sub {
         my $sth = $dbh->prepare($add_allele_statement);
@@ -268,7 +270,7 @@ sub store_alleles_for_sample {
                     $allele = $self->allele_adaptor->fetch_by_allele_number( $allele->allele_number )
                 }
             }
-            
+
             # add sample and allele ids to sample_allele table
             $sth->execute(
                 $sample->db_id,
@@ -276,11 +278,32 @@ sub store_alleles_for_sample {
                 $allele->percent_of_reads,
             );
         }
-        
+
         $sth->finish();
     } );
-    
-    
+
+
+}
+
+sub store_sequencing_results {
+    my ( $self, $sample, $sequencing_results ) = @_;
+    my $dbh = $self->connection->dbh();
+    #
+    my $add_seq_statement = 'insert into sequencing_results values( ?, ?, ?, ?, ?, ?, ? )';
+    $self->connection->txn(  fixup => sub {
+        my $sth = $dbh->prepare($add_seq_statement);
+        foreach my $crRNA_id ( keys %{$sequencing_results} ){
+            my $results = $sequencing_results->{$crRNA_id};
+            my $fail = $results->{'total_percentage'} < $PC_THRESHOLD ? 1 : 0;
+            $sth->execute(
+                $sample->db_id, $crRNA_id, $fail, $results->{'num_indels'},
+                $results->{'total_percentage'},
+                $results->{'percentage_major_variant'},
+                $sample->total_reads,
+            );
+        }
+        $sth->finish();
+    } );
 }
 
 =method fetch_by_id
@@ -327,7 +350,7 @@ sub fetch_by_ids {
     foreach my $id ( @{$ids} ){
         push @samples, $self->fetch_by_id( $id );
     }
-	
+
     return \@samples;
 }
 
@@ -401,7 +424,7 @@ sub fetch_all_by_injection_pool {
 
 sub fetch_all_by_analysis_id {
     my ( $self, $analysis_id ) = @_;
-    
+
     my $where_clause = 'analysis_id = ?;';
     my $where_parameters = [ $analysis_id ];
     my $sql = <<'END_SQL';
@@ -414,25 +437,25 @@ sub fetch_all_by_analysis_id {
 END_SQL
 
     $sql .= 'AND ' . $where_clause;
-    
+
     my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
     $sth->execute();
 
     my ( $sample_id, $sample_name, $sample_number, $injection_id,
         $generation, $type, $species, $well_id, $cryo_box, );
-    
+
     $sth->bind_columns( \( $sample_id, $sample_name, $sample_number,
                           $injection_id, $generation, $type, $species,
                           $well_id, $cryo_box, ) );
 
     my @samples = ();
     while ( $sth->fetch ) {
-        
+
         my $sample;
         if( !exists $sample_cache{ $sample_id } ){
             # fetch injection pool by id
             my $injection_pool = $self->injection_pool_adaptor->fetch_by_id( $injection_id );
-            
+
             my $well = defined $well_id ?
                 Labware::Well->new( position => $well_id )
                 :   undef;
@@ -452,7 +475,7 @@ END_SQL
         else{
             $sample = $sample_cache{ $sample_id };
         }
-        
+
         push @samples, $sample;
     }
 
@@ -460,7 +483,7 @@ END_SQL
         confess join(q{ }, "Couldn't retrieve samples for analysis id,",
                      $analysis_id, "from database.\n" );
     }
-    
+
     return \@samples;
 }
 
@@ -494,13 +517,13 @@ sub fetch_all_by_analysis {
 #Returns     : ArrayRef of Crispr::DB::Sample objects
 #Parameters  : where_clause => Str (SQL where clause)
 #               where_parameters => ArrayRef of parameters to bind to sql statement
-#Throws      : 
-#Comments    : 
+#Throws      :
+#Comments    :
 
 sub _fetch {
     my ( $self, $where_clause, $where_parameters ) = @_;
     my $dbh = $self->connection->dbh();
-    
+
     my $sql = <<'END_SQL';
         SELECT
             sample_id, sample_name, sample_number,
@@ -512,25 +535,25 @@ END_SQL
     if ($where_clause) {
         $sql .= 'WHERE ' . $where_clause;
     }
-    
+
     my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
     $sth->execute();
 
     my ( $sample_id, $sample_name, $sample_number, $injection_id,
         $generation, $type, $species, $well_id, $cryo_box, );
-    
+
     $sth->bind_columns( \( $sample_id, $sample_name, $sample_number,
                           $injection_id, $generation, $type, $species,
                           $well_id, $cryo_box, ) );
 
     my @samples = ();
     while ( $sth->fetch ) {
-        
+
         my $sample;
         if( !exists $sample_cache{ $sample_id } ){
             # fetch injection pool by id
             my $injection_pool = $self->injection_pool_adaptor->fetch_by_id( $injection_id );
-            
+
             my $well = defined $well_id ?
                 Labware::Well->new( position => $well_id )
                 :   undef;
@@ -550,11 +573,11 @@ END_SQL
         else{
             $sample = $sample_cache{ $sample_id };
         }
-        
+
         push @samples, $sample;
     }
 
-    return \@samples;    
+    return \@samples;
 }
 
 =method delete_sample_from_db
@@ -563,20 +586,20 @@ END_SQL
   Purpose     : Delete a sample from the database
   Returns     : Crispr::DB::Sample object
   Parameters  : Crispr::DB::Sample object
-  Throws      : 
+  Throws      :
   Comments    : Not inmplemented yet.
 
 =cut
 
 sub delete_sample_from_db {
 	#my ( $self, $sample ) = @_;
-	
+
 	# first check sample exists in db
-	
+
 	# delete primers and primer pairs
-	
+
 	# delete transcripts
-	
+
 	# if sample has talen pairs, delete tale and talen pairs
 
 }
@@ -588,7 +611,7 @@ sub delete_sample_from_db {
   Returns     : Str
   Parameters  : None
   Throws      : If driver is not either mysql or sqlite
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -598,8 +621,8 @@ sub delete_sample_from_db {
   Purpose     : Getter for the db host name.
   Returns     : Str
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -609,8 +632,8 @@ sub delete_sample_from_db {
   Purpose     : Getter for the db port.
   Returns     : Str
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -620,8 +643,8 @@ sub delete_sample_from_db {
   Purpose     : Getter for the database (schema) name.
   Returns     : Str
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -631,8 +654,8 @@ sub delete_sample_from_db {
   Purpose     : Getter for the db user name.
   Returns     : Str
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -642,8 +665,8 @@ sub delete_sample_from_db {
   Purpose     : Getter for the db password.
   Returns     : Str
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -653,8 +676,8 @@ sub delete_sample_from_db {
   Purpose     : Getter for the name of the SQLite database file.
   Returns     : Str
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -664,8 +687,8 @@ sub delete_sample_from_db {
   Purpose     : Getter for the db Connection object.
   Returns     : DBIx::Connector
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -676,8 +699,8 @@ sub delete_sample_from_db {
                 used internally to share the db params around Adaptor objects
   Returns     : HashRef
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -690,8 +713,8 @@ sub delete_sample_from_db {
   Returns     : 1 if entry exists, undef if not
   Parameters  : check statement (Str)
                 statement parameters (ArrayRef[Str])
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -704,7 +727,7 @@ sub delete_sample_from_db {
                 Parameters (ArrayRef)
   Throws      : If no rows are returned from the database.
                 If more than one row is returned.
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -716,7 +739,7 @@ sub delete_sample_from_db {
   Parameters  : MySQL statement (Str)
                 Parameters (ArrayRef)
   Throws      : If no rows are returned from the database.
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -729,8 +752,8 @@ sub delete_sample_from_db {
   Parameters  : Error Message (Str)
                 MySQL statement (Str)
                 Parameters (ArrayRef)
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -740,9 +763,9 @@ __PACKAGE__->meta->make_immutable;
 __END__
 
 =pod
- 
+
 =head1 SYNOPSIS
- 
+
     use Crispr::DB::DBAdaptor;
     my $db_adaptor = Crispr::DB::DBAdaptor->new(
         host => 'HOST',
@@ -752,33 +775,32 @@ __END__
         pass => 'PASS',
         connection => $dbc,
     );
-  
+
     my $sample_adaptor = $db_adaptor->get_adaptor( 'sample' );
-    
+
     # store a sample object in the db
     $sample_adaptor->store( $sample );
-    
+
     # retrieve a sample by id
     my $sample = $sample_adaptor->fetch_by_id( '214' );
-  
+
     # retrieve a list of samples by date
     my $samples = $sample_adaptor->fetch_by_date( '2015-04-27' );
-    
+
 
 =head1 DESCRIPTION
- 
+
  A SampleAdaptor is an object used for storing and retrieving Sample objects in an SQL database.
  The recommended way to use this module is through the DBAdaptor object as shown above.
  This allows a single open connection to the database which can be shared between multiple database adaptors.
- 
+
 =head1 DIAGNOSTICS
- 
- 
+
+
 =head1 CONFIGURATION AND ENVIRONMENT
- 
- 
+
+
 =head1 DEPENDENCIES
- 
- 
+
+
 =head1 INCOMPATIBILITIES
- 
