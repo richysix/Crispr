@@ -58,18 +58,6 @@ while(<>){
         percent_of_reads => sprintf('%.1f', $pc_indels*100),
     );
 
-    # check whether this crispr has already been seen
-    # my $crispr;
-    # if( exists $crRNA_cache{ $crRNA_id } ){
-    #     $crispr = $crRNA_cache{ $crRNA_id };
-    # }
-    # else{
-    #     # fetch crispr from db
-    #     $crispr = $crRNA_adaptor->fetch_by_id( $crRNA_id );
-    #     $crRNA_cache{ $crRNA_name } = $crispr;
-    #     $allele->add_crispr( $crispr );
-    # }
-
     # get Sample object
     my $sample;
     $sample_name =~ s/\A miseq[0-9]+_[0-9]+_//xms;
@@ -84,9 +72,20 @@ while(<>){
         $sample->total_reads( $total_reads );
         $sample_cache{ $sample_name } = $sample;
     }
+
+    # get crispr from sample object
+    # Sample -> InjectionPool -> GuideRNAPreps -> crRNAs
+    my $crispr;
+    foreach my $guideRNA_prep ( @{ $sample->injection_pool->guideRNAs() } ){
+        if( $guideRNA_prep->crRNA->name eq $crRNA_name ){
+            $crispr = $guideRNA_prep->crRNA();
+        }
+    }
+
+    # add crispr to allele and allele to sample
+    $allele->add_crispr( $crispr );
     $sample->add_allele( $allele );
     exit;
-
     push @samples, $sample;
 }
 
@@ -116,7 +115,6 @@ foreach my $sample ( @samples ){
     # fill in sequencing_results table
     $sample_adaptor->store_sequencing_results( $sample, \%sequencing_results );
 }
-
 
 # get_and_check_options
 #Usage       :   get_and_check_options();
