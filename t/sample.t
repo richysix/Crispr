@@ -68,6 +68,28 @@ my $mock_well_object = Test::MockObject->new();
 $mock_well_object->set_isa( 'Labware::Well' );
 $mock_well_object->mock( 'position', sub { return 'A01' } );
 
+# make mock allele objects
+my $allele_db_id = 1;
+my $chr = '15';
+my $pos = 234465;
+my $ref_allele = 'G';
+my $alt_allele = 'GTAGAGC';
+my $mock_allele_object = Test::MockObject->new();
+$mock_allele_object->set_isa( 'Crispr::Allele' );
+$mock_allele_object->mock( 'db_id', sub{ return $allele_db_id } );
+$mock_allele_object->mock( 'chr', sub{ return $chr } );
+$mock_allele_object->mock( 'pos', sub{ return $pos } );
+$mock_allele_object->mock( 'ref_allele', sub{ return $ref_allele } );
+$mock_allele_object->mock( 'alt_allele', sub{ return $alt_allele } );
+
+my $mock_allele2_object = Test::MockObject->new();
+$mock_allele2_object->set_isa( 'Crispr::Allele' );
+$mock_allele2_object->mock( 'db_id', sub{ return $allele_db_id } );
+$mock_allele2_object->mock( 'chr', sub{ return $chr } );
+$mock_allele2_object->mock( 'pos', sub{ return $pos } );
+$mock_allele2_object->mock( 'ref_allele', sub{ return $ref_allele } );
+$mock_allele2_object->mock( 'alt_allele', sub{ return $alt_allele } );
+
 $sample = Crispr::DB::Sample->new(
     db_id => 1,
     injection_pool => $mock_inj_object,
@@ -75,6 +97,7 @@ $sample = Crispr::DB::Sample->new(
     sample_type => 'sperm',
     sample_number => 1,
     species => 'zebrafish',
+    alleles => [ $mock_allele_object ],
     well => $mock_well_object,
     cryo_box => 'Cr_Sperm12'
 );
@@ -129,30 +152,12 @@ $tmp_sample = Crispr::DB::Sample->new(
 is( $tmp_sample->sample_name, undef, 'check sample name: no well or sample number' );
 $tests++;
 
-# check alleles attribute
-# make mock allele object
-my $allele_db_id = 1;
-my $chr = '15';
-my $pos = 234465;
-my $ref_allele = 'G';
-my $alt_allele = 'GTAGAGC';
-my $mock_allele_object = Test::MockObject->new();
-$mock_allele_object->set_isa( 'Crispr::Allele' );
-$mock_allele_object->mock( 'db_id', sub{ return $allele_db_id } );
-$mock_allele_object->mock( 'chr', sub{ return $chr } );
-$mock_allele_object->mock( 'pos', sub{ return $pos } );
-$mock_allele_object->mock( 'ref_allele', sub{ return $ref_allele } );
-$mock_allele_object->mock( 'alt_allele', sub{ return $alt_allele } );
-
-my $mock_allele2_object = Test::MockObject->new();
-$mock_allele2_object->set_isa( 'Crispr::Allele' );
-$mock_allele2_object->mock( 'db_id', sub{ return $allele_db_id } );
-$mock_allele2_object->mock( 'chr', sub{ return $chr } );
-$mock_allele2_object->mock( 'pos', sub{ return $pos } );
-$mock_allele2_object->mock( 'ref_allele', sub{ return $ref_allele } );
-$mock_allele2_object->mock( 'alt_allele', sub{ return $alt_allele } );
-
-ok( $sample->alleles( [ $mock_allele_object, $mock_allele2_object ] ), 'set alleles attribute');
-$tests++;
+throws_ok{ $sample->alleles( [ $mock_allele_object ] ) }
+    qr/Cannot assign a value to a read-only accessor/,
+    'throws on attempt to set alleles attribute';
+is( scalar @{$sample->alleles}, 1, 'check number of alleles 1');
+ok( $sample->add_allele( $mock_allele2_object ), 'test add allele method');
+is( scalar @{$sample->alleles}, 2, 'check number of alleles 2');
+$tests+=4;
 
 done_testing( $tests );

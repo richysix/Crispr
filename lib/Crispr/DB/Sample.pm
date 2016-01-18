@@ -24,6 +24,7 @@ with 'Crispr::SharedMethods';
                     sample_name => '170_1'
                     sample_number => 12,
                     alleles => $alleles_array_ref,
+                    total_reads => $total_reads,
                     species => 'zebrafish',
                     well => $well,
                     cryo_box => 'Cr_Sperm12'
@@ -37,6 +38,7 @@ with 'Crispr::SharedMethods';
                 sample_name => Str,
                 sample_number => Int,
                 alleles => ArrayRef[ Crispr::Allele ],
+                total_reads => Int,
                 species => Str
                 well => Labware::Well,
                 cryo_box => Str
@@ -51,8 +53,8 @@ with 'Crispr::SharedMethods';
   Purpose     : Getter/Setter for Sample db_id attribute
   Returns     : Int (can be undef)
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -68,8 +70,8 @@ has 'db_id' => (
   Purpose     : Getter for Sample injection_pool attribute
   Returns     : Crispr::DB::InjectionPool
   Parameters  : None
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
@@ -85,7 +87,7 @@ has 'injection_pool' => (
   Returns     : Str ('G0', 'F1', OR 'F2' )
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -101,7 +103,7 @@ has 'generation' => (
   Returns     : Str ('sperm', 'embryo' OR 'finclip')
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -117,7 +119,7 @@ has 'sample_type' => (
   Returns     : Str
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -132,14 +134,31 @@ has 'sample_number' => (
   Purpose     : Getter/Setter for alleles attribute
   Returns     : ArrayRef[ Crispr::Allele ]
   Parameters  : ArrayRef[ Crispr::Allele ]
-  Throws      : 
-  Comments    : 
+  Throws      :
+  Comments    :
 
 =cut
 
 has 'alleles' => (
     is => 'rw',
     isa => 'Maybe[ArrayRef[ Crispr::Allele ]]',
+    writer => '_set_alleles',
+);
+
+=method total_reads
+
+  Usage       : $sample->total_reads;
+  Purpose     : Getter/Setter for total_reads attribute
+  Returns     : Int
+  Parameters  : Int
+  Throws      :
+  Comments    :
+
+=cut
+
+has 'total_reads' => (
+    is => 'rw',
+    isa => 'Int',
 );
 
 =method species
@@ -149,7 +168,7 @@ has 'alleles' => (
   Returns     : Str
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -166,7 +185,7 @@ has 'species' => (
   Returns     : Str
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -182,7 +201,7 @@ has 'well' => (
   Returns     : Str
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -198,7 +217,7 @@ has 'cryo_box' => (
   Returns     : Str
   Parameters  : None
   Throws      : If input is given
-  Comments    : 
+  Comments    :
 
 =cut
 
@@ -226,6 +245,25 @@ sub _build_sample_name {
     return $sample_name;
 }
 
+=method add_allele
+
+  Usage       : $allele->add_allele( $crRNA );
+  Purpose     : add allele object to alleles attribute
+  Returns     : 1 if successful
+  Parameters  : None
+  Throws      :
+  Comments    :
+
+=cut
+
+sub add_allele {
+    my ( $self, $allele ) = @_;
+    my $current_alleles = $self->alleles;
+    push @{$current_alleles}, $allele;
+    $self->_set_alleles( $current_alleles );
+    return 1;
+}
+
 __PACKAGE__->meta->make_immutable;
 1;
 
@@ -234,7 +272,7 @@ __END__
 =pod
 
 =head1 SYNOPSIS
- 
+
     use Crispr::DB::Sample;
     my $sample = Crispr::DB::Sample->new(
         db_id => undef,
@@ -247,19 +285,17 @@ __END__
         species => 'zebrafish',
         well => $well,
         cryo_box => 'Cr_Sperm12'
-    );    
-    
+    );
+
 =head1 DESCRIPTION
- 
+
 Objects of this class represent a sample for screening by sequencing.
 
 =head1 DIAGNOSTICS
 
 
 =head1 DEPENDENCIES
- 
- Moose
- 
-=head1 INCOMPATIBILITIES
- 
 
+ Moose
+
+=head1 INCOMPATIBILITIES
