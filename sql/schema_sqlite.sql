@@ -297,11 +297,12 @@ CREATE TABLE sequencing_results (
 
 CREATE TABLE allele (
     allele_id integer PRIMARY KEY,
-    allele_number integer NOT NULL,
+    allele_number integer,
     chr VARCHAR(30) NOT NULL,
     pos integer  NOT NULL,
     ref_allele VARCHAR(200) NOT NULL,
-    alt_allele VARCHAR(200) NOT NULL
+    alt_allele VARCHAR(200) NOT NULL,
+    CONSTRAINT `allele_chr_pos_ref_alt` UNIQUE (`chr`, `pos`, `ref_allele`, `alt_allele`)
 );
 
 CREATE TABLE allele_to_crispr (
@@ -322,7 +323,7 @@ CREATE TABLE sample_allele (
 
 CREATE TABLE kasp (
     kasp_id VARCHAR(10) PRIMARY KEY,
-    allele_id integer  NOT NULL,
+    allele_id integer NOT NULL,
     allele_specific_primer_1 VARCHAR(50) NOT NULL,
     allele_specific_primer_2 VARCHAR(50) NOT NULL,
     common_primer_1 VARCHAR(50) NOT NULL,

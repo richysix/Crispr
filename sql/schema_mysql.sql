@@ -297,11 +297,12 @@ CREATE TABLE sequencing_results (
 
 CREATE TABLE allele (
     allele_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    allele_number INT UNSINGED NOT NULL,
+    allele_number INT UNSIGNED,
     chr VARCHAR(30) NOT NULL,
     pos INT UNSIGNED NOT NULL,
     ref_allele VARCHAR(200) NOT NULL,
-    alt_allele VARCHAR(200) NOT NULL
+    alt_allele VARCHAR(200) NOT NULL,
+    CONSTRAINT `allele_chr_pos_ref_alt` UNIQUE (`chr`, `pos`, `ref_allele`, `alt_allele`)
 ) ENGINE = InnoDB;
 
 CREATE TABLE allele_to_crispr (
