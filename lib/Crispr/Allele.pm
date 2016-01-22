@@ -169,7 +169,7 @@ has 'alt_allele' => (
 
 has 'allele_number' => (
     is => 'ro',
-    isa => 'Int',
+    isa => 'Maybe[Int]',
 );
 
 =method percent_of_reads

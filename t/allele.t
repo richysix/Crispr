@@ -64,7 +64,8 @@ $tests++;
 
 # check attributes and methods - 9 tests
 my @attributes = (
-    qw{ db_id crisprs chr pos ref_allele alt_allele allele_number percent_of_reads kaspar_assay }
+    qw{ db_id crisprs chr pos ref_allele
+        alt_allele allele_number percent_of_reads kaspar_assay  }
 );
 
 my @methods = ( qw{ allele_name add_crispr } );
@@ -109,10 +110,7 @@ throws_ok { Crispr::Allele->new( %new_args ) } qr/ref_allele.*Not\sa\svalid\sDNA
 %new_args = %args;
 $new_args{ alt_allele } = undef;
 throws_ok { Crispr::Allele->new( %new_args ) } qr/alt_allele.*Not\sa\svalid\sDNA\ssequence/, 'check alt_allele throws on undef';
-%new_args = %args;
-$new_args{ allele_number } = undef;
-throws_ok { Crispr::Allele->new( %new_args ) } qr/allele_number.*Validation\sfailed/, 'check allele_number throws on undef';
-$tests += 5;
+$tests += 4;
 
 
 $args{ chr } = 'Zv9_scaffold';
