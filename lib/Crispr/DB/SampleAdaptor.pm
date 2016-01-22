@@ -12,13 +12,12 @@ use English qw( -no_match_vars );
 use List::MoreUtils qw( any );
 use Crispr::DB::Sample;
 use Labware::Well;
-use Readonly;
 use Data::Dumper;
 
 extends 'Crispr::DB::BaseAdaptor';
 
 my %sample_cache; # Cache for Sample objects. HashRef keyed on sample_id (db_id)
-Readonly my $PC_THRESHOLD => 10;
+
 =method new
 
   Usage       : my $sample_adaptor = Crispr::DB::SampleAdaptor->new(
@@ -281,8 +280,6 @@ sub store_alleles_for_sample {
 
         $sth->finish();
     } );
-
-
 }
 
 sub store_sequencing_results {
@@ -294,9 +291,10 @@ sub store_sequencing_results {
         my $sth = $dbh->prepare($add_seq_statement);
         foreach my $crRNA_id ( keys %{$sequencing_results} ){
             my $results = $sequencing_results->{$crRNA_id};
-            my $fail = $results->{'total_percentage'} < $PC_THRESHOLD ? 1 : 0;
             $sth->execute(
-                $sample->db_id, $crRNA_id, $fail, $results->{'num_indels'},
+                $sample->db_id, $crRNA_id,
+                $results->{'fail'},
+                $results->{'num_indels'},
                 $results->{'total_percentage'},
                 $results->{'percentage_major_variant'},
                 $sample->total_reads,
