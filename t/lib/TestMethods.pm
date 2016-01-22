@@ -178,7 +178,7 @@ sub check_for_annotation {
 }
 
 sub create_mock_object_and_add_to_db {
-    my ( $self, $db_connection, $type, $args, ) = @_;
+    my ( $self, $type, $args, $db_connection, ) = @_;
     
     my ( $mock_object, $db_id );
     if( $type eq 'plex' ){
@@ -220,7 +220,6 @@ sub create_mock_object_and_add_to_db {
 
 sub create_and_add_plex_object {
     my ( $self, $db_connection, $args, ) = @_;
-    my $dbh = $db_connection->connection->dbh;
     
     # make mock Plex object
     my $mock_plex = Test::MockObject->new();
@@ -233,6 +232,7 @@ sub create_and_add_plex_object {
     $mock_plex->mock( 'analysis_finished', sub{ return undef } );
     
     if( $args->{add_to_db} ){
+        my $dbh = $db_connection->connection->dbh;
         # insert directly into db
         my $statement = "insert into plex values( ?, ?, ?, ?, ? );";
         my $sth = $dbh->prepare($statement);
@@ -250,7 +250,6 @@ sub create_and_add_plex_object {
 
 sub create_and_add_cas9_object {
     my ( $self, $db_connection, $args, ) = @_;
-    my $dbh = $db_connection->connection->dbh;
     
     my $type = 'ZfnCas9n';
     my $vector = 'pCS2';
@@ -273,6 +272,7 @@ sub create_and_add_cas9_object {
     $mock_cas9_object->mock( 'info', sub{ return ( $type, $species, $crispr_target_seq ) } );
     
     if( $args->{add_to_db} ){
+        my $dbh = $db_connection->connection->dbh;
         # insert directly into db
         my $statement = "insert into cas9 values( ?, ?, ?, ?, ? );";
         my $sth = $dbh->prepare($statement);
@@ -288,7 +288,6 @@ sub create_and_add_cas9_object {
 
 sub create_and_add_cas9_prep_object {
     my ( $self, $db_connection, $args, ) = @_;
-    my $dbh = $db_connection->connection->dbh;
     
     my $prep_type = 'rna';
     my $made_by = 'cr_test';
@@ -305,6 +304,7 @@ sub create_and_add_cas9_prep_object {
     $mock_cas9_prep_object_1->mock('concentration', sub { return 200 } );
 
     if( $args->{add_to_db} ){
+        my $dbh = $db_connection->connection->dbh;
         # insert directly into db
         my $statement = "insert into cas9_prep values( ?, ?, ?, ?, ?, ? );";
         my $sth = $dbh->prepare($statement);
@@ -317,7 +317,6 @@ sub create_and_add_cas9_prep_object {
 
 sub create_and_add_target_object {
     my ( $self, $db_connection, $args, ) = @_;
-    my $dbh = $db_connection->connection->dbh;
     
     # make a new mock target object
     my $mock_target = Test::MockObject->new();
@@ -341,6 +340,7 @@ sub create_and_add_target_object {
 	$mock_target->mock('status_changed', sub { return '2015-11-30' } );
     
     if( $args->{add_to_db} ){
+        my $dbh = $db_connection->connection->dbh;
         # insert directly into db
         my $statement = "insert into target values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );";
         my $sth = $dbh->prepare($statement);
@@ -367,7 +367,6 @@ sub create_and_add_target_object {
 
 sub create_and_add_plate_object {
     my ( $self, $db_connection, $args, ) = @_;
-    my $dbh = $db_connection->connection->dbh;
     
     my $mock_plate = Test::MockObject->new();
     $mock_plate->set_isa('Crispr::Plate');
@@ -380,6 +379,7 @@ sub create_and_add_plate_object {
     $mock_plate->mock('received', sub { return '2015-01-19' } );
     
     if( $args->{add_to_db} ){
+    my $dbh = $db_connection->connection->dbh;
         my $statement = "insert into plate values( ?, ?, ?, ?, ?, ? );";
         my $sth = $dbh->prepare($statement);
         $sth->execute(
@@ -396,7 +396,6 @@ sub create_and_add_plate_object {
 
 sub create_and_add_crRNA_object {
     my ( $self, $db_connection, $args, ) = @_;
-    my $dbh = $db_connection->connection->dbh;
     
     my $crRNA_args = {
         1 => {
@@ -470,6 +469,7 @@ sub create_and_add_crRNA_object {
     }
 
     if( $args->{add_to_db} ){
+        my $dbh = $db_connection->connection->dbh;
         # add to db
         my $statement = "insert into crRNA values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? );";
         my $sth = $dbh->prepare($statement);
@@ -509,7 +509,6 @@ sub create_well_object {
 
 sub create_and_add_gRNA_object {
     my ( $self, $db_connection, $args, ) = @_;
-    my $dbh = $db_connection->connection->dbh;
     
     my $gRNA_args = {
         1 => {
@@ -543,6 +542,7 @@ sub create_and_add_gRNA_object {
     }
     
     if( $args->{add_to_db} ){
+        my $dbh = $db_connection->connection->dbh;
         # add to db
         my $statement = "insert into guideRNA_prep values( ?, ?, ?, ?, ?, ?, ?, ? );";
         my $sth = $dbh->prepare($statement);
@@ -563,7 +563,6 @@ sub create_and_add_gRNA_object {
 
 sub create_and_add_allele_object {
     my ( $self, $db_connection, $args, ) = @_;
-    my $dbh = $db_connection->connection->dbh;
     
     my $mock_allele = Test::MockObject->new();
     $mock_allele->set_isa('Crispr::Allele');
@@ -578,6 +577,7 @@ sub create_and_add_allele_object {
     $mock_allele->mock('percent_of_reads', sub{ return 10.4; } );
     
     if( $args->{add_to_db} ){
+        my $dbh = $db_connection->connection->dbh;
         # add to db
         my $statement = "insert into allele values( ?, ?, ?, ?, ?, ? );";
         my $sth = $dbh->prepare($statement);
@@ -596,7 +596,6 @@ sub create_and_add_allele_object {
 
 sub create_and_add_injection_pool_object {
     my ( $self, $db_connection, $args, ) = @_;
-    my $dbh = $db_connection->connection->dbh;
     
     my $mock_injection_pool = Test::MockObject->new();
     $mock_injection_pool->set_isa( 'Crispr::DB::InjectionPool' );
@@ -612,6 +611,7 @@ sub create_and_add_injection_pool_object {
     $mock_injection_pool->mock( 'guideRNAs', sub{ return [ $args->{mock_gRNA_1}, $args->{mock_gRNA_2}, ] } );
 
     if( $args->{add_to_db} ){
+        my $dbh = $db_connection->connection->dbh;
         # add to db
         my $statement = "insert into injection values( ?, ?, ?, ?, ?, ?, ?, ? );";
         my $sth = $dbh->prepare($statement);
@@ -642,7 +642,6 @@ sub create_and_add_injection_pool_object {
 
 sub create_and_add_sample_object {
     my ( $self, $db_connection, $args, ) = @_;
-    my $dbh = $db_connection->connection->dbh;
     
     my $mock_sample = Test::MockObject->new();
     $mock_sample->set_isa( 'Crispr::DB::InjectionPool' );
@@ -659,6 +658,7 @@ sub create_and_add_sample_object {
     $mock_sample->mock( 'alleles', sub{ my @args = @_; if( $_[1] ){ $args->{alleles} = $_[1] } return $args->{alleles}; } );
 
     if( $args->{add_to_db} ){
+        my $dbh = $db_connection->connection->dbh;
         # add to db
         my $statement = "insert into sample values( ?, ?, ?, ?, ?, ?, ?, ?, ? );";
         my $sth = $dbh->prepare($statement);
