@@ -113,10 +113,10 @@ sub fetch_rows_expecting_single_row {
 
     if( $EVAL_ERROR ){
         if( $EVAL_ERROR =~ m/NO\sROWS/xms ){
-            die 'NO ROWS';
+            confess 'NO ROWS';
         }
         else{
-            die "An unexpected problem occurred. $EVAL_ERROR\n";
+            confess "An unexpected problem occurred. $EVAL_ERROR\n";
         }
     }
     if( scalar @$result > 1 ){
