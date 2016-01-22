@@ -48,33 +48,18 @@ while(<>){
         die "One of the alleles is too long to fit in the database!\n",
             $_, "\n";
     }
-    else{
-        $allele_number = $options{allele_number};
-        $allele_number_for{ $variant } = $options{allele_number};
-        $options{allele_number}++;
-    }
-
-    # Make a New Allele object
-    my $allele = Crispr::Allele->new(
-        chr => $chr,
-        pos => $pos,
-        ref_allele => $ref,
-        alt_allele => $alt,
-        allele_number => $allele_number,
-        percent_of_reads => sprintf('%.1f', $pc_indels*100),
-    );
+    # current output sample_names are PLEX_PLATE_INJECTION_SAMPLENUMBER.
+    # HACK IT FOR NOW TO MATCH SAMPLE_NAME IN DB
+    $sample_name =~ s/\A miseq[0-9]+_[0-9]+_//xms; 
 
     # get Sample object
     my $sample;
-    $sample_name =~ s/\A miseq[0-9]+_[0-9]+_//xms;
-    warn 'SAMPLE_NAME: ', $sample_name;
     if( exists $sample_cache{ $sample_name } ){
         $sample = $sample_cache{ $sample_name };
     }
     else{
         # fetch sample from db
         $sample = $sample_adaptor->fetch_by_name( $sample_name );
-        warn 'SAMPLE: ', Dumper( $sample );
         $sample->total_reads( $total_reads );
         $sample_cache{ $sample_name } = $sample;
     }
@@ -87,14 +72,70 @@ while(<>){
             $crispr = $guideRNA_prep->crRNA();
         }
     }
+    
+    my $variant = join(":", $chr, $pos, $ref, $alt, );
+    my $allele;
+    if( $variant ne 'NA:NA:NA:NA' ){
+        # SHOULD ACTUALLY CHECK DB TO SEE IF THIS VARIANT ALREADY EXISTS IN THE DB.
+        # check allele doesn't already exist
+        my $allele_from_db;
+        eval{
+            $allele_from_db = $allele_adaptor->fetch_by_variant_description( $variant );
+        };
+        if( $EVAL_ERROR ){
+            if( $EVAL_ERROR !~ qr/Couldn't retrieve allele from database with variant/ ){
+                die $EVAL_ERROR;
+            }
+        }
+        else{
+            $allele = $allele_from_db;
+        }
+        
+        # Make a new allele object and issue a new allele number if necessary
+        # only give an allele a number if it's a sperm sample
+        my $allele_number;
+        if( !$allele ){
+            if( $sample->sample_type eq 'sperm' ){
+                if( exists $allele_number_for{ $variant } ){
+                    $allele_number = $allele_number_for{ $variant };
+                }
+                else{
+                    $allele_number = $options{allele_number};
+                    $allele_number_for{ $variant } = $options{allele_number};
+                    $options{allele_number}++;
+                }
+            }
+            
+            # Get/Make Allele object
+            if( exists $allele_cache{$sample_name}{$variant} ){
+                $allele = $allele_cache{$sample_name}{$variant};
+            }
+            else{
+                $allele = Crispr::Allele->new(
+                    chr => $chr,
+                    pos => $pos,
+                    ref_allele => $ref,
+                    alt_allele => $alt,
+                    allele_number => $allele_number,
+                    percent_of_reads => sprintf('%.1f', $pc_indels*100),
+                );
+                $allele_cache{$sample_name}{$variant} = $allele;
+            }
+        }
+    }
 
     # add crispr to allele and allele to sample
-    $allele->add_crispr( $crispr );
-    $sample->add_allele( $allele );
-    exit;
-    push @samples, $sample;
+    if( $allele ){
+        $allele->add_crispr( $crispr );
+        push @{ $alleles_for{$sample_name}{$crispr->crRNA_id}{'variants'} }, $allele;
+    }
+    $alleles_for{$sample_name}{$crispr->crRNA_id}{'crispr'} = $crispr;
 }
 
+if( $options{debug} > 1 ){
+    warn "SAMPLES: ", Dumper( %sample_cache );
+    warn "ALLELES: ", Dumper( %alleles_for );
+}
 
 # go through samples
 foreach my $sample ( @samples ){
