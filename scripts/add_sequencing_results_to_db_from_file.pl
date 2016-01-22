@@ -10,12 +10,20 @@ use Getopt::Long;
 use autodie;
 use Pod::Usage;
 use English qw( -no_match_vars );
+use Data::Dumper;
+use Readonly;
 
 use Crispr::DB::DBConnection;
 
 # get options
 my %options;
 get_and_check_options();
+
+# set threshold from options or default
+Readonly my $READS_THRESHOLD => defined $options{reads_threshold} ?
+    $options{reads_threshold}: 50;
+Readonly my $PC_THRESHOLD => defined $options{pc_threshold} ?
+    $options{pc_threshold} : 5;
 
 # connect to db
 my $db_connection = Crispr::DB::DBConnection->new( $options{crispr_db}, );
@@ -131,6 +139,8 @@ sub get_and_check_options {
         \%options,
         'crispr_db=s',
         'allele_number=i',
+        'reads_threshold=i',
+        'pc_threshold=f',
         'help',
         'man',
         'debug+',
@@ -145,6 +155,7 @@ sub get_and_check_options {
         pod2usage( -verbose => 2 );
     }
 
+    $options{debug} = defined $options{debug} ? $options{debug} : 0;
     print "Settings:\n", map { join(' - ', $_, defined $options{$_} ? $options{$_} : 'off'),"\n" } sort keys %options if $options{verbose};
 }
 
@@ -167,6 +178,8 @@ Script to take a sequencing results file and add the information to an SQL datab
     add_sequencing_results_to_db_from_file.pl [options] filename(s) | STDIN
         --crispr_db                         config file for connecting to the database
         --allele_number                     next unused sa allele number
+        --reads_threshold                   number of reads a sample must have to pass
+        --pc_threshold                      total percentage of indel reads for a sample to pass
         --help                              print this help message
         --man                               print the manual page
         --debug                             print debugging information
@@ -249,15 +262,14 @@ At the moment MySQL is assumed as the driver for this.
 
 =over
 
-=item B<--sample_plate_format>
+=item B<--reads_threshold>
 
-plate format for sample plate (96 or 384)
-default: 96
+number of reads a sample must have covering a crispr location to pass
+default: 50
 
-=item B<--sample_plate_fill_direction>
+=item B<--pc_threshold>
 
-fill direction for sample plate (row or column)
-default: row
+total percentage of indel reads for a given crispr for a sample to pass
 
 =item B<--debug>
 
