@@ -27,16 +27,14 @@ Readonly my $PC_THRESHOLD => defined $options{pc_threshold} ?
 
 # connect to db
 my $db_connection = Crispr::DB::DBConnection->new( $options{crispr_db}, );
-my $crRNA_adaptor = $db_connection->get_adaptor( 'crRNA' );
 my $sample_adaptor = $db_connection->get_adaptor( 'sample' );
 my $allele_adaptor = $db_connection->get_adaptor( 'allele' );
 
-
 # Set up Sample and Allele Cache
-my %crRNA_cache; #HASH keyed on crRNA_id (db id)
-my %sample_cache; #HASH keyed on sample names
+my %allele_cache; #HASH: KEYS {SAMPLE_NAME}{VARIANT}
 my %allele_number_for; #HASH keyed on variant (CHR:POS:REF:ALT)
-my @samples;
+my %sample_cache; #HASH keyed on sample_name
+my %alleles_for; #HASH keyed on {SAMPLE_NAME}{CRISPR} = [ variants ]
 
 # Read in variants
 while(<>){
@@ -44,11 +42,11 @@ while(<>){
         $gene_name, $group_num, $amplicon, $caller, $type, $crRNA_name,
         $chr, $pos, $ref, $alt, $reads_with_indel, $total_reads, $pc_indels,
         $consensus_start, $ref_consensus, $alt_consensus, ) = split /\t/;
-
-    my $variant = join(":", $chr, $pos, $ref, $alt, );
-    my $allele_number;
-    if( exists $allele_number_for{ $variant } ){
-        $allele_number = $allele_number_for{ $variant };
+    
+    # check for allele sequences longer than 200. They won't fit in the database.
+    if( length($ref) > 200 || length($alt) > 200 ){
+        die "One of the alleles is too long to fit in the database!\n",
+            $_, "\n";
     }
     else{
         $allele_number = $options{allele_number};
