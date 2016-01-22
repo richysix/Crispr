@@ -636,8 +636,8 @@ foreach my $plate ( @{ $plex_info->{plates} } ){
             my $sample_counter = 0;
             my @well_ids = @{ $well_block->{well_ids} };
             my $well_ids = join(",", @{ $well_block->{well_ids} } );
-            foreach my $sample ( @{ $well_block->{sample_names} } ){
-                my $sample_name = join("_", $plex_info->{ name }, $plate->{ name }, $sample, );
+            foreach my $sample_name ( @{ $well_block->{sample_names} } ){
+#                my $sample_name = join("_", $plex_info->{ name }, $plate->{ name }, $sample, );
                 foreach my $region_hash ( @{ $plex->{region_info} } ){
                     my $region = $region_hash->{region};
                     my $gene_name = $region_hash->{gene_name};
