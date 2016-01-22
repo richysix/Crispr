@@ -173,6 +173,40 @@ sub store_crisprs_for_allele {
     return 1;
 }
 
+=method allele_exists_in_db
+
+  Usage       : $allele = $allele_adaptor->allele_exists_in_db( $allele );
+  Purpose     : Fetch a allele given its database id
+  Returns     : Crispr::Allele object
+  Parameters  : crispr-db allele_id - Int
+  Throws      : If no rows are returned from the database
+  Comments    : None
+
+=cut
+
+sub allele_exists_in_db {
+    my ( $self, $allele ) = @_;
+    
+    my ($check_statement, $params);
+    if( $allele->db_id ){
+        $check_statement = 'select count(*) from allele where allele_id = ?';
+        $params = [ $allele->db_id ];
+    }
+    elsif( $allele->chr && $allele->pos && $allele->ref_allele && $allele->alt_allele ){
+        $check_statement = 'select count(*) from allele where chr = ? AND pos = ? AND ref_allele = ? AND alt_allele = ?';
+        $params = [ $allele->chr, $allele->pos, $allele->ref_allele, $allele->alt_allele ];
+    }
+    
+    my $exists;
+    eval{
+        $exists = $self->check_entry_exists_in_db( $check_statement, $params );
+    };
+    if( $EVAL_ERROR ){
+        die $EVAL_ERROR;
+    }
+    return $exists;
+}
+
 =method fetch_by_id
 
   Usage       : $allele = $allele_adaptor->fetch_by_id( $allele_id );
@@ -239,6 +273,31 @@ sub fetch_by_allele_number {
 
     if( !$alleles ){
         confess "Couldn't retrieve allele from database with allele_number, $allele_number.\n";
+    }
+    else{
+        return $alleles->[0];
+    }
+}
+
+=method fetch_by_variant_description
+
+  Usage       : $alleles = $allele_adaptor->fetch_by_variant_description( $allele_num );
+  Purpose     : Fetch allele object by allele number
+  Returns     : Crispr::Allele object
+  Parameters  : Allele number => Int
+  Throws      : If no rows are returned from the database
+  Comments    : None
+
+=cut
+
+sub fetch_by_variant_description {
+    my ( $self, $variant_description ) = @_;
+    my ( $chr, $pos, $ref, $alt, ) = split /:/, $variant_description;
+    my $alleles = $self->_fetch( 'chr = ? AND pos = ? AND ref_allele = ? AND alt_allele = ?',
+                                [ $chr, $pos, $ref, $alt, ] );
+
+    if( !$alleles ){
+        confess "Couldn't retrieve allele from database with variant, $variant_description.\n";
     }
     else{
         return $alleles->[0];
@@ -357,22 +416,22 @@ END_SQL
     return \@alleles;
 }
 
-# =method get_db_id_by_name
-#
-#   Usage       : $allele = $allele_adaptor->get_db_id_by_name( $allele_id );
-#   Purpose     : Get the database id of a Allele given it's name.
-#   Returns     : Int
-#   Parameters  : Allele name - Str
-#   Throws      : If no rows are returned from the database
-#   Comments    : None
-#
-# =cut
-#
-# sub get_db_id_by_name {
-#     my ( $self, $name ) = @_;
-#     my $allele = $self->fetch_by_name( $name );
-#     return $allele->db_id;
-# }
+=method get_db_id_by_variant_description
+
+  Usage       : $allele = $allele_adaptor->get_db_id_by_variant_description( $variant_description );
+  Purpose     : Get the database id of a Allele given it's name.
+  Returns     : Int
+  Parameters  : Allele name - Str
+  Throws      : If no rows are returned from the database
+  Comments    : None
+
+=cut
+
+sub get_db_id_by_variant_description {
+    my ( $self, $variant_description ) = @_;
+    my $allele = $self->fetch_by_variant_description( $variant_description );
+    return $allele->db_id;
+}
 
 #_fetch
 #

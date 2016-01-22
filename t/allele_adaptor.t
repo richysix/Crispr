@@ -17,8 +17,7 @@ use Crispr::DB::AlleleAdaptor;
 use Crispr::DB::DBConnection;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 18 + 2 + 5 + 5 + 9 + 1 + 6 + 6 + 12 + 7 + 8 + 8 + 1;
-#Readonly my $TESTS_IN_COMMON => 1 + 20 + 4 + 13 + 2 + 3 + 24 + 24 + 48 + 25 + 2;
+Readonly my $TESTS_IN_COMMON => 1 + 23 + 2 + 6 + 5 + 2 + 9 + 1 + 6 + 6 + 12 + 7 + 7 + 1 + 8 + 8 + 1;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
@@ -30,13 +29,14 @@ else {
     plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
 }
 
-# check attributes and methods - 4 + 14 tests
+# check attributes and methods - 4 + 19 tests
 my @attributes = ( qw{ dbname db_connection connection crRNA_adaptor } );
 
 my @methods = (
-    qw{ store store_allele store_alleles fetch_by_id fetch_by_ids
-        fetch_by_allele_number fetch_all_by_crispr fetch_all_by_sample _fetch delete_allele_from_db
-        check_entry_exists_in_db fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement _db_error_handling }
+    qw{ store store_allele store_alleles store_crisprs_for_allele allele_exists_in_db
+    fetch_by_id fetch_by_ids fetch_by_allele_number fetch_by_variant_description fetch_all_by_crispr
+    fetch_all_by_sample get_db_id_by_variant_description _fetch _make_new_allele_from_db delete_allele_from_db
+    check_entry_exists_in_db fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement _db_error_handling }
 );
 
 # DB tests
@@ -71,7 +71,7 @@ foreach my $db_connection ( @{$db_connections} ){
     # 1 test
     isa_ok( $allele_adaptor, 'Crispr::DB::AlleleAdaptor', "$driver: check object class is ok" );
 
-    # check attributes and methods exist 5 + 14 tests
+    # check attributes and methods exist 4 + 19 tests
     foreach my $attribute ( @attributes ) {
         can_ok( $allele_adaptor, $attribute );
     }
@@ -84,45 +84,45 @@ foreach my $db_connection ( @{$db_connections} ){
         add_to_db => 1,
     };
     my ( $mock_plex, $mock_plex_id, ) =
-        $test_method_obj->create_mock_object_and_add_to_db( $db_connection, 'plex', $args );
+        $test_method_obj->create_mock_object_and_add_to_db( 'plex', $args, $db_connection, );
     my ( $mock_cas9, $mock_cas9_id, ) =
-        $test_method_obj->create_mock_object_and_add_to_db( $db_connection, 'cas9', $args );
+        $test_method_obj->create_mock_object_and_add_to_db( 'cas9', $args, $db_connection, );
     $args->{mock_cas9_object} = $mock_cas9;
     my ( $mock_cas9_prep, $mock_cas9_prep_id, ) =
-        $test_method_obj->create_mock_object_and_add_to_db( $db_connection, 'cas9_prep', $args );
+        $test_method_obj->create_mock_object_and_add_to_db( 'cas9_prep', $args, $db_connection, );
     my ( $mock_target, $mock_target_id, ) =
-        $test_method_obj->create_mock_object_and_add_to_db( $db_connection, 'target', $args );
+        $test_method_obj->create_mock_object_and_add_to_db( 'target', $args, $db_connection, );
     my ( $mock_plate, $mock_plate_id, ) =
-        $test_method_obj->create_mock_object_and_add_to_db( $db_connection, 'plate', $args );
+        $test_method_obj->create_mock_object_and_add_to_db( 'plate', $args, $db_connection, );
     $args->{mock_target} = $mock_target;
     $args->{crRNA_num} = 1;
     my ( $mock_crRNA_1, $mock_crRNA_1_id, ) =
-        $test_method_obj->create_mock_object_and_add_to_db( $db_connection, 'crRNA', $args );
+        $test_method_obj->create_mock_object_and_add_to_db( 'crRNA', $args, $db_connection, );
     $args->{mock_target} = $mock_target;
     $args->{crRNA_num} = 2;
     my ( $mock_crRNA_2, $mock_crRNA_2_id, ) =
-        $test_method_obj->create_mock_object_and_add_to_db( $db_connection, 'crRNA', $args );
+        $test_method_obj->create_mock_object_and_add_to_db( 'crRNA', $args, $db_connection, );
     $args->{mock_plate} = $mock_plate;
     my ( $mock_well, $mock_well_id, ) =
-        $test_method_obj->create_mock_object_and_add_to_db( $db_connection, 'well', $args );
+        $test_method_obj->create_mock_object_and_add_to_db( 'well', $args, $db_connection, );
     $args->{mock_well} = $mock_well;
     $args->{mock_crRNA} = $mock_crRNA_1;
     $args->{gRNA_num} = 1;
     my ( $mock_gRNA_1, $mock_gRNA_1_id, ) =
-        $test_method_obj->create_mock_object_and_add_to_db( $db_connection, 'gRNA', $args );
+        $test_method_obj->create_mock_object_and_add_to_db( 'gRNA', $args, $db_connection, );
     $args->{mock_well} = $mock_well;
     $args->{mock_crRNA} = $mock_crRNA_2;
     $args->{gRNA_num} = 2;
     my ( $mock_gRNA_2, $mock_gRNA_2_id, ) =
-        $test_method_obj->create_mock_object_and_add_to_db( $db_connection, 'gRNA', $args );
+        $test_method_obj->create_mock_object_and_add_to_db( 'gRNA', $args, $db_connection, );
     $args->{mock_cas9_prep} = $mock_cas9_prep;
     $args->{mock_gRNA_1} = $mock_gRNA_1;
     $args->{mock_gRNA_2} = $mock_gRNA_2;
     my ( $mock_injection_pool, $mock_injection_pool_id, ) =
-        $test_method_obj->create_mock_object_and_add_to_db( $db_connection, 'injection_pool', $args );
+        $test_method_obj->create_mock_object_and_add_to_db( 'injection_pool', $args, $db_connection, );
     $args->{mock_injection_pool} = $mock_injection_pool;
     my ( $mock_sample, $mock_sample_id, ) =
-        $test_method_obj->create_mock_object_and_add_to_db( $db_connection, 'sample', $args );
+        $test_method_obj->create_mock_object_and_add_to_db( 'sample', $args, $db_connection, );
 
     my ( $statement, $sth );
 
@@ -148,7 +148,7 @@ foreach my $db_connection ( @{$db_connections} ){
     # ok( $sample_adaptor = $allele_adaptor->sample_adaptor(), "$driver: get sample_adaptor" );
     # isa_ok( $sample_adaptor, 'Crispr::DB::SampleAdaptor', "$driver: check sample_adaptor class" );
 
-    # check store methods 5 tests
+    # check store methods 6 tests
     ok( $allele_adaptor->store( $mock_allele ), "$driver: store" );
     row_ok(
        table => 'allele',
@@ -176,7 +176,7 @@ foreach my $db_connection ( @{$db_connections} ){
        },
        label => "$driver: check crisprs stored for allele",
     );
-
+    
     # test that store throws properly
     throws_ok { $allele_adaptor->store_allele('Allele') }
         qr/Argument\smust\sbe\sCrispr::Allele\sobject/,
@@ -184,10 +184,23 @@ foreach my $db_connection ( @{$db_connections} ){
     throws_ok { $allele_adaptor->store_allele($mock_cas9) }
         qr/Argument\smust\sbe\sCrispr::Allele\sobject/,
         "$driver: store_allele throws if object is not Crispr::DB::Allele";
-
-    # store allele - 5 tests
     $allele_id++;
     $allele_number++;
+    # check throws ok on attempted duplicate entry
+    # for this we need to suppress the warning that is generated as well, hence the nested warning_like test
+    # This does not affect the apparent number of tests run
+    my $regex = $driver eq 'mysql' ?   qr/Duplicate\sentry/xms
+        :                           qr/unique/xmsi;
+    
+    throws_ok {
+        warning_like { $allele_adaptor->store_allele($mock_allele) }
+            $regex;
+    }
+        $regex, "$driver: store_allele throws on duplicate variant";
+
+    # store allele - 5 tests
+    # change alt allele to stop db throwing on store
+    $mock_allele->mock('alt_allele', sub { return 'C' } );
     ok( $allele_adaptor->store_allele( $mock_allele ), "$driver: store_allele" );
     row_ok(
        table => 'allele',
@@ -223,9 +236,6 @@ foreach my $db_connection ( @{$db_connections} ){
         qr/Argument\smust\sbe\sCrispr::Allele\sobject/,
         "$driver: store_alleles throws on string input";
 
-    # increment mock object 1's id
-    $allele_id++;
-    $allele_number++;
     # make new mock object for store alleles
     my $mock_allele_2 = Test::MockObject->new();
     $mock_allele_2->set_isa( 'Crispr::Allele' );
@@ -233,11 +243,22 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_allele_2->mock('allele_number', sub { return 20 } );
     $mock_allele_2->mock('chr', sub { return 'Zv9_scaffold12' } );
     $mock_allele_2->mock('pos', sub { return 256738 } );
-    $mock_allele_2->mock('ref_allele', sub { return 'ACGTA' } );
-    $mock_allele_2->mock('alt_allele', sub { return 'A' } );
+    $mock_allele_2->mock('ref_allele', sub { return 'GCGTA' } );
+    $mock_allele_2->mock('alt_allele', sub { return 'G' } );
     $mock_allele_2->mock('crisprs', sub{ return [ $mock_crRNA_1, $mock_crRNA_2 ]; } );
 
+    # check allele_exists_in_db - 2 tests
+    is( $allele_adaptor->allele_exists_in_db( $mock_allele ),
+        1, "$driver: allele_exists_in_db 1");
+    is( $allele_adaptor->allele_exists_in_db( $mock_allele_2 ),
+        undef, "$driver: allele_exists_in_db 2");
+    
     # 9 tests
+    # increment mock object 1's id
+    $allele_id++;
+    $allele_number++;
+    # and change variant
+    $mock_allele->mock('alt_allele', sub { return 'G' } );
     ok( $allele_adaptor->store_alleles( [ $mock_allele, $mock_allele_2 ] ), "$driver: store_alleles" );
     row_ok(
        table => 'allele',
@@ -334,6 +355,17 @@ foreach my $db_connection ( @{$db_connections} ){
     ok( $allele_from_db = $allele_adaptor->fetch_by_allele_number( 12 ), "$driver: fetch_by_allele_number");
     check_attributes( $allele_from_db, $mock_allele, $driver, 'fetch_by_allele_number', );
 
+    # fetch_by_variant_description - 7 tests
+    $mock_allele->mock('allele_name', sub { return 'Zv9_scaffold12:256738:ACGTA:G' } );
+    ok( $allele_from_db = $allele_adaptor->fetch_by_variant_description( $mock_allele->allele_name ),
+        "$driver: fetch_by_variant_description");
+    check_attributes( $allele_from_db, $mock_allele, $driver, 'fetch_by_variant_description', );
+    
+    # get_db_id_by_variant_description - 1 tests
+    $mock_allele_2->mock('allele_name', sub { return 'Zv9_scaffold12:256738:GCGTA:G' } );
+    is( $allele_adaptor->get_db_id_by_variant_description( $mock_allele_2->allele_name ), 4,
+        "$driver: get_db_id_by_variant_description");
+    
     # fetch_all_by_crispr - 8 tests
     ok( $alleles_from_db = $allele_adaptor->fetch_all_by_crispr( $mock_crRNA_1 ), "$driver: fetch_all_by_crispr");
     is( scalar @{$alleles_from_db}, 4, "$driver: fetch_all_by_crispr - check number returned" );
