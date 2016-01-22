@@ -12,6 +12,11 @@ use DateTime;
 
 my $tests;
 
+# module with some methods in for creating mock objects
+use lib 't/lib';
+use TestMethods;
+my $test_method_obj = TestMethods->new();
+
 use Crispr::DB::Sample;
 
 # make new object with no attributes
@@ -20,13 +25,14 @@ my $sample = Crispr::DB::Sample->new();
 isa_ok( $sample, 'Crispr::DB::Sample');
 $tests++;
 
-# check attributes and methods - 9 tests
+# check attributes and methods - 11 + 1 tests
 my @attributes = (
-    qw{ db_id injection_pool generation
-        sample_type sample_number alleles species }
+    qw{ db_id injection_pool generation sample_type sample_number
+    alleles total_reads species well cryo_box
+    sample_name }
 );
 
-my @methods = ( qw{ sample_name } );
+my @methods = ( qw{ add_allele } );
 
 foreach my $attribute ( @attributes ) {
     can_ok( $sample, $attribute );
@@ -43,30 +49,13 @@ is( $sample->db_id, $db_id, 'check db_id default');
 $tests++;
 
 # make mock InjectionPool and Subplex object
-my $inj_db_id = 1;
-my $pool_name = '170';
-my $cas9_conc = 200;
-my $guideRNA_conc = 20;
-my $guideRNA_type = 'sgRNA';
-my $date_obj = DateTime->now();
-
-my $mock_inj_object = Test::MockObject->new();
-$mock_inj_object->set_isa( 'Crispr::DB::InjectionPool' );
-$mock_inj_object->mock( 'db_id', sub{ return $inj_db_id } );
-$mock_inj_object->mock( 'pool_name', sub{ return $pool_name } );
-$mock_inj_object->mock( 'cas9_conc', sub{ return $cas9_conc } );
-$mock_inj_object->mock( 'guideRNA_conc', sub{ return $guideRNA_conc } );
-$mock_inj_object->mock( 'guideRNA_type', sub{ return $guideRNA_type } );
-$mock_inj_object->mock( 'date', sub{ return $date_obj->ymd } );
-
-my $mock_subplex_object = Test::MockObject->new();
-$mock_subplex_object->set_isa( 'Crispr::DB::Subplex' );
-$mock_subplex_object->mock( 'plex_name', sub{ return '8' } );
-$mock_subplex_object->mock( 'db_id', sub{ return 1 } );
-
-my $mock_well_object = Test::MockObject->new();
-$mock_well_object->set_isa( 'Labware::Well' );
-$mock_well_object->mock( 'position', sub { return 'A01' } );
+my $args = {
+    add_to_db => 0,
+};
+my ( $mock_injection_pool, $mock_injection_pool_id, ) =
+    $test_method_obj->create_mock_object_and_add_to_db( 'injection_pool', $args, undef, );
+my ( $mock_well, $mock_well_id, ) =
+    $test_method_obj->create_mock_object_and_add_to_db( 'well', $args, undef, );
 
 # make mock allele objects
 my $allele_db_id = 1;
@@ -81,6 +70,7 @@ $mock_allele_object->mock( 'chr', sub{ return $chr } );
 $mock_allele_object->mock( 'pos', sub{ return $pos } );
 $mock_allele_object->mock( 'ref_allele', sub{ return $ref_allele } );
 $mock_allele_object->mock( 'alt_allele', sub{ return $alt_allele } );
+$mock_allele_object->mock( 'allele_name', sub{ return join(":", $chr, $pos, $ref_allele, $alt_allele ); } );
 
 my $mock_allele2_object = Test::MockObject->new();
 $mock_allele2_object->set_isa( 'Crispr::Allele' );
@@ -89,16 +79,17 @@ $mock_allele2_object->mock( 'chr', sub{ return $chr } );
 $mock_allele2_object->mock( 'pos', sub{ return $pos } );
 $mock_allele2_object->mock( 'ref_allele', sub{ return $ref_allele } );
 $mock_allele2_object->mock( 'alt_allele', sub{ return $alt_allele } );
+$mock_allele2_object->mock( 'allele_name', sub{ return join(":", $chr, $pos, $ref_allele, 'GTAGAG' ); } );
 
 $sample = Crispr::DB::Sample->new(
     db_id => 1,
-    injection_pool => $mock_inj_object,
+    injection_pool => $mock_injection_pool,
     generation => 'G0',
     sample_type => 'sperm',
     sample_number => 1,
     species => 'zebrafish',
     alleles => [ $mock_allele_object ],
-    well => $mock_well_object,
+    well => $mock_well,
     cryo_box => 'Cr_Sperm12'
 );
 
@@ -129,7 +120,7 @@ $tests++;
 
 $tmp_sample = Crispr::DB::Sample->new(
     db_id => 1,
-    injection_pool => $mock_inj_object,
+    injection_pool => $mock_injection_pool,
     generation => 'G0',
     sample_type => 'sperm',
     sample_number => 1,
@@ -142,7 +133,7 @@ $tests++;
 
 $tmp_sample = Crispr::DB::Sample->new(
     db_id => 1,
-    injection_pool => $mock_inj_object,
+    injection_pool => $mock_injection_pool,
     generation => 'G0',
     sample_type => 'sperm',
     species => 'zebrafish',
@@ -158,6 +149,11 @@ throws_ok{ $sample->alleles( [ $mock_allele_object ] ) }
 is( scalar @{$sample->alleles}, 1, 'check number of alleles 1');
 ok( $sample->add_allele( $mock_allele2_object ), 'test add allele method');
 is( scalar @{$sample->alleles}, 2, 'check number of alleles 2');
-$tests+=4;
+warning_like { $sample->add_allele( $mock_allele2_object ) }
+    qr/add_allele: ALLELE.*has already been added. Skipping.../,
+    'check add_alleles warns on duplicate allele';
+is( scalar @{$sample->alleles}, 2, 'check number of alleles 3');
+$tests+=6;
+
 
 done_testing( $tests );

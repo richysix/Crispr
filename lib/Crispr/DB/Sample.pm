@@ -258,9 +258,17 @@ sub _build_sample_name {
 
 sub add_allele {
     my ( $self, $allele ) = @_;
+    # get current array of alleles
     my $current_alleles = $self->alleles;
-    push @{$current_alleles}, $allele;
-    $self->_set_alleles( $current_alleles );
+    # check whether this allele is already in the list
+    if( !grep { $_->allele_name eq $allele->allele_name } @{$current_alleles} ){
+        push @{$current_alleles}, $allele;
+        $self->_set_alleles( $current_alleles );
+    }
+    else{
+        warn join(q{ }, "add_allele: ALLELE", $allele->allele_name,
+                  "has already been added. Skipping..." ), "\n";
+    }
     return 1;
 }
 
