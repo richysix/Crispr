@@ -138,26 +138,60 @@ if( $options{debug} > 1 ){
 }
 
 # go through samples
-foreach my $sample ( @samples ){
+foreach my $sample_name ( keys %alleles_for ){
+    warn "SAMPLE_NAME: $sample_name\n" if $options{debug};
+    my $sample = $sample_cache{ $sample_name };
     # add Alleles to db, including allele_to_crispr and sample_allele tables
     # total up percentage of indels and add to sequencing_results table
     my %sequencing_results;
-    foreach my $allele ( @{ $sample->alleles } ){
-        # add allele to db, this will also add crisprs to allele_to_crispr table
-        $allele_adaptor->store( $allele );
-        # add to percentages
-        foreach my $crispr ( @{$allele->crisprs} ){
-            $sequencing_results{ $crispr->crRNA_id }{'num_indels'}++;
-            $sequencing_results{ $crispr->crRNA_id }{'total_percentage'} += $allele->percent_of_reads;
+    foreach my $crRNA_id ( keys %{ $alleles_for{$sample_name} } ){
+        my $crispr = $alleles_for{$sample_name}{$crRNA_id}{'crispr'};
+        warn "crRNA_NAME: ", $crispr->name, "\n" if $options{debug};
+        $sequencing_results{ $crRNA_id } = {
+            num_indels => 0,
+            total_percentage => 0,
+            percentage_major_variant => 0,
+        };
+        
+        foreach my $allele ( @{ $alleles_for{$sample_name}{$crRNA_id}{'variants'} } ){
+            warn "ALLELE: ", $allele->allele_number, ' - ', $allele->allele_name,
+                "\n" if $options{debug};
+            
+            # add allele to sample object
+            $sample->add_allele( $allele );
+            
+            # check whether allele has already been stored
+            if( $allele_adaptor->allele_exists_in_db( $allele ) ){
+                $allele->db_id( $allele_adaptor->get_db_id_by_variant_description( $allele->allele_name ) );
+            }
+            else{
+                # add allele to db, this will also add crisprs to allele_to_crispr table
+                $allele_adaptor->store( $allele );
+            }
+            # add to percentages
+            $sequencing_results{ $crRNA_id }{'num_indels'}++;
+            $sequencing_results{ $crRNA_id }{'total_percentage'} += $allele->percent_of_reads;
             if( $allele->percent_of_reads >
-                $sequencing_results{ $crispr->crRNA_id }{'percentage_major_variant'} ){
-                    $sequencing_results{ $crispr->crRNA_id }{'percentage_major_variant'} =
+                $sequencing_results{ $crRNA_id }{'percentage_major_variant'} ){
+                    $sequencing_results{ $crRNA_id }{'percentage_major_variant'} =
                         $allele->percent_of_reads;
             }
         }
+        
+        my $fail = $sample->total_reads < $READS_THRESHOLD ? 1
+        :   $sequencing_results{ $crRNA_id }{'total_percentage'} < $PC_THRESHOLD ? 1
+        :   0;
+        $sequencing_results{ $crRNA_id }{'fail'} = $fail;
+    }
+    if( $options{debug} ){
+        warn "SAMPLE: \n", Dumper( $sample );
+        warn "ALLELES_FOR: \n", Dumper( $alleles_for{$sample_name} );
+        warn "SEQ RESULTS: \n", Dumper( %sequencing_results );
     }
     # fill in sample_allele table
-    $sample_adaptor->store_alleles_for_sample( $sample );
+    if( defined $sample->alleles ){
+        $sample_adaptor->store_alleles_for_sample( $sample );
+    }
 
     # fill in sequencing_results table
     $sample_adaptor->store_sequencing_results( $sample, \%sequencing_results );
@@ -168,8 +202,7 @@ foreach my $sample ( @samples ){
 #Purpose     :   Get command line options and process them
 #Returns     :
 #Parameters  :   None
-#Throws      :   If plex_name is not set
-#                If run_id is not set
+#Throws      :   
 #Comments    :
 
 sub get_and_check_options {
