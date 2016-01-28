@@ -48,6 +48,44 @@ has 'db_connection' => (
     },
 );
 
+## ADAPTOR TYPES
+=method target_adaptor
+
+  Usage       : $self->target_adaptor();
+  Purpose     : Getter for a target_adaptor.
+  Returns     : Str
+  Parameters  : None
+  Throws      :
+  Comments    :
+
+=cut
+
+has 'target_adaptor' => (
+    is => 'ro',
+    isa => 'Crispr::DB::TargetAdaptor',
+    lazy => 1,
+    builder => '_build_target_adaptor',
+);
+
+=method plate_adaptor
+
+  Usage       : $self->plate_adaptor();
+  Purpose     : Getter for a plate_adaptor.
+  Returns     : Str
+  Parameters  : None
+  Throws      :
+  Comments    :
+
+=cut
+
+has 'plate_adaptor' => (
+    is => 'ro',
+    isa => 'Crispr::DB::PlateAdaptor',
+    lazy => 1,
+    builder => '_build_plate_adaptor',
+);
+
+
 =method check_entry_exists_in_db
 
   Usage       : $self->check_entry_exists_in_db( $check_statement, $params );
@@ -271,6 +309,34 @@ sub _db_error_handling{
                         'Params: ', join(",", @{$params} ),
             ), "\n";
     }
+}
+
+#_build_target_adaptor
+
+  #Usage       : $crRNAs = $crRNA_adaptor->_build_target_adaptor( $well, $type );
+  #Purpose     : Internal method to create a new Crispr::DB::TargetAdaptor
+  #Returns     : Crispr::DB::TargetAdaptor
+  #Parameters  : None
+  #Throws      :
+  #Comments    :
+
+sub _build_target_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'target' );
+}
+
+#_build_plate_adaptor
+
+  #Usage       : $crRNAs = $crRNA_adaptor->_build_plate_adaptor( $well, $type );
+  #Purpose     : Internal method to create a new Crispr::DB::PlateAdaptor
+  #Returns     : Crispr::DB::PlateAdaptor
+  #Parameters  : None
+  #Throws      :
+  #Comments    :
+
+sub _build_plate_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'plate' );
 }
 
 #_build_analysis_adaptor

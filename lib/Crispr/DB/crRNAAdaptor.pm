@@ -1086,6 +1086,7 @@ sub _make_new_crRNA_from_db {
     $args{ 'chr' } = $fields->[2] if( defined $fields->[2] );
 
     $crRNA = Crispr::crRNA->new( %args );
+    $crRNA->target( $self->target_adaptor->fetch_by_crRNA($crRNA) );
     $crRNA->crRNA_adaptor( $self );
 
     return $crRNA;
@@ -1228,33 +1229,6 @@ sub _get_plate_id {
     }
 }
 
-#_build_target_adaptor
-
-  #Usage       : $crRNAs = $crRNA_adaptor->_build_target_adaptor( $well, $type );
-  #Purpose     : Internal method to create a new Crispr::DB::TargetAdaptor
-  #Returns     : Crispr::DB::TargetAdaptor
-  #Parameters  : None
-  #Throws      :
-  #Comments    :
-
-sub _build_target_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'target' );
-}
-
-#_build_plate_adaptor
-
-  #Usage       : $crRNAs = $crRNA_adaptor->_build_plate_adaptor( $well, $type );
-  #Purpose     : Internal method to create a new Crispr::DB::PlateAdaptor
-  #Returns     : Crispr::DB::PlateAdaptor
-  #Parameters  : None
-  #Throws      :
-  #Comments    :
-
-sub _build_plate_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'plate' );
-}
 
 __PACKAGE__->meta->make_immutable;
 1;
