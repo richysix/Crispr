@@ -136,29 +136,31 @@ while(<>){
     }
     my $injection_pool = Crispr::DB::InjectionPool->new( %args );
     
-    push @injection_pools, $injection_pool;
+    # add to db
+    eval{
+        $injection_pool = $injection_pool_adaptor->store( $injection_pool );
+    };
+    if( $EVAL_ERROR ){
+        if( $EVAL_ERROR =~ m/ALREADY\sEXISTS/xms ){
+            warn join("\n", "Injection already exists in the database.",
+                    join("\t", $injection_pool->info, ),
+                    'Skipping ...',
+                ), "\n";
+        }
+        else{
+            die "There was a problem storing one of the injection pools in the database.\n",
+                "ERROR MSG:", $EVAL_ERROR, "\n";
+        }
+    }
+    else{
+        print join(q{ }, 'Injection Pool:',
+                $injection_pool->pool_name,
+                'was stored correctly in the database with id:',
+                $injection_pool->db_id, ), "\n";
+    }
 }
-
-if( $options{debug} > 1 ){
-    warn Dumper( @injection_pools );
-}
-
-# Add Injection Pools to db
-eval {
-    $injection_pool_adaptor->store_injection_pools( \@injection_pools );    
-};
 
 if( $EVAL_ERROR ){
-    die "There was a problem storing one of the injection pools in the database.\n",
-            "ERROR MSG:", $EVAL_ERROR, "\n";
-}
-else{
-    print join("\n",
-            map { join(q{ }, 'Injection Pool:',
-                        $_->pool_name,
-                        'was stored correctly in the database with id:',
-                        $_->db_id, ) } @injection_pools,
-    ), "\n";
 }
 
 sub get_and_check_options {

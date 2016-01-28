@@ -193,23 +193,8 @@ sub store_injection_pools {
         my $sth;
         foreach my $injection_pool ( @{$injection_pools} ){
             # check whether injection already exists in the db
-            eval{
-                if( $self->check_entry_exists_in_db( $check_inj_statement, [ $injection_pool->pool_name, ] ) ){
-                    die "ALREADY EXISTS";
-                }
-            };
-            if( $EVAL_ERROR ){
-                if( $EVAL_ERROR =~ m/ALREADY\sEXISTS/xms ){
-                    $injection_pool = $self->fetch_by_name( $injection_pool->pool_name );
-                    warn join("\n", "Injection already exists in the database.",
-                            join("\t", $injection_pool->info, ),
-                            'Skipping ...',
-                        ), "\n";
-                    next;
-                }
-                else{
-                    confess $EVAL_ERROR, "\n";
-                }
+            if( $self->check_entry_exists_in_db( $check_inj_statement, [ $injection_pool->pool_name, ] ) ){
+                die "ALREADY EXISTS";
             }
             
             $sth = $dbh->prepare($add_inj_statement);
