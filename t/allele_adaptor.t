@@ -382,7 +382,7 @@ TODO: {
     ok( $allele_adaptor->delete_allele_from_db ( 'rna' ), 'delete_allele_from_db');
 }
 
-    #$db_connection->destroy();
+    $db_connection->destroy();
 }
 
 # 6 tests
