@@ -58,6 +58,9 @@ SKIP: {
     }
 }
 
+my $mock_obj_args = {
+    add_to_db => 1,
+};
 foreach my $db_connection ( @{$db_connections} ){
     my $driver = $db_connection->driver;
     my $dbh = $db_connection->connection->dbh;
@@ -451,13 +454,16 @@ foreach my $db_connection ( @{$db_connections} ){
         qr/UNDEFINED ALLELES/, "$driver: store_alleles_for_sample throws on undefined alleles";
 
     # get new mock allele object
+    $mock_obj_args->{mock_crRNA} = $mock_crRNA_object_1;
     my ( $mock_allele, $mock_crRNA_id, ) =
-        $test_method_obj->create_mock_object_and_add_to_db( $db_connection, 'allele',
-            { mock_crRNA => $mock_crRNA_object_1, } );
+        $test_method_obj->create_mock_object_and_add_to_db( 'allele',
+        $mock_obj_args, $db_connection );
+    warn Dumper( $mock_allele );
     # add it to the mock sample
     $mock_sample->mock('alleles', sub { return [ $mock_allele ]; } );
 
-    ok( $sample_adaptor->store_alleles_for_sample( $mock_sample ), "$driver: store_alleles_for_sample");
+    ok( $sample_adaptor->store_alleles_for_sample( $mock_sample ),
+        "$driver: store_alleles_for_sample");
     row_ok(
        table => 'sample_allele',
        where => [ sample_id => $mock_sample->db_id ],
@@ -474,11 +480,13 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_sample->mock('total_reads', sub{ return 10000 });
     my $seq_results = {
         1 => {
+            fail => 0,
             num_indels => 5,
             total_percentage => 21,
             percentage_major_variant => 12,
         },
         2 => {
+            fail => 1,
             num_indels => 2,
             total_percentage => 4.3,
             percentage_major_variant => 3.1,

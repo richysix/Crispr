@@ -282,6 +282,24 @@ sub store_alleles_for_sample {
     } );
 }
 
+=method store_sequencing_results
+
+  Usage       : $samples = $sample_adaptor->store_sequencing_results( $sample, $seq_results );
+  Purpose     : Store the summary results of sequencing analysis for a sample
+  Returns     : 1 on Success
+  Parameters  : sample => Crispr::DB::Sample object
+                sequencing_results => HashRef {
+                                            fail => 0/1,
+                                            num_indels => Int,
+                                            total_percentage => Num,
+                                            percentage_major_variant => Num
+                                        }
+  Throws      : If there is an error during the execution of the SQL statements
+                    In this case the transaction will be rolled back
+  Comments    :
+
+=cut
+
 sub store_sequencing_results {
     my ( $self, $sample, $sequencing_results ) = @_;
     my $dbh = $self->connection->dbh();
@@ -302,6 +320,7 @@ sub store_sequencing_results {
         }
         $sth->finish();
     } );
+    return 1;
 }
 
 =method fetch_by_id
