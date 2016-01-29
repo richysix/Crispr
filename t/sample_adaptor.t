@@ -512,8 +512,8 @@ foreach my $db_connection ( @{$db_connections} ){
         is( $row->{crRNA_id}, $ex->[1], "$driver: store_sequencing_results check crRNA_id - $s_id" );
         is( $row->{fail}, $ex->[2], "$driver: store_sequencing_results check fail - $s_id" );
         is( $row->{num_indels}, $ex->[3], "$driver: store_sequencing_results check num_indels - $s_id" );
-        is( $row->{total_percentage_of_reads}, $ex->[4], "$driver: store_sequencing_results check total_percentage_of_reads - $s_id" );
-        is( $row->{percentage_major_variant}, $ex->[5], "$driver: store_sequencing_results check percentage_major_variant - $s_id" );
+        is( abs($row->{total_percentage_of_reads} - $ex->[4]) < 0.001, 1, "$driver: store_sequencing_results check total_percentage_of_reads - $s_id" );
+        is( abs($row->{percentage_major_variant} - $ex->[5]) < 0.001, 1, "$driver: store_sequencing_results check percentage_major_variant - $s_id" );
         is( $row->{total_reads}, $ex->[6], "$driver: store_sequencing_results check total_reads - $s_id" );
         $s_id++;
     }
