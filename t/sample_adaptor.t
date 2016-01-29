@@ -458,7 +458,7 @@ foreach my $db_connection ( @{$db_connections} ){
     my ( $mock_allele, $mock_crRNA_id, ) =
         $test_method_obj->create_mock_object_and_add_to_db( 'allele',
         $mock_obj_args, $db_connection );
-    warn Dumper( $mock_allele );
+    
     # add it to the mock sample
     $mock_sample->mock('alleles', sub { return [ $mock_allele ]; } );
 
@@ -502,7 +502,7 @@ foreach my $db_connection ( @{$db_connections} ){
         label => "$driver: sequencing_results for sample 3",
     );
     my @expected_results = (
-        [ 3, 1, 0, 5, 21, 12, 10000 ],
+        [ 3, 1, 0, 5, 21.0, 12.0, 10000 ],
         [ 3, 2, 1, 2, 4.3, 3.1, 10000 ],
     );
     my $s_id = 3;
