@@ -274,8 +274,8 @@ foreach my $db_connection ( @{$db_connections} ){
     #}
     #    $regex,
     #    "$driver: store_injection_pool throws because of duplicate entry";
-    warning_like { $injection_pool_adaptor->store_injection_pool( $mock_injection_pool) }
-        qr/Injection\salready\sexists\sin\sthe\sdatabase/, 'check warning if injection already exists';
+    throws_ok { $injection_pool_adaptor->store_injection_pool( $mock_injection_pool) }
+        qr/ALREADY\sEXISTS/, 'check warning if injection already exists';
     
     $i_id = 2;
     $mock_injection_pool->mock( 'pool_name', sub{ return '171' } );
