@@ -79,6 +79,8 @@ sub check_for_test_genome {
                                   -file => ">$genome_file_path", );
         $out->write_seq($chr3);
     }
+    # force mock genome to get reindexed
+    my $db = Bio::DB::Fasta->new( $genome_file_path, -reindex );
     
     # check whether bwa index exists
     my $bwa_index_file = File::Spec->catfile( 't/data', $genome_file . '.bwt' );
