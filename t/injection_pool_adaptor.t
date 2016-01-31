@@ -17,7 +17,7 @@ use Crispr::DB::InjectionPoolAdaptor;
 use Crispr::DB::DBConnection;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 16 + 4 + 13 + 2 + 3 + 24 + 24 + 48 + 25 + 2;
+Readonly my $TESTS_IN_COMMON => 1 + 19 + 4 + 13 + 2 + 3 + 24 + 24 + 48 + 25 + 2 + 2;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
@@ -29,13 +29,13 @@ else {
     plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
 }
 
-# check attributes and methods - 3 + 13 tests
+# check attributes and methods - 3 + 15 tests
 my @attributes = ( qw{ dbname db_connection connection } );
 
 my @methods = (
     qw{ store store_injection_pool store_injection_pools fetch_by_id fetch_by_ids
-        fetch_by_name fetch_all_by_date _fetch delete_injection_pool_from_db check_entry_exists_in_db
-        fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement _db_error_handling }
+        fetch_by_name fetch_all_by_date fetch_all_by_crRNAs fetch_all_by_gene _fetch
+        delete_injection_pool_from_db check_entry_exists_in_db fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement _db_error_handling }
 );
 
 # DB tests
@@ -330,7 +330,7 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_injection_pool_2->mock( 'cas9_conc', sub{ return 200 } );
     $mock_injection_pool_2->mock( 'guideRNA_conc', sub{ return 10 } );
     $mock_injection_pool_2->mock( 'guideRNA_type', sub{ return 'sgRNA' } );
-    $mock_injection_pool_2->mock( 'date', sub{ return '2014-10-13' } );
+    $mock_injection_pool_2->mock( 'date', sub{ return '2014-11-13' } );
     $mock_injection_pool_2->mock( 'line_injected', sub{ return 'H1530' } );
     $mock_injection_pool_2->mock( 'line_raised', sub{ return undef } );
     $mock_injection_pool_2->mock( 'sorted_by', sub{ return 'cr_1' } );
@@ -400,8 +400,14 @@ foreach my $db_connection ( @{$db_connections} ){
     ok( $inj_pool_from_db = $injection_pool_adaptor->fetch_by_name( '172' ), 'fetch_by_name');
     check_attributes( $inj_pool_from_db, $mock_injection_pool, $driver, 'fetch_by_name', );
 
-    # 2 tests
-    ok( $injection_pool_adaptor->fetch_all_by_date( '2014-10-13' ), 'fetch_all_by_date');
+    # fetch_all_by_date - 2 tests
+    ok( $inj_pools_from_db = $injection_pool_adaptor->fetch_all_by_date( '2014-10-13' ), 'fetch_all_by_date');
+    is( scalar @{$inj_pools_from_db}, 3, "$driver: fetch_all_by_date check number returned" );
+    
+    # fetch_all_by_crRNAs - 2 tests
+    ok( $inj_pools_from_db = $injection_pool_adaptor->fetch_all_by_crRNAs( [$mock_crRNA_object_1,$mock_crRNA_object_2] ), 'fetch_all_by_crRNAs' );
+    is( scalar @{$inj_pools_from_db}, 4, "$driver: fetch_all_by_crRNAs check number returned" );
+    
 TODO: {
     local $TODO = 'methods not implemented yet.';
     

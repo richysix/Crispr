@@ -16,6 +16,8 @@ use Crispr::DB::InjectionPool;
 
 extends 'Crispr::DB::BaseAdaptor';
 
+my %inj_pool_cache;
+
 =method new
 
   Usage       : my $injection_pool_adaptor = Crispr::DB::InjectionPoolAdaptor->new(
@@ -29,60 +31,6 @@ extends 'Crispr::DB::BaseAdaptor';
                 get_adaptor method with a previously constructed DBConnection object
 
 =cut
-
-=method cas9_prep_adaptor
-
-  Usage       : $self->cas9_prep_adaptor();
-  Purpose     : Getter for a cas9_prep_adaptor.
-  Returns     : Crispr::DB::Cas9PrepAdaptor
-  Parameters  : None
-  Throws      : 
-  Comments    : 
-
-=cut
-
-has 'cas9_prep_adaptor' => (
-    is => 'ro',
-    isa => 'Crispr::DB::Cas9PrepAdaptor',
-    lazy => 1,
-    builder => '_build_cas9_prep_adaptor',
-);
-
-=method crRNA_adaptor
-
-  Usage       : $self->crRNA_adaptor();
-  Purpose     : Getter for a crRNA_adaptor.
-  Returns     : Crispr::DB::crRNAAdaptor
-  Parameters  : None
-  Throws      : 
-  Comments    : 
-
-=cut
-
-has 'crRNA_adaptor' => (
-    is => 'ro',
-    isa => 'Crispr::DB::crRNAAdaptor',
-    lazy => 1,
-    builder => '_build_crRNA_adaptor',
-);
-
-=method guideRNA_prep_adaptor
-
-  Usage       : $self->guideRNA_prep_adaptor();
-  Purpose     : Getter for a guideRNA_prep_adaptor.
-  Returns     : Crispr::DB::GuideRNAPrepAdaptor
-  Parameters  : None
-  Throws      : 
-  Comments    : 
-
-=cut
-
-has 'guideRNA_prep_adaptor' => (
-    is => 'ro',
-    isa => 'Crispr::DB::GuideRNAPrepAdaptor',
-    lazy => 1,
-    builder => '_build_guideRNA_prep_adaptor',
-);
 
 =method store
 
@@ -336,6 +284,132 @@ sub fetch_all_by_date  {
     return $injection_pools;
 }
 
+=method fetch_all_by_crRNAs
+
+  Usage       : $injection_pools = $injection_pool_adaptor->fetch_all_by_crRNAs( \@crRNAs );
+  Purpose     : Fetch a list of injection_pools given a list of crRNAs
+  Returns     : ArrayRef of Crispr::DB::InjectionPool objects
+  Parameters  : ArrayRef of Crispr::crRNA objects
+  Throws      : If no rows are returned from the database
+  Comments    : None
+
+=cut
+
+sub fetch_all_by_crRNAs {
+    my ( $self, $crRNAs ) = @_;
+    my $dbh = $self->connection->dbh();
+    
+    my $where_clause = 'ip.crRNA_id IN (' .
+        join(q{,}, ('?') x scalar @{$crRNAs} ) .
+        ')';
+    my $where_parameters = [ map { $_->crRNA_id } @{$crRNAs} ];
+    my $sql = <<'END_SQL';
+        SELECT
+            i.injection_id, injection_name, cas9_concentration,
+            i.date, line_injected, line_raised, sorted_by,
+            cp.cas9_prep_id, cp.prep_type, cp.made_by, cp.date, cp.notes,
+            c.cas9_id, c.name, c.type, c.vector, c.species,
+            ip.crRNA_id, ip.guideRNA_prep_id, ip.guideRNA_concentration
+        FROM injection i, cas9_prep cp, cas9 c, injection_pool ip 
+        WHERE i.cas9_prep_id = cp.cas9_prep_id AND
+            cp.cas9_id = c.cas9_id AND
+            i.injection_id = ip.injection_id
+END_SQL
+
+    if ($where_clause) {
+        $sql .= 'AND ' . $where_clause;
+    }
+
+    my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
+    $sth->execute();
+
+    my ( $injection_id, $injection_name, $cas9_concentration,
+        $inj_date, $line_injected, $line_raised, $sorted_by,
+        $cas9_prep_id, $prep_type, $made_by, $date, $notes,
+        $cas9_id, $cas9_name, $type, $vector, $species,
+        $crRNA_id, $guideRNA_prep_id, $guideRNA_concentration,
+    );
+    
+    $sth->bind_columns( \( $injection_id, $injection_name, $cas9_concentration,
+        $inj_date, $line_injected, $line_raised, $sorted_by,
+        $cas9_prep_id, $prep_type, $made_by, $date, $notes,
+        $cas9_id, $cas9_name, $type, $vector, $species,
+        $crRNA_id, $guideRNA_prep_id, $guideRNA_concentration, ) );
+
+    my @injection_pools = ();
+    while ( $sth->fetch ) {
+        
+        my $cas9_prep = $self->cas9_prep_adaptor->_make_new_cas9_prep_from_db(
+            [ $cas9_prep_id, $prep_type, $made_by, $date, $notes,
+                $cas9_id, $cas9_name, $type, $vector, $species, ],
+        );
+        
+        # check if it already exists in the injections pools array
+        my @pools = grep { $_->db_id eq $injection_id } @injection_pools;
+        # if not, then make a new injection pool/ get it from the cache
+        if( !@pools ){        
+            my $inj_pool;
+            if( !exists $inj_pool_cache{ $injection_id } ){
+                $inj_pool = Crispr::DB::InjectionPool->new(
+                    db_id => $injection_id,
+                    pool_name => $injection_name,
+                    cas9_prep => $cas9_prep,
+                    cas9_conc => $cas9_concentration,
+                    date => $inj_date,
+                    line_injected => $line_injected,
+                    line_raised => $line_raised,
+                    sorted_by => $sorted_by,
+                );
+                $inj_pool_cache{ $injection_id } = $inj_pool;
+            }
+            else{
+                $inj_pool = $inj_pool_cache{ $injection_id };
+            }
+            $inj_pool->guideRNAs(
+                $self->guideRNA_prep_adaptor->fetch_all_by_injection_pool( $inj_pool )
+            );
+            
+            push @injection_pools, $inj_pool;
+        }
+    }
+
+    return \@injection_pools;    
+}
+
+=method fetch_all_by_gene
+
+  Usage       : $injection_pools = $injection_pool_adaptor->fetch_all_by_gene( 'gene_name' );
+  Purpose     : Fetch a list of injection_pools given a gene name
+  Returns     : ArrayRef of Crispr::DB::InjectionPool objects
+  Parameters  : gene_name => Str (can be a gene_name, gene_id or target_name)
+  Throws      : If no rows are returned from the database
+  Comments    : None
+
+=cut
+
+sub fetch_all_by_gene  {
+    my ( $self, $gene ) = @_;
+    my ($targets, $crRNAs, $injection_pools, );
+    
+    $targets = $self->target_adaptor->fetch_all_by_target_name_gene_id_gene_name( $gene );
+    if( @{$targets} ){
+        $crRNAs = $self->crRNA_adaptor->fetch_all_by_targets( $targets );
+    }
+    else{
+        die 'NO TARGETS';
+    }
+    if( @{$crRNAs} ){
+       $injection_pools = $self->crRNA_adaptor->fetch_all_by_crRNAs( $crRNAs );
+    }
+    else{
+        die 'NO CR_RNAS';
+    }
+    if( scalar @{$injection_pools} == 0 ){
+        die "NO INJECTION_POOLS";
+    }
+    return $injection_pools;
+}
+
 #_fetch
 #
 #Usage       : $injection_pool = $self->_fetch( \@fields );
@@ -346,7 +420,6 @@ sub fetch_all_by_date  {
 #Throws      : 
 #Comments    : 
 
-my %inj_pool_cache;
 sub _fetch {
     my ( $self, $where_clause, $where_parameters ) = @_;
     my $dbh = $self->connection->dbh();
@@ -437,48 +510,6 @@ sub delete_injection_pool_from_db {
 	
 	# if injection_pool has talen pairs, delete tale and talen pairs
 
-}
-
-#_build_cas9_prep_adaptor
-
-  #Usage       : $cas9_prep_adaptor = $self->_build_cas9_prep_adaptor();
-  #Purpose     : Internal method to create a new Crispr::DB::Cas9PrepAdaptor
-  #Returns     : Crispr::DB::Cas9PrepAdaptor
-  #Parameters  : None
-  #Throws      : 
-  #Comments    : 
-
-sub _build_cas9_prep_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'cas9_prep' );
-}
-
-#_build_crRNA_adaptor
-
-  #Usage       : $crRNA_adaptor = $self->_build_crRNA_adaptor();
-  #Purpose     : Internal method to create a new Crispr::DB::crRNAAdaptor
-  #Returns     : Crispr::DB::crRNAAdaptor
-  #Parameters  : None
-  #Throws      : 
-  #Comments    : 
-
-sub _build_crRNA_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'crRNA' );
-}
-
-#_build_guideRNA_prep_adaptor
-
-  #Usage       : $guideRNA_prep_adaptor = $self->_build_guideRNA_prep_adaptor();
-  #Purpose     : Internal method to create a new Crispr::DB::GuideRNAPrepAdaptor
-  #Returns     : Crispr::DB::GuideRNAPrepAdaptor
-  #Parameters  : None
-  #Throws      : 
-  #Comments    : 
-
-sub _build_guideRNA_prep_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'guideRNA_prep' );
 }
 
 =method driver
