@@ -67,6 +67,42 @@ has 'target_adaptor' => (
     builder => '_build_target_adaptor',
 );
 
+=method crRNA_adaptor
+
+  Usage       : $self->crRNA_adaptor();
+  Purpose     : Getter for a crRNA_adaptor.
+  Returns     : Crispr::DB::crRNAAdaptor
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
+has 'crRNA_adaptor' => (
+    is => 'ro',
+    isa => 'Crispr::DB::crRNAAdaptor',
+    lazy => 1,
+    builder => '_build_crRNA_adaptor',
+);
+
+=method guideRNA_prep_adaptor
+
+  Usage       : $self->guideRNA_prep_adaptor();
+  Purpose     : Getter for a guideRNA_prep_adaptor.
+  Returns     : Crispr::DB::GuideRNAPrepAdaptor
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
+has 'guideRNA_prep_adaptor' => (
+    is => 'ro',
+    isa => 'Crispr::DB::GuideRNAPrepAdaptor',
+    lazy => 1,
+    builder => '_build_guideRNA_prep_adaptor',
+);
+
 =method plate_adaptor
 
   Usage       : $self->plate_adaptor();
@@ -85,6 +121,23 @@ has 'plate_adaptor' => (
     builder => '_build_plate_adaptor',
 );
 
+=method cas9_prep_adaptor
+
+  Usage       : $self->cas9_prep_adaptor();
+  Purpose     : Getter for a cas9_prep_adaptor.
+  Returns     : Crispr::DB::Cas9PrepAdaptor
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
+has 'cas9_prep_adaptor' => (
+    is => 'ro',
+    isa => 'Crispr::DB::Cas9PrepAdaptor',
+    lazy => 1,
+    builder => '_build_cas9_prep_adaptor',
+);
 
 =method check_entry_exists_in_db
 
@@ -325,6 +378,34 @@ sub _build_target_adaptor {
     return $self->db_connection->get_adaptor( 'target' );
 }
 
+#_build_crRNA_adaptor
+
+  #Usage       : $crRNA_adaptor = $self->_build_crRNA_adaptor();
+  #Purpose     : Internal method to create a new Crispr::DB::crRNAAdaptor
+  #Returns     : Crispr::DB::crRNAAdaptor
+  #Parameters  : None
+  #Throws      : 
+  #Comments    : 
+
+sub _build_crRNA_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'crRNA' );
+}
+
+#_build_guideRNA_prep_adaptor
+
+  #Usage       : $guideRNA_prep_adaptor = $self->_build_guideRNA_prep_adaptor();
+  #Purpose     : Internal method to create a new Crispr::DB::GuideRNAPrepAdaptor
+  #Returns     : Crispr::DB::GuideRNAPrepAdaptor
+  #Parameters  : None
+  #Throws      : 
+  #Comments    : 
+
+sub _build_guideRNA_prep_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'guideRNA_prep' );
+}
+
 #_build_plate_adaptor
 
   #Usage       : $crRNAs = $crRNA_adaptor->_build_plate_adaptor( $well, $type );
@@ -337,6 +418,20 @@ sub _build_target_adaptor {
 sub _build_plate_adaptor {
     my ( $self, ) = @_;
     return $self->db_connection->get_adaptor( 'plate' );
+}
+
+#_build_cas9_prep_adaptor
+
+  #Usage       : $cas9_prep_adaptor = $self->_build_cas9_prep_adaptor();
+  #Purpose     : Internal method to create a new Crispr::DB::Cas9PrepAdaptor
+  #Returns     : Crispr::DB::Cas9PrepAdaptor
+  #Parameters  : None
+  #Throws      : 
+  #Comments    : 
+
+sub _build_cas9_prep_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'cas9_prep' );
 }
 
 #_build_analysis_adaptor
