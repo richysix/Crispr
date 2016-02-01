@@ -510,7 +510,7 @@ sub create_well_object {
     $mock_well->mock( 'plate_type', sub{ return '96' } );
     $mock_well->mock( 'position', sub{ return 'A01' } );
     
-    return $mock_well;
+    return ( $mock_well );
 }
 
 sub create_and_add_gRNA_object {
