@@ -370,11 +370,11 @@ around BUILDARGS => sub{
 				my $requires_enzyme = $self->_parse_requires_enzyme_input( $v );
 				$v = $requires_enzyme;
 			}
-			elsif( $k eq 'crRNAs' ){
-				foreach my $crRNA_ref ( @{$v} ){
-					weaken( $crRNA_ref );
-				}
-			}
+			#elsif( $k eq 'crRNAs' ){
+			#	foreach my $crRNA_ref ( @{$v} ){
+			#		weaken( $crRNA_ref );
+			#	}
+			#}
             $args{ $k } = $v;
         }
         return $self->$method( \%args );
@@ -401,11 +401,11 @@ around BUILDARGS => sub{
 			my $requires_enzyme = $self->_parse_requires_enzyme_input( $_[0]->{'requires_enzyme'} );
 			$_[0]->{'requires_enzyme'} = $requires_enzyme;
         }
-		if( exists $_[0]->{'crRNAs'} ){
-			foreach my $crRNA_ref ( @{$_[0]->{'crRNAs'}} ){
-				weaken( $crRNA_ref );
-			}
-		}
+		#if( exists $_[0]->{'crRNAs'} ){
+		#	foreach my $crRNA_ref ( @{$_[0]->{'crRNAs'}} ){
+		#		weaken( $crRNA_ref );
+		#	}
+		#}
         return $self->$method( $_[0] );
     }
     else{
@@ -462,13 +462,13 @@ around 'requires_enzyme' => sub {
 
 ## around crRNAs
 ## This is to weaken references to crRNAs to prevent circular references
-##
+#
 #around 'crRNAs' => sub {
 #    my ( $method, $self, $input ) = @_;
 #    if( $input ){
 #		foreach my $crRNA ( @{$input} ){
 #            if( defined $crRNA->target ){
-#                weaken( $crRNA );
+#                weaken( $crRNA->target );
 #            }
 #		}
 #        return $self->$method( $input );
@@ -477,7 +477,7 @@ around 'requires_enzyme' => sub {
 #		return $self->$method();
 #    }
 #};
-#
+
 #_parse_requires_enzyme_input
 #
 #Usage       : $crRNA->_parse_requires_enzyme_input( '+' );
