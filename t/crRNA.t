@@ -9,12 +9,17 @@ use Test::Warn;
 use Test::MockObject;
 use Data::Dumper;
 
-#plan tests => 1 + 36 + 4 + 4 + 1 + 4 + 6 + 4 + 2 + 3 + 3 + 5 + 2 + 7 + 4 + 4 + 1 + 5 + 2 + 2 + 2 + 1;
+#plan tests => 1 + 19 + 31 + 4 + 4 + 1 + 4 + 6 + 4 + 2 + 3 + 3 + 5 + 2 + 7 + 4 + 4 + 1 + 5 + 2 + 2 + 2 + 1;
 my $tests;
 
 my $species = 'zebrafish';
 
 use Crispr::crRNA;
+
+# TestMethods has methods for making mock objects
+use lib 't/lib';
+use TestMethods;
+my $test_method_obj = TestMethods->new();
 
 # make a mock off-target object
 my @exon_hits = ( qw{  } );
@@ -38,6 +43,13 @@ $mock_target_object_3->set_isa( 'Crispr::Target' );
 $mock_target_object_3->mock( 'summary', sub{ return (qw{ ENSE000000035646 ENSDARG00000026374 atpase2 crispr_test }) } );
 $mock_target_object_3->mock( 'assembly', sub{ return 'Zv9' } );
 $mock_target_object_3->mock( 'species', sub{ return 'zebrafish' } );
+
+my $args = {
+    add_to_db => 0,
+};
+my ( $mock_plate, ) = $test_method_obj->create_and_add_plate_object( 'plate', $args, undef );
+$args->{mock_plate} = $mock_plate;
+my ( $mock_well, ) = $test_method_obj->create_mock_object_and_add_to_db( 'well', $args, undef );
 
 my %coding_scores = (
     ENSDART00000037691 => 0.734,
@@ -80,16 +92,19 @@ my $crRNA_2 = Crispr::crRNA->new(
 isa_ok( $crRNA, 'Crispr::crRNA' );
 $tests++;
 
-# check method calls 36 tests
-my @attributes = ( qw{crRNA_id target chr start end strand sequence species
-    five_prime_Gs off_target_hits off_target_info off_target_score coding_scores
-    unique_restriction_sites plasmid_backbone primer_pairs crRNA_adaptor
-    status } );
-my @methods = qw( _parse_strand_input _parse_species top_restriction_sites
-    info target_info_plus_crRNA_info target_summary_plus_crRNA_info
-    coding_score_for coding_scores_by_transcript
-    name base_composition _build_species _build_five_prime_Gs core_sequence
-    _build_oligo forward_oligo reverse_oligo _build_backbone coding_score
+
+
+# check method calls 19 + 31 tests
+my @attributes = ( qw{crRNA_id target name chr start
+    end strand sequence species five_prime_Gs
+    off_target_hits coding_scores unique_restriction_sites plasmid_backbone primer_pairs
+    crRNA_adaptor status status_changed well } );
+my @methods = qw( target_id target_name target_summary target_info assembly
+    target_gene_name target_gene_id off_target_info off_target_score _parse_strand_input
+    _parse_species top_restriction_sites info target_info_plus_crRNA_info target_summary_plus_crRNA_info
+    cut_site coding_score_for coding_scores_by_transcript base_composition _build_name
+    _build_species _build_five_prime_Gs core_sequence _build_oligo forward_oligo
+    reverse_oligo t7_hairpin_oligo t7_fillin_oligo _build_backbone coding_score
     score
 );
 
@@ -265,6 +280,11 @@ is( $crRNA->status, 'PASSED_EMBRYO_SCREENING', 'new status');
 throws_ok { Crispr::crRNA->new( status => 'DESIGND', ) }
     qr/Validation failed/, 'throws on non-allowed status';
 $tests += 3;
+
+# well
+is( $crRNA->well, undef, 'well default');
+ok( $crRNA->well( $mock_well ), 'add mock well object' );
+$tests += 2;
 
 # check output of non attribute methods
 # check target_info throws with no target - 2 tests

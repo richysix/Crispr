@@ -14,6 +14,7 @@ use Crispr::EnzymeInfo;
 use Bio::Seq;
 use Bio::Restriction::EnzymeCollection;
 use Bio::Restriction::Analysis;
+use Scalar::Util qw( weaken );
 use Carp;
 
 use Number::Format;
@@ -392,6 +393,22 @@ has 'status_changed' => (
     default => undef,
 );
 
+=method well
+
+  Usage       : $crRNA->well;
+  Purpose     : Getter/Setter for well attribute
+  Returns     : Str
+  Parameters  : None
+  Throws      : If input is given
+  Comments    :
+
+=cut
+
+has 'well' => (
+    is => 'rw',
+    isa => 'Maybe[Labware::Well]',
+);
+
 around BUILDARGS => sub{
     my $method = shift;
     my $self = shift;
@@ -418,6 +435,9 @@ around BUILDARGS => sub{
 				my $strand = $self->_parse_strand_input( $v );
 				$v = $strand;
 			}
+            #elsif( $k eq 'well' && ref $v->contents eq 'Crispr::crRNA' ){
+            #    weaken( $v->contents );
+            #}
 			$args{ $k } = $v;
 		}
 	    return $self->$method( \%args );
@@ -443,6 +463,9 @@ around BUILDARGS => sub{
 			my $strand = $self->_parse_strand_input( $_[0]->{'strand'} );
 			$_[0]->{'strand'} = $strand;
         }
+        #elsif( exists $_[0]->{'well'} && ref $_[0]->{'well'}->contents eq 'Crispr::crRNA' ){
+        #    weaken( $_[0]->{'well'}->contents );
+        #}
         return $self->$method( $_[0] );
     }
     else{
@@ -721,9 +744,33 @@ sub coding_scores_by_transcript {
     return @scores;
 }
 
-=method name
+=method base_composition
 
-  Usage       : $crRNA->name;
+  Usage       : $crRNA->base_composition;
+  Purpose     : Returns the base_composition for the crRNA as a hash keyed by base
+  Returns     : HashRef
+  Parameters  : None
+  Throws      :
+  Comments    :
+
+=cut
+
+sub base_composition {
+    my ( $self, ) = @_;
+
+    my $sequence = substr($self->sequence, 0, 20 );
+    my $count_hash;
+    $count_hash->{A} = ($sequence =~ tr/A//)/20;
+    $count_hash->{C} = ($sequence =~ tr/C//)/20;
+    $count_hash->{G} = ($sequence =~ tr/G//)/20;
+    $count_hash->{T} = ($sequence =~ tr/T//)/20;
+
+    return $count_hash;
+}
+
+=method _build_name
+
+  Usage       : $crRNA->_build_name;
   Purpose     : Returns a name for the crRNA, composed of:
 				chr/target_gene_name:start-end:strand
   Returns     : String
@@ -749,30 +796,6 @@ sub _build_name {
         $self->strand,
     );
     return $name;
-}
-
-=method base_composition
-
-  Usage       : $crRNA->base_composition;
-  Purpose     : Returns the base_composition for the crRNA as a hash keyed by base
-  Returns     : HashRef
-  Parameters  : None
-  Throws      :
-  Comments    :
-
-=cut
-
-sub base_composition {
-    my ( $self, ) = @_;
-
-    my $sequence = substr($self->sequence, 0, 20 );
-    my $count_hash;
-    $count_hash->{A} = ($sequence =~ tr/A//)/20;
-    $count_hash->{C} = ($sequence =~ tr/C//)/20;
-    $count_hash->{G} = ($sequence =~ tr/G//)/20;
-    $count_hash->{T} = ($sequence =~ tr/T//)/20;
-
-    return $count_hash;
 }
 
 #_build_species
