@@ -38,42 +38,6 @@ my %crRNA_cache; # Cache for crRNA objects. HashRef keyed on crRNA_id
 
 =cut
 
-=method target_adaptor
-
-  Usage       : $self->target_adaptor();
-  Purpose     : Getter for a target_adaptor.
-  Returns     : Str
-  Parameters  : None
-  Throws      :
-  Comments    :
-
-=cut
-
-has 'target_adaptor' => (
-    is => 'ro',
-    isa => 'Crispr::DB::TargetAdaptor',
-    lazy => 1,
-    builder => '_build_target_adaptor',
-);
-
-=method plate_adaptor
-
-  Usage       : $self->plate_adaptor();
-  Purpose     : Getter for a plate_adaptor.
-  Returns     : Str
-  Parameters  : None
-  Throws      :
-  Comments    :
-
-=cut
-
-has 'plate_adaptor' => (
-    is => 'ro',
-    isa => 'Crispr::DB::PlateAdaptor',
-    lazy => 1,
-    builder => '_build_plate_adaptor',
-);
-
 =method store
 
   Usage       : $crRNA = $crRNA_adaptor->store( $crRNA );
@@ -607,6 +571,29 @@ sub check_plasmid_backbone_exists {
         $sth->finish();
     }
     return $backbone_id;
+}
+
+=method update_status
+
+  Usage       : $ok = $crRNA_adaptor->update_status( $crRNA );
+  Purpose     : update the status column in the crRNA table based on the status of the supplied object
+  Returns     : New status
+  Parameters  : Crispr::crRNA object
+  Throws      : If crRNA does not exist in the db
+                If argument is not a Crispr::crRNA object
+  Comments    : None
+
+=cut
+
+sub update_status {
+    my ( $self, $crRNA ) = @_;
+    my $dbh = $self->connection->dbh();
+    my $status_id = $self->_fetch_status_id_from_status( $crRNA->status );
+    my $date = DateTime->now()->ymd;
+    my $update_st = join(q{ }, 'UPDATE TABLE crRNA set status_id = ?, status_changed = ?',
+                         'WHERE crRNA_id = ?', );
+    my $sth = $dbh->prepare($update_st);
+    $sth->execute( $status_id, $date, $crRNA->crRNA_id );
 }
 
 =method fetch_by_id
