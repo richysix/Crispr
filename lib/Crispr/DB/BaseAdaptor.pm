@@ -247,11 +247,10 @@ sub fetch_rows_for_generic_select_statement {
 
 #_fetch_status_from_id
 #
-#Usage       : $targets = $self->_fetch_status_from_id( $status_id );
-#Purpose     : Fetch a status from the status table using
-#Returns     : ArrayRef of Crispr::Target objects
-#Parameters  : where_clause => Str (SQL where clause)
-#               where_parameters => ArrayRef of parameters to bind to sql statement
+#Usage       : $status = $self->_fetch_status_from_id( $status_id );
+#Purpose     : Fetch a status from the status table using a status id
+#Returns     : Str => status_id
+#Parameters  : 
 #Throws      :
 #Comments    :
 
@@ -266,10 +265,9 @@ sub _fetch_status_from_id {
 #_fetch_status_id_from_status
 #
 #Usage       : $targets = $self->_fetch_status_id_from_status( $status );
-#Purpose     : Fetch a status from the status table using
-#Returns     : ArrayRef of Crispr::Target objects
-#Parameters  : where_clause => Str (SQL where clause)
-#               where_parameters => ArrayRef of parameters to bind to sql statement
+#Purpose     : Fetch a status_id from the status table using a status
+#Returns     : Int => status_id
+#Parameters  : Str => status
 #Throws      :
 #Comments    :
 
