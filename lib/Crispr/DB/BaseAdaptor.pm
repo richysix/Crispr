@@ -121,6 +121,60 @@ has 'plate_adaptor' => (
     builder => '_build_plate_adaptor',
 );
 
+=method primer_pair_adaptor
+
+  Usage       : $plate_adaptor->primer_pair_adaptor;
+  Purpose     : Getter for a PrimerPairadaptor
+  Returns     : Crispr::DB::PrimerPairAdaptor
+  Parameters  : None
+  Throws      : If input is given
+  Comments    : 
+
+=cut
+
+has 'primer_pair_adaptor' => (
+	is => 'ro',
+	isa => 'Crispr::DB::PrimerPairAdaptor',
+	lazy => 1,
+	builder => '_build_primer_pair_adaptor',
+);
+
+=method primer_adaptor
+
+  Usage       : $primer_adaptor->primer_adaptor;
+  Purpose     : Getter for a primer_adaptor
+  Returns     : Crispr::DB::PlateAdaptor
+  Parameters  : None
+  Throws      : If input is given
+  Comments    : 
+
+=cut
+
+has 'primer_adaptor' => (
+    is => 'ro',
+    isa => 'Crispr::DB::PrimerAdaptor',
+    lazy => 1,
+    builder => '_build_primer_adaptor',
+);
+
+=method cas9_adaptor
+
+  Usage       : $self->cas9_adaptor();
+  Purpose     : Getter for a cas9_adaptor.
+  Returns     : Crispr::DB::Cas9Adaptor
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
+has 'cas9_adaptor' => (
+    is => 'ro',
+    isa => 'Crispr::DB::Cas9Adaptor',
+    lazy => 1,
+    builder => '_build_cas9_adaptor',
+);
+
 =method cas9_prep_adaptor
 
   Usage       : $self->cas9_prep_adaptor();
@@ -138,6 +192,115 @@ has 'cas9_prep_adaptor' => (
     lazy => 1,
     builder => '_build_cas9_prep_adaptor',
 );
+
+=method plex_adaptor
+
+  Usage       : $self->plex_adaptor();
+  Purpose     : Getter for a plex_adaptor.
+  Returns     : Crispr::DB::PlexAdaptor
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
+has 'plex_adaptor' => (
+    is => 'ro',
+    isa => 'Crispr::DB::PlexAdaptor',
+    lazy => 1,
+    builder => '_build_plex_adaptor',
+);
+
+=method sample_adaptor
+
+  Usage       : $self->sample_adaptor();
+  Purpose     : Getter for a sample_adaptor.
+  Returns     : Crispr::DB::SampleAdaptor
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
+has 'sample_adaptor' => (
+    is => 'ro',
+    isa => 'Crispr::DB::SampleAdaptor',
+    lazy => 1,
+    builder => '_build_sample_adaptor',
+);
+
+=method sample_amplicon_adaptor
+
+  Usage       : $self->sample_amplicon_adaptor();
+  Purpose     : Getter for a sample_amplicon_adaptor.
+  Returns     : Crispr::DB::SampleAdaptor
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
+has 'sample_amplicon_adaptor' => (
+    is => 'ro',
+    isa => 'Crispr::DB::SampleAmpliconAdaptor',
+    lazy => 1,
+    builder => '_build_sample_amplicon_adaptor',
+);
+
+=method analysis_adaptor
+
+  Usage       : $self->analysis_adaptor();
+  Purpose     : Getter for a analysis_adaptor.
+  Returns     : Crispr::DB::AnalysisAdaptor
+  Parameters  : None
+  Throws      :
+  Comments    :
+
+=cut
+
+has 'analysis_adaptor' => (
+    is => 'ro',
+    isa => 'Crispr::DB::AnalysisAdaptor',
+    lazy => 1,
+    builder => '_build_analysis_adaptor',
+);
+
+=method injection_pool_adaptor
+
+  Usage       : $self->injection_pool_adaptor();
+  Purpose     : Getter for a injection_pool_adaptor.
+  Returns     : Crispr::DB::InjectionPoolAdaptor
+  Parameters  : None
+  Throws      :
+  Comments    :
+
+=cut
+
+has 'injection_pool_adaptor' => (
+    is => 'ro',
+    isa => 'Crispr::DB::InjectionPoolAdaptor',
+    lazy => 1,
+    builder => '_build_injection_pool_adaptor',
+);
+
+=method allele_adaptor
+
+  Usage       : $self->allele_adaptor();
+  Purpose     : Getter for a allele_adaptor.
+  Returns     : Crispr::DB::AlleleAdaptor
+  Parameters  : None
+  Throws      :
+  Comments    :
+
+=cut
+
+has 'allele_adaptor' => (
+    is => 'ro',
+    isa => 'Crispr::DB::AlleleAdaptor',
+    lazy => 1,
+    builder => '_build_allele_adaptor',
+);
+
 
 =method check_entry_exists_in_db
 
@@ -364,18 +527,74 @@ sub _db_error_handling{
     }
 }
 
-#_build_target_adaptor
+#_build_allele_adaptor
 
-  #Usage       : $crRNAs = $crRNA_adaptor->_build_target_adaptor( $well, $type );
-  #Purpose     : Internal method to create a new Crispr::DB::TargetAdaptor
-  #Returns     : Crispr::DB::TargetAdaptor
+  #Usage       : $allele_adaptor = $self->_build_allele_adaptor();
+  #Purpose     : Internal method to create a new Crispr::DB::InjectionPoolAdaptor
+  #Returns     : Crispr::DB::InjectionPoolAdaptor
   #Parameters  : None
-  #Throws      :
-  #Comments    :
+  #Throws      : 
+  #Comments    : 
 
-sub _build_target_adaptor {
+sub _build_allele_adaptor {
     my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'target' );
+    return $self->db_connection->get_adaptor( 'allele' );
+}
+
+#_build_analysis_adaptor
+
+  #Usage       : $analysis_adaptor = $self->_build_analysis_adaptor();
+  #Purpose     : Internal method to create a new Crispr::DB::AnalysisAdaptor
+  #Returns     : Crispr::DB::AnalysisAdaptor
+  #Parameters  : None
+  #Throws      : 
+  #Comments    : 
+
+sub _build_analysis_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'analysis' );
+}
+
+#_build_cas9_adaptor
+
+  #Usage       : $crRNAs = $crRNA_adaptor->_build_cas9_adaptor();
+  #Purpose     : Internal method to create a new Crispr::DB::Cas9Adaptor
+  #Returns     : Crispr::DB::Cas9PrepAdaptor
+  #Parameters  : None
+  #Throws      : 
+  #Comments    : 
+
+sub _build_cas9_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'cas9' );
+}
+
+#_build_cas9_prep_adaptor
+
+  #Usage       : $cas9_prep_adaptor = $self->_build_cas9_prep_adaptor();
+  #Purpose     : Internal method to create a new Crispr::DB::Cas9PrepAdaptor
+  #Returns     : Crispr::DB::Cas9PrepAdaptor
+  #Parameters  : None
+  #Throws      : 
+  #Comments    : 
+
+sub _build_cas9_prep_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'cas9_prep' );
+}
+
+#_build_crispr_pair_adaptor
+
+  #Usage       : $crispr_pair_adaptor = $self->_build_crispr_pair_adaptor();
+  #Purpose     : Internal method to create a new Crispr::DB::CrisprPairAdaptor
+  #Returns     : Crispr::DB::CrisprPairAdaptor
+  #Parameters  : None
+  #Throws      : 
+  #Comments    : 
+
+sub _build_crispr_pair_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'crispr_pair' );
 }
 
 #_build_crRNA_adaptor
@@ -406,48 +625,6 @@ sub _build_guideRNA_prep_adaptor {
     return $self->db_connection->get_adaptor( 'guideRNA_prep' );
 }
 
-#_build_plate_adaptor
-
-  #Usage       : $crRNAs = $crRNA_adaptor->_build_plate_adaptor( $well, $type );
-  #Purpose     : Internal method to create a new Crispr::DB::PlateAdaptor
-  #Returns     : Crispr::DB::PlateAdaptor
-  #Parameters  : None
-  #Throws      :
-  #Comments    :
-
-sub _build_plate_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'plate' );
-}
-
-#_build_cas9_prep_adaptor
-
-  #Usage       : $cas9_prep_adaptor = $self->_build_cas9_prep_adaptor();
-  #Purpose     : Internal method to create a new Crispr::DB::Cas9PrepAdaptor
-  #Returns     : Crispr::DB::Cas9PrepAdaptor
-  #Parameters  : None
-  #Throws      : 
-  #Comments    : 
-
-sub _build_cas9_prep_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'cas9_prep' );
-}
-
-#_build_analysis_adaptor
-
-  #Usage       : $analysis_adaptor = $self->_build_analysis_adaptor();
-  #Purpose     : Internal method to create a new Crispr::DB::AnalysisAdaptor
-  #Returns     : Crispr::DB::AnalysisAdaptor
-  #Parameters  : None
-  #Throws      : 
-  #Comments    : 
-
-sub _build_analysis_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'analysis' );
-}
-
 #_build_injection_pool_adaptor
 
   #Usage       : $injection_pool_adaptor = $self->_build_injection_pool_adaptor();
@@ -462,18 +639,106 @@ sub _build_injection_pool_adaptor {
     return $self->db_connection->get_adaptor( 'injection_pool' );
 }
 
-#_build_allele_adaptor
+#_build_plate_adaptor
 
-  #Usage       : $allele_adaptor = $self->_build_allele_adaptor();
+  #Usage       : $crRNAs = $crRNA_adaptor->_build_plate_adaptor( $well, $type );
+  #Purpose     : Internal method to create a new Crispr::DB::PlateAdaptor
+  #Returns     : Crispr::DB::PlateAdaptor
+  #Parameters  : None
+  #Throws      :
+  #Comments    :
+
+sub _build_plate_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'plate' );
+}
+
+#_build_plex_adaptor
+
+  #Usage       : $plex_adaptor = $self->_build_plex_adaptor();
+  #Purpose     : Internal method to create a new Crispr::DB::PlexAdaptor
+  #Returns     : Crispr::DB::PlexAdaptor
+  #Parameters  : None
+  #Throws      : 
+  #Comments    : 
+
+sub _build_plex_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'plex' );
+}
+
+#_build_primer_adaptor
+
+  #Usage       : $crRNAs = $crRNA_adaptor->_build_primer_adaptor();
+  #Purpose     : Internal method to create a new Crispr::DB::PlateAdaptor
+  #Returns     : Crispr::DB::PlatePrepAdaptor
+  #Parameters  : None
+  #Throws      : 
+  #Comments    : 
+
+sub _build_primer_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'primer' );
+}
+
+=method _build_primer_pair_adaptor
+
+  Usage       : $primer_pair_adaptor->_build_primer_pair_adaptor;
+  Purpose     : Stores a plate in the db
+  Returns     : Crispr::Plate
+  Parameters  : Crispr::Plate
+  Throws      : If plate is not supplied
+                If supplied parameter is not a Crispr::Plate object
+  Comments    : 
+
+=cut
+
+sub _build_primer_pair_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'primer_pair' );
+}
+
+#_build_sample_adaptor
+
+  #Usage       : $sample_adaptor = $self->_build_sample_adaptor();
   #Purpose     : Internal method to create a new Crispr::DB::InjectionPoolAdaptor
   #Returns     : Crispr::DB::InjectionPoolAdaptor
   #Parameters  : None
   #Throws      : 
   #Comments    : 
 
-sub _build_allele_adaptor {
+sub _build_sample_adaptor {
     my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'allele' );
+    return $self->db_connection->get_adaptor( 'sample' );
+}
+
+#_build_sample_amplicon_adaptor
+
+  #Usage       : $sample_amplicon_adaptor = $self->_build_sample_amplicon_adaptor();
+  #Purpose     : Internal method to create a new Crispr::DB::InjectionPoolAdaptor
+  #Returns     : Crispr::DB::InjectionPoolAdaptor
+  #Parameters  : None
+  #Throws      : 
+  #Comments    : 
+
+sub _build_sample_amplicon_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'sample_amplicon' );
+}
+
+
+#_build_target_adaptor
+
+  #Usage       : $crRNAs = $crRNA_adaptor->_build_target_adaptor( $well, $type );
+  #Purpose     : Internal method to create a new Crispr::DB::TargetAdaptor
+  #Returns     : Crispr::DB::TargetAdaptor
+  #Parameters  : None
+  #Throws      :
+  #Comments    :
+
+sub _build_target_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'target' );
 }
 
 __PACKAGE__->meta->make_immutable;

@@ -31,42 +31,6 @@ my %primer_pair_cache;
 
 =cut
 
-=method plate_adaptor
-
-  Usage       : $primer_adaptor->plate_adaptor;
-  Purpose     : Getter for a plate_adaptor
-  Returns     : Crispr::DB::PlateAdaptor
-  Parameters  : None
-  Throws      : If input is given
-  Comments    : 
-
-=cut
-
-has 'plate_adaptor' => (
-    is => 'ro',
-    isa => 'Crispr::DB::PlateAdaptor',
-    lazy => 1,
-    builder => '_build_plate_adaptor',
-);
-
-=method primer_adaptor
-
-  Usage       : $primer_adaptor->primer_adaptor;
-  Purpose     : Getter for a primer_adaptor
-  Returns     : Crispr::DB::PlateAdaptor
-  Parameters  : None
-  Throws      : If input is given
-  Comments    : 
-
-=cut
-
-has 'primer_adaptor' => (
-    is => 'ro',
-    isa => 'Crispr::DB::PrimerAdaptor',
-    lazy => 1,
-    builder => '_build_primer_adaptor',
-);
-
 my $date_obj = DateTime->now();
 Readonly my $PLATE_TYPE => '96';
 
@@ -479,34 +443,6 @@ sub _make_new_primer_pair_from_db {
     );
     
     return $primer_pair;
-}
-
-#_build_plate_adaptor
-
-  #Usage       : $crRNAs = $crRNA_adaptor->_build_plate_adaptor();
-  #Purpose     : Internal method to create a new Crispr::DB::PlateAdaptor
-  #Returns     : Crispr::DB::PlatePrepAdaptor
-  #Parameters  : None
-  #Throws      : 
-  #Comments    : 
-
-sub _build_plate_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'plate' );
-}
-
-#_build_primer_adaptor
-
-  #Usage       : $crRNAs = $crRNA_adaptor->_build_primer_adaptor();
-  #Purpose     : Internal method to create a new Crispr::DB::PlateAdaptor
-  #Returns     : Crispr::DB::PlatePrepAdaptor
-  #Parameters  : None
-  #Throws      : 
-  #Comments    : 
-
-sub _build_primer_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'primer' );
 }
 
 1;

@@ -31,42 +31,6 @@ extends 'Crispr::DB::BaseAdaptor';
 
 =cut
 
-=method crRNA_adaptor
-
-  Usage       : $plate_adaptor->crRNA_adaptor;
-  Purpose     : Getter for a crRNA_adaptor
-  Returns     : Crispr::DB::crRNAAdaptor
-  Parameters  : None
-  Throws      : If input is given
-  Comments    : 
-
-=cut
-
-has 'crRNA_adaptor' => (
-	is => 'ro',
-	isa => 'Crispr::DB::crRNAAdaptor',
-	lazy => 1,
-	builder => '_build_crRNA_adaptor',
-);
-
-=method primer_pair_adaptor
-
-  Usage       : $plate_adaptor->primer_pair_adaptor;
-  Purpose     : Getter for a PrimerPairadaptor
-  Returns     : Crispr::DB::PrimerPairAdaptor
-  Parameters  : None
-  Throws      : If input is given
-  Comments    : 
-
-=cut
-
-has 'primer_pair_adaptor' => (
-	is => 'ro',
-	isa => 'Crispr::DB::PrimerPairAdaptor',
-	lazy => 1,
-	builder => '_build_primer_pair_adaptor',
-);
-
 =method store
 
   Usage       : $plate_adaptor->store;
@@ -405,40 +369,6 @@ sub _make_new_plate_from_db {
 		$plate->plate_category( $category );
 	}
     return $plate;
-}
-
-=method _build_crRNA_adaptor
-
-  Usage       : $crRNA_adaptor->_build_crRNA_adaptor;
-  Purpose     : Stores a plate in the db
-  Returns     : Crispr::Plate
-  Parameters  : Crispr::Plate
-  Throws      : If plate is not supplied
-                If supplied parameter is not a Crispr::Plate object
-  Comments    : 
-
-=cut
-
-sub _build_crRNA_adaptor {
-	my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'crRNA' );
-}
-
-=method _build_primer_pair_adaptor
-
-  Usage       : $primer_pair_adaptor->_build_primer_pair_adaptor;
-  Purpose     : Stores a plate in the db
-  Returns     : Crispr::Plate
-  Parameters  : Crispr::Plate
-  Throws      : If plate is not supplied
-                If supplied parameter is not a Crispr::Plate object
-  Comments    : 
-
-=cut
-
-sub _build_primer_pair_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'primer_pair' );
 }
 
 __PACKAGE__->meta->make_immutable;

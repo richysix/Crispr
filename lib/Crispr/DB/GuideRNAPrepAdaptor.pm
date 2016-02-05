@@ -28,42 +28,6 @@ extends 'Crispr::DB::BaseAdaptor';
 
 =cut
 
-=method crRNA_adaptor
-
-  Usage       : $self->crRNA_adaptor();
-  Purpose     : Getter for a crRNA_adaptor.
-  Returns     : Crispr::crRNAAdaptor
-  Parameters  : None
-  Throws      : 
-  Comments    : 
-
-=cut
-
-has 'crRNA_adaptor' => (
-    is => 'ro',
-    isa => 'Crispr::DB::crRNAAdaptor',
-    lazy => 1,
-    builder => '_build_crRNA_adaptor',
-);
-
-=method plate_adaptor
-
-  Usage       : $self->plate_adaptor();
-  Purpose     : Getter for a plate_adaptor.
-  Returns     : Crispr::PlateAdaptor
-  Parameters  : None
-  Throws      : 
-  Comments    : 
-
-=cut
-
-has 'plate_adaptor' => (
-    is => 'ro',
-    isa => 'Crispr::DB::PlateAdaptor',
-    lazy => 1,
-    builder => '_build_plate_adaptor',
-);
-
 =method store
 
   Usage       : $guideRNA_prep = $guideRNA_prep_adaptor->store( $guideRNA_prep );
@@ -518,34 +482,6 @@ sub delete_guideRNA_prep_from_db {
 	
 	# if guideRNA_prep has talen pairs, delete tale and talen pairs
 
-}
-
-#_build_crRNA_adaptor
-
-  #Usage       : $crRNAs = $crRNA_adaptor->_build_crRNA_adaptor( $well, $type );
-  #Purpose     : Internal method to create a new Crispr::crRNAAdaptor
-  #Returns     : Crispr::crRNAAdaptor
-  #Parameters  : None
-  #Throws      : 
-  #Comments    : 
-
-sub _build_crRNA_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'crRNA' );
-}
-
-#_build_plate_adaptor
-
-  #Usage       : $crRNAs = $crRNA_adaptor->_build_plate_adaptor( $well, $type );
-  #Purpose     : Internal method to create a new Crispr::PlateAdaptor
-  #Returns     : Crispr::PlateAdaptor
-  #Parameters  : None
-  #Throws      : 
-  #Comments    : 
-
-sub _build_plate_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'plate' );
 }
 
 =method driver

@@ -665,15 +665,6 @@ sub delete_injection_pool_from_db {
 
 =cut
 
-#_build_target_adaptor
-
-  #Usage       : $crRNAs = $crRNA_adaptor->_build_target_adaptor( $well, $type );
-  #Purpose     : Internal method to create a new Crispr::DB::TargetAdaptor
-  #Returns     : Crispr::DB::TargetAdaptor
-  #Parameters  : None
-  #Throws      : 
-  #Comments    : 
-
 __PACKAGE__->meta->make_immutable;
 1;
 

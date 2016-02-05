@@ -31,24 +31,6 @@ my %primer_cache;
 
 =cut
 
-=method plate_adaptor
-
-  Usage       : $primer_adaptor->plate_adaptor;
-  Purpose     : Getter for a plate_adaptor
-  Returns     : Crispr::DB::PlateAdaptor
-  Parameters  : None
-  Throws      : If input is given
-  Comments    : 
-
-=cut
-
-has 'plate_adaptor' => (
-    is => 'ro',
-    isa => 'Crispr::DB::PlateAdaptor',
-    lazy => 1,
-    builder => '_build_plate_adaptor',
-);
-
 =method store
 
   Usage       : $primer_adaptor->store;
@@ -348,20 +330,6 @@ sub _make_new_primer_from_db {
     );
     
     return $primer;
-}
-
-#_build_plate_adaptor
-
-  #Usage       : $crRNAs = $primer_adaptor->_build_plate_adaptor();
-  #Purpose     : Internal method to create a new Crispr::DB::PlateAdaptor
-  #Returns     : Crispr::DB::PlatePrepAdaptor
-  #Parameters  : None
-  #Throws      : 
-  #Comments    : 
-
-sub _build_plate_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'plate' );
 }
 
 =method driver

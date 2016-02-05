@@ -31,24 +31,6 @@ my %cas9_prep_cache;
 
 =cut
 
-=method cas9_adaptor
-
-  Usage       : $self->cas9_adaptor();
-  Purpose     : Getter for a cas9_adaptor.
-  Returns     : Crispr::DB::Cas9Adaptor
-  Parameters  : None
-  Throws      : 
-  Comments    : 
-
-=cut
-
-has 'cas9_adaptor' => (
-    is => 'ro',
-    isa => 'Crispr::DB::Cas9Adaptor',
-    lazy => 1,
-    builder => '_build_cas9_adaptor',
-);
-
 =method store
 
   Usage       : $cas9_prep = $cas9_prep_adaptor->store( $cas9_prep );
@@ -497,20 +479,6 @@ sub delete_cas9_prep_from_db {
     
     # if cas9_prep has talen pairs, delete tale and talen pairs
 
-}
-
-#_build_cas9_adaptor
-
-  #Usage       : $crRNAs = $crRNA_adaptor->_build_cas9_adaptor();
-  #Purpose     : Internal method to create a new Crispr::DB::Cas9Adaptor
-  #Returns     : Crispr::DB::Cas9PrepAdaptor
-  #Parameters  : None
-  #Throws      : 
-  #Comments    : 
-
-sub _build_cas9_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'cas9' );
 }
 
 =method driver

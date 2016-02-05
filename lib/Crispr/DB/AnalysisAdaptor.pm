@@ -28,60 +28,6 @@ extends 'Crispr::DB::BaseAdaptor';
 
 =cut
 
-=method plex_adaptor
-
-  Usage       : $self->plex_adaptor();
-  Purpose     : Getter for a plex_adaptor.
-  Returns     : Crispr::DB::PlexAdaptor
-  Parameters  : None
-  Throws      : 
-  Comments    : 
-
-=cut
-
-has 'plex_adaptor' => (
-    is => 'ro',
-    isa => 'Crispr::DB::PlexAdaptor',
-    lazy => 1,
-    builder => '_build_plex_adaptor',
-);
-
-=method sample_adaptor
-
-  Usage       : $self->sample_adaptor();
-  Purpose     : Getter for a sample_adaptor.
-  Returns     : Crispr::DB::SampleAdaptor
-  Parameters  : None
-  Throws      : 
-  Comments    : 
-
-=cut
-
-has 'sample_adaptor' => (
-    is => 'ro',
-    isa => 'Crispr::DB::SampleAdaptor',
-    lazy => 1,
-    builder => '_build_sample_adaptor',
-);
-
-=method sample_amplicon_adaptor
-
-  Usage       : $self->sample_amplicon_adaptor();
-  Purpose     : Getter for a sample_amplicon_adaptor.
-  Returns     : Crispr::DB::SampleAdaptor
-  Parameters  : None
-  Throws      : 
-  Comments    : 
-
-=cut
-
-has 'sample_amplicon_adaptor' => (
-    is => 'ro',
-    isa => 'Crispr::DB::SampleAmpliconAdaptor',
-    lazy => 1,
-    builder => '_build_sample_amplicon_adaptor',
-);
-
 =method store
 
   Usage       : $analysis = $analysis_adaptor->store( $analysis );
@@ -604,49 +550,6 @@ sub delete_analysis_from_db {
   Comments    : 
 
 =cut
-
-#_build_plex_adaptor
-
-  #Usage       : $plex_adaptor = $self->_build_plex_adaptor();
-  #Purpose     : Internal method to create a new Crispr::DB::PlexAdaptor
-  #Returns     : Crispr::DB::PlexAdaptor
-  #Parameters  : None
-  #Throws      : 
-  #Comments    : 
-
-sub _build_plex_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'plex' );
-}
-
-#_build_sample_adaptor
-
-  #Usage       : $sample_adaptor = $self->_build_sample_adaptor();
-  #Purpose     : Internal method to create a new Crispr::DB::InjectionPoolAdaptor
-  #Returns     : Crispr::DB::InjectionPoolAdaptor
-  #Parameters  : None
-  #Throws      : 
-  #Comments    : 
-
-sub _build_sample_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'sample' );
-}
-
-#_build_sample_amplicon_adaptor
-
-  #Usage       : $sample_amplicon_adaptor = $self->_build_sample_amplicon_adaptor();
-  #Purpose     : Internal method to create a new Crispr::DB::InjectionPoolAdaptor
-  #Returns     : Crispr::DB::InjectionPoolAdaptor
-  #Parameters  : None
-  #Throws      : 
-  #Comments    : 
-
-sub _build_sample_amplicon_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'sample_amplicon' );
-}
-
 
 __PACKAGE__->meta->make_immutable;
 1;

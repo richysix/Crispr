@@ -32,60 +32,6 @@ my %sample_cache; # Cache for Sample objects. HashRef keyed on sample_id (db_id)
 
 =cut
 
-=method analysis_adaptor
-
-  Usage       : $self->analysis_adaptor();
-  Purpose     : Getter for a analysis_adaptor.
-  Returns     : Crispr::DB::AnalysisAdaptor
-  Parameters  : None
-  Throws      :
-  Comments    :
-
-=cut
-
-has 'analysis_adaptor' => (
-    is => 'ro',
-    isa => 'Crispr::DB::AnalysisAdaptor',
-    lazy => 1,
-    builder => '_build_analysis_adaptor',
-);
-
-=method injection_pool_adaptor
-
-  Usage       : $self->injection_pool_adaptor();
-  Purpose     : Getter for a injection_pool_adaptor.
-  Returns     : Crispr::DB::InjectionPoolAdaptor
-  Parameters  : None
-  Throws      :
-  Comments    :
-
-=cut
-
-has 'injection_pool_adaptor' => (
-    is => 'ro',
-    isa => 'Crispr::DB::InjectionPoolAdaptor',
-    lazy => 1,
-    builder => '_build_injection_pool_adaptor',
-);
-
-=method allele_adaptor
-
-  Usage       : $self->allele_adaptor();
-  Purpose     : Getter for a allele_adaptor.
-  Returns     : Crispr::DB::AlleleAdaptor
-  Parameters  : None
-  Throws      :
-  Comments    :
-
-=cut
-
-has 'allele_adaptor' => (
-    is => 'ro',
-    isa => 'Crispr::DB::AlleleAdaptor',
-    lazy => 1,
-    builder => '_build_allele_adaptor',
-);
-
 =method store
 
   Usage       : $sample = $sample_adaptor->store( $sample );

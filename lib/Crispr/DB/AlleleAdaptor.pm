@@ -29,24 +29,6 @@ my %allele_cache;
 
 =cut
 
-=method crRNA_adaptor
-
-  Usage       : $self->crRNA_adaptor();
-  Purpose     : Getter for a crRNA_adaptor.
-  Returns     : Crispr::DB::PlexAdaptor
-  Parameters  : None
-  Throws      :
-  Comments    :
-
-=cut
-
-has 'crRNA_adaptor' => (
-    is => 'ro',
-    isa => 'Crispr::DB::crRNAAdaptor',
-    lazy => 1,
-    builder => '_build_crRNA_adaptor',
-);
-
 =method store
 
   Usage       : $allele = $allele_adaptor->store( $allele );

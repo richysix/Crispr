@@ -38,42 +38,6 @@ my %crRNA_cache; # Cache for crRNA objects. HashRef keyed on crRNA_id
 
 =cut
 
-=method target_adaptor
-
-  Usage       : $self->target_adaptor();
-  Purpose     : Getter for a target_adaptor.
-  Returns     : Str
-  Parameters  : None
-  Throws      :
-  Comments    :
-
-=cut
-
-has 'target_adaptor' => (
-    is => 'ro',
-    isa => 'Crispr::DB::TargetAdaptor',
-    lazy => 1,
-    builder => '_build_target_adaptor',
-);
-
-=method plate_adaptor
-
-  Usage       : $self->plate_adaptor();
-  Purpose     : Getter for a plate_adaptor.
-  Returns     : Str
-  Parameters  : None
-  Throws      :
-  Comments    :
-
-=cut
-
-has 'plate_adaptor' => (
-    is => 'ro',
-    isa => 'Crispr::DB::PlateAdaptor',
-    lazy => 1,
-    builder => '_build_plate_adaptor',
-);
-
 =method store
 
   Usage       : $crRNA = $crRNA_adaptor->store( $crRNA );

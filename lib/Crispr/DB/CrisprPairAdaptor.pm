@@ -33,24 +33,6 @@ extends 'Crispr::DB::BaseAdaptor';
 
 =cut
 
-=method crRNA_adaptor
-
-  Usage       : $self->crRNA_adaptor();
-  Purpose     : Getter for a crRNA_adaptor.
-  Returns     : Str
-  Parameters  : None
-  Throws      : 
-  Comments    : 
-
-=cut
-
-has 'crRNA_adaptor' => (
-	is => 'ro',
-	isa => 'Crispr::DB::crRNAAdaptor',
-	lazy => 1,
-	builder => '_build_crRNA_adaptor',
-);
-
 =method store_crispr_pair
 
   Usage       : $crispr_pair_adaptor->store_crispr_pair( $crispr_pair );
@@ -173,20 +155,6 @@ sub store_crispr_pairs {
             
         } );
     }
-}
-
-#_build_crRNA_adaptor
-
-  #Usage       : $crRNAs = $crRNA_adaptor->_build_crRNA_adaptor( $well, $type );
-  #Purpose     : Internal method to create a new Crispr::DB::TargetAdaptor
-  #Returns     : Crispr::DB::TargetAdaptor
-  #Parameters  : None
-  #Throws      : 
-  #Comments    : 
-
-sub _build_crRNA_adaptor {
-    my ( $self, ) = @_;
-    return $self->db_connection->get_adaptor( 'crRNA' );
 }
 
 
