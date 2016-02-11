@@ -573,6 +573,29 @@ sub check_plasmid_backbone_exists {
     return $backbone_id;
 }
 
+=method update_status
+
+  Usage       : $ok = $crRNA_adaptor->update_status( $crRNA );
+  Purpose     : update the status column in the crRNA table based on the status of the supplied object
+  Returns     : New status
+  Parameters  : Crispr::crRNA object
+  Throws      : If crRNA does not exist in the db
+                If argument is not a Crispr::crRNA object
+  Comments    : None
+
+=cut
+
+sub update_status {
+    my ( $self, $crRNA ) = @_;
+    my $dbh = $self->connection->dbh();
+    my $status_id = $self->_fetch_status_id_from_status( $crRNA->status );
+    my $date = DateTime->now()->ymd;
+    my $update_st = join(q{ }, 'UPDATE TABLE crRNA set status_id = ?, status_changed = ?',
+                         'WHERE crRNA_id = ?', );
+    my $sth = $dbh->prepare($update_st);
+    $sth->execute( $status_id, $date, $crRNA->crRNA_id );
+}
+
 =method fetch_by_id
 
     Usage       : $crRNAs = $crRNA_adaptor->fetch_by_id( $crRNA_id );
