@@ -35,7 +35,7 @@ close $tmp_fh;
 my $annotation_file = File::Spec->catfile( 't', 'data', 'mock_annotation.gff' );
 my $genome_file = File::Spec->catfile( 't', 'data', 'mock_genome.fa' );
 
-my $score_crispr_cmd = join(q{ }, 'perl scripts/score_crisprs_from_id.pl',
+my $score_crispr_cmd = join(q{ }, 'perl -I lib scripts/score_crisprs_from_id.pl',
     '--singles', '--species zebrafish', '--num_five_prime_Gs 0',
     '--file_base tmp', '--target_genome', $genome_file,
     "--annotation_file", $annotation_file, 'crispr.tmp',
