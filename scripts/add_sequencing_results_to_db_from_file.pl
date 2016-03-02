@@ -29,12 +29,14 @@ Readonly my $PC_THRESHOLD => defined $options{pc_threshold} ?
 my $db_connection = Crispr::DB::DBConnection->new( $options{crispr_db}, );
 my $sample_adaptor = $db_connection->get_adaptor( 'sample' );
 my $allele_adaptor = $db_connection->get_adaptor( 'allele' );
+my $crRNA_adaptor = $db_connection->get_adaptor( 'crRNA' );
 
 # Set up Sample and Allele Cache
 my %allele_cache; #HASH: KEYS {SAMPLE_NAME}{VARIANT}
 my %allele_number_for; #HASH keyed on variant (CHR:POS:REF:ALT)
 my %sample_cache; #HASH keyed on sample_name
 my %alleles_for; #HASH keyed on {SAMPLE_NAME}{CRISPR} = [ variants ]
+my %crisprs; #HASH keyed on db_id {db_id} = Crispr::crRNA
 
 # Read in variants
 while(<>){
@@ -70,13 +72,13 @@ while(<>){
     foreach my $guideRNA_prep ( @{ $sample->injection_pool->guideRNAs() } ){
         if( $guideRNA_prep->crRNA->name eq $crRNA_name ){
             $crispr = $guideRNA_prep->crRNA();
+            $crisprs{ $crispr->crRNA_id } = $crispr;
         }
     }
     
     my $variant = join(":", $chr, $pos, $ref, $alt, );
     my $allele;
     if( $variant ne 'NA:NA:NA:NA' ){
-        # SHOULD ACTUALLY CHECK DB TO SEE IF THIS VARIANT ALREADY EXISTS IN THE DB.
         # check allele doesn't already exist
         my $allele_from_db;
         eval{
@@ -195,6 +197,11 @@ foreach my $sample_name ( keys %alleles_for ){
 
     # fill in sequencing_results table
     $sample_adaptor->store_sequencing_results( $sample, \%sequencing_results );
+}
+
+# update crispr and target status based on sequencing results
+foreach my $crispr ( values %crisprs ){
+    $crRNA_adaptor->update_status( $crispr );
 }
 
 # get_and_check_options
