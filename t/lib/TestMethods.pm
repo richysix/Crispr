@@ -64,20 +64,29 @@ sub check_for_test_genome {
         :                                       'mock_genome.fa';
     my $genome_file_path = File::Spec->catfile( 't/data', $genome_file );
     
+my $test_genome = <<END_GENOME;
+>test_chr1
+AAATGATCGGGATCGCTATCTGGCATTGGCTCCCCCATACTCGATTCCTGCTGGGACTGGGAATCAAACCTGCAATCTTTCGACTACAAGTTCAACTCCC
+AACTGATCGGGATCGCTATCTGGCATTGGCTCCCCCATACTCGATTCCTGCTGGGACTGGGAATCAAACCTGCAATCTTTCGACTACAAGTTCAACTCCC
+AAATGATCGCGATCGCTATCTGGCATTGGCTCCCCCATACTCGATTCCTGCTGGGACTGGGAATCAAACCTGCAATCTTTCGACTACAAGTTCAACTCCC
+>test_chr2
+TGCTTATTAATTTCCTCATGATTTTTGGCTCATATTGCATGATCAAAGGCTGCAGTGCAGAGGTTAGTCTTCATCTTCTGACAGACCTGGAGGATATGGA
+AAATGATCGCGATCGATATCTGGTTTGGCTCATATTGCATGTTTAGCATTTATAGTTAACATGTTAGTCTTCATCTTCTGACAGACCTGGAGGATATGGA
+AAATGATCGCGATCGATTTCTGGTTTGGCTCATATTGCATGTTTAGCATTTATAGTTAACATGTTAGTCTTCATCTTCTGACAGACCTGGAGGATATGGA
+AAATGATCGCGATCGATTACTGGTTTGGCTCATATTGCATGTTTAGCATTTATAGTTAACATGTTAGTCTTCATCTTCTGACAGACCTGGAGGATATGGA
+>test_chr3
+CTGAAGCACATATAGCCGGTCTACATCAGTTCTACTCCAAACACCTTGACAACTGATCGGGATCGCTATCTAGCACACTATTCTCACAGGTAAAGGCTGA
+AACTGACCGGGATCGCTATCTGGCATCAGTTCTACTCCAAACACCTTGACTTCCCTGACCATCAGGCCCTGCTCACACTATTCTCACAGGTAAAGGCTGA
+AACTGACCGGGCTCGCTATCTGGCATCAGTTCTACTCCAAACACCTTGACTTCCCTGACCATCAGGCCCTGCTCACACTATTCTCACAGGTAAAGGCTGA
+AACTGACCGGGCTAGATATCTGGCATCAGTTCTACTCCAAACACCTTGACTTCCCTGACCATCAGGCCCTGCTCACACTATTCTCACAGGTAAAGGCTGA
+AACTGCCAAGCCAGATATCGATCGCGATGTTCTACTCCAAACACCTTGACTTCCCTGACCATCAGGCCCTGCTCACACTATTCTCACAGGTAAAGGCTGA
+END_GENOME
+
     #check whether file exists
     if( !-e $genome_file_path ){
-        # create file from Ensembl
-        my $slice = $self->slice_adaptor->fetch_by_region( 'toplevel', '3',  );
-        # need to make a new Bio::Seq object because need to change display_id to 3
-        my $chr3 = Bio::Seq->new(
-            -display_id => '3',
-            -seq => $slice->seq,
-        );
-        
-        # write to fasta file
-        my $out = Bio::SeqIO->new(-format=>'Fasta',
-                                  -file => ">$genome_file_path", );
-        $out->write_seq($chr3);
+        open my $genome_fh, '>', $genome_file_path;
+        print $test_genome;
+        close $genome_fh;
     }
     # if index exists, remove it to make sure.
     my $genome_index_path = $genome_file_path . '.index';
@@ -105,81 +114,29 @@ sub check_for_annotation {
         :                                               'mock_annotation.gff';
     my $annotation_file_path = File::Spec->catfile( 't/data', $annotation_file );
     
+my $test_annotation = <<END_ANNOTATION;
+test_chr1	test	exon	101	150	.	+	.	exon_id=gene1_ex1;gene_id=gene1
+test_chr1	test	intron	151	200	.	+	.	gene_id=gene1;transcript_id=trans1;intron_id=trans1_in1
+test_chr1	test	exon	201	250	.	+	.	exon_id=gene1_ex2;gene_id=gene1
+test_chr2	test	exon	21	80	.	+	.	exon_id=gene2_ex1;gene_id=gene2
+test_chr2	test	intron	81	140	.	+	.	gene_id=gene2;transcript_id=trans2;intron_id=trans2_in1
+test_chr2	test	exon	141	180	.	+	.	exon_id=gene2_ex2;gene_id=gene2
+test_chr2	test	intron	181	240	.	+	.	gene_id=gene2;transcript_id=trans2;intron_id=trans2_in2
+test_chr2	test	exon	241	300	.	+	.	exon_id=gene2_ex2;gene_id=gene2
+test_chr3	test	exon	21	80	.	+	.	exon_id=gene3_ex1;gene_id=gene3
+test_chr3	test	intron	81	140	.	+	.	gene_id=gene3;transcript_id=trans3;intron_id=trans3_in1
+test_chr3	test	exon	141	180	.	+	.	exon_id=gene3_ex2;gene_id=gene3
+test_chr3	test	exon	241	300	.	+	.	exon_id=gene4_ex1;gene_id=gene4
+test_chr3	test	intron	301	330	.	+	.	gene_id=gene4;transcript_id=trans4;intron_id=trans4_in1
+test_chr3	test	exon	331	360	.	+	.	exon_id=gene4_ex2;gene_id=gene4
+test_chr3	test	intron	361	400	.	+	.	gene_id=gene4;transcript_id=trans4;intron_id=trans4_in2
+test_chr3	test	exon	401	420	.	+	.	exon_id=gene4_ex3;gene_id=gene4
+END_ANNOTATION
+
     if( !-e $annotation_file_path ){
-        my $slice = $self->slice_adaptor->fetch_by_region( 'toplevel', '3',  );
-        # output annotation to gff
-        my %exon_seen;
-        my %intron_seen;
-        
-        # open output file
-        open my $gff_fh, '>', $annotation_file_path;
-        
-        #get all exons
-        my $genes = $slice->get_all_Genes();
-        
-        foreach my $gene ( @{$genes} ){
-            next if( $gene->biotype =~ m/pseudogene/xms );
-            my $gene_id = $gene->stable_id();
-            my $transcripts = $gene->get_all_Transcripts();
-            foreach my $transcript ( @{$transcripts} ){
-                my $exons = $transcript->get_all_Exons();
-                foreach my $exon ( @{$exons} ){
-                    my $exon_id = $exon->stable_id;
-                    if( exists $exon_seen{$exon_id} ){
-                        next;
-                    }
-                    else{
-                        $exon_seen{$exon_id} = 1;
-                    }
-                    my $name = $exon->seq_region_name();
-                    my $start = $exon->seq_region_start();
-                    my $end = $exon->seq_region_end();
-                    my $strand = $exon->seq_region_strand();
-                    $strand = $strand eq '1'    ?       '+'
-                        :                               '-';
-                    print {$gff_fh} join("\t", $name, 'Ensembl', 'exon',
-                                        $start, $end, '.', $strand,'.',
-                                        join(';',
-                                            join('=', 'exon_id', $exon_id),
-                                            join('=', 'gene_id', $gene_id),
-                                        ), ), "\n";
-                }
-                
-                my $introns = $transcript->get_all_Introns();
-                if( defined $introns){
-                    my $transcript_id = $transcript->stable_id();
-                    foreach my $intron ( @{$introns} ){
-                        my $name = $intron->seq_region_name();
-                        my $start = $intron->seq_region_start();
-                        my $end = $intron->seq_region_end();
-                        #my $intron_length = $end - $start + 1;
-                        #
-                        #if ( $count == 1 ){
-                        #    $total_bases += $intron_length;
-                        #    next INTRON;
-                        #}
-                        
-                        my $prev_exon = $intron->prev_Exon()->stable_id();
-                        my $next_exon = $intron->next_Exon()->stable_id();
-                        my $intron_id = $prev_exon . '-' . $next_exon;
-                        
-                        my $strand = $intron->seq_region_strand();
-                        $strand = $strand eq '1'    ?       '+'
-                            :                               '-';
-                        
-                        print {$gff_fh}
-                            join("\t", $name, 'get_introns', 'intron',
-                                $start, $end, '.', $strand, '.',
-                                join(";",
-                                    join("=", 'gene_id', $gene_id,),
-                                    join("=", 'transcript_id', $transcript_id ),
-                                    join("=", 'intron_id', $intron_id, ),
-                                    ),
-                                ), "\n";
-                    }            
-                }
-            }
-        }
+        open my $annotation_fh, '>', $annotation_file_path;
+        print $test_annotation;
+        close $annotation_fh;
     }
 }
 
