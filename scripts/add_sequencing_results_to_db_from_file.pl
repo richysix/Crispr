@@ -24,6 +24,8 @@ Readonly my $READS_THRESHOLD => defined $options{reads_threshold} ?
     $options{reads_threshold}: 50;
 Readonly my $PC_THRESHOLD => defined $options{pc_threshold} ?
     $options{pc_threshold} : 5;
+Readonly my $SCREENING_THRESHOLD => defined $options{screening_threshold} ?
+    $options{screening_threshold} : 3;
 
 # connect to db
 my $db_connection = Crispr::DB::DBConnection->new( $options{crispr_db}, );
@@ -184,6 +186,7 @@ foreach my $sample_name ( keys %alleles_for ){
         :   $sequencing_results{ $crRNA_id }{'total_percentage'} < $PC_THRESHOLD ? 1
         :   0;
         $sequencing_results{ $crRNA_id }{'fail'} = $fail;
+        
     }
     if( $options{debug} ){
         warn "SAMPLE: \n", Dumper( $sample );
@@ -220,6 +223,7 @@ sub get_and_check_options {
         'allele_number=i',
         'reads_threshold=i',
         'pc_threshold=f',
+        'screening_threshold=i',
         'help',
         'man',
         'debug+',
@@ -259,6 +263,7 @@ Script to take a sequencing results file and add the information to an SQL datab
         --allele_number                     next unused sa allele number
         --reads_threshold                   number of reads a sample must have to pass
         --pc_threshold                      total percentage of indel reads for a sample to pass
+        --screening_threshold               number of samples that need to pass
         --help                              print this help message
         --man                               print the manual page
         --debug                             print debugging information
@@ -341,6 +346,10 @@ At the moment MySQL is assumed as the driver for this.
 
 =over
 
+=item B<--allele_number>
+
+The next unused sa allele number
+
 =item B<--reads_threshold>
 
 number of reads a sample must have covering a crispr location to pass
@@ -349,6 +358,12 @@ default: 50
 =item B<--pc_threshold>
 
 total percentage of indel reads for a given crispr for a sample to pass
+default: 5%
+
+=item B<screening_threshold>
+
+Number of samples that need to pass for the crispr to be considered a pass
+default: 3 samples
 
 =item B<--debug>
 
