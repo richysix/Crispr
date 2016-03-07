@@ -16,6 +16,8 @@ use Getopt::Long;
 use List::MoreUtils qw( any );
 use Readonly;
 use English qw( -no_match_vars );
+use DateTime;
+my $date = DateTime->now()->ymd;
 
 my $test_data = File::Spec->catfile( 't', 'data', 'test_targets_plus_crRNAs_plus_coding_scores.txt' );
 
@@ -32,7 +34,7 @@ my $transcript_count = qx/$cmd/;
 chomp $transcript_count;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 21 + 2 + $count_output * 13 + 1 + $transcript_count + 2 + 13 + 1 + 15 + 9 + 9 + 9 + 9 + 9 + 19 + 11 + 10;
+Readonly my $TESTS_IN_COMMON => 1 + 23 + 2 + $count_output * 13 + 1 + $transcript_count + 2 + 13 + 1 + 15 + 9 + 9 + 9 + 9 + 9 + 19 + 11 + 15 + 10;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
@@ -82,13 +84,13 @@ foreach my $db_connection ( @{$db_connections} ){
     # 1 test
     isa_ok( $crRNA_adaptor, 'Crispr::DB::crRNAAdaptor', "$driver: check object class is ok" );
     
-    # check method calls 21 tests
+    # check method calls 23 tests
     my @methods = qw(
         target_adaptor store store_restriction_enzyme_info store_coding_scores store_off_target_info
-        store_expression_construct_info store_construction_oligos fetch_by_id fetch_by_ids fetch_all_by_name
-        fetch_by_name_and_target fetch_by_names_and_targets fetch_all_by_target fetch_all_by_targets fetch_by_plate_num_and_well
-        fetch_all_by_primer_pair fetch_all_by_status _fetch _make_new_crRNA_from_db delete_crRNA_from_db
-        _build_target_adaptor
+        store_expression_construct_info store_construction_oligos check_plasmid_backbone_exists update_status fetch_by_id
+        fetch_by_ids fetch_all_by_name fetch_by_name_and_target fetch_by_names_and_targets fetch_all_by_target
+        fetch_all_by_targets fetch_by_plate_num_and_well fetch_all_by_primer_pair fetch_all_by_status _fetch
+        _make_new_crRNA_from_db delete_crRNA_from_db _build_target_adaptor
     );
     
     foreach my $method ( @methods ) {
@@ -505,7 +507,7 @@ foreach my $db_connection ( @{$db_connections} ){
     ok($crRNAs_tmp = $crRNA_adaptor->fetch_all_by_target( $mock_target, ), "$driver: test fetch_all_by_target method" );
     check_attributes( $crRNAs_tmp->[0], $mock_crRNA1, $driver, 'fetch_all_by_target' );
     
-    # test fetch_by_plate_num_and_well - 21 tests
+    # test fetch_by_plate_num_and_well - 19 tests
     ok($crRNAs_tmp = $crRNA_adaptor->fetch_by_plate_num_and_well( 1, ), "$driver: test fetch_by_plate_num_and_well method" );
     is( scalar @{$crRNAs_tmp}, 14, "$driver: fetch_by_plate_num_and_well - check number returned" );
     check_attributes( $crRNAs_tmp->[13], $mock_crRNA1, $driver, 'fetch_by_plate_num_and_well' );
@@ -518,6 +520,36 @@ foreach my $db_connection ( @{$db_connections} ){
     is( scalar @{$crRNAs_tmp}, 13, "$driver: fetch_all_by_status method - check number returned" );
     ok($crRNAs_tmp = $crRNA_adaptor->fetch_all_by_status( 'INJECTED', ), "$driver: test fetch_all_by_status method" );
     check_attributes( $crRNAs_tmp->[0], $mock_crRNA1, $driver, 'fetch_all_by_status' );
+    
+    # test update status - 15 tests
+    throws_ok{ $crRNA_adaptor->update_status() }
+        qr/A crRNA object must be supplied/,
+        "$driver: check update_status throws on no input";
+    throws_ok{ $crRNA_adaptor->update_status( $mock_target ) }
+        qr/The supplied arguments must be a Crispr::crRNA/,
+        "$driver: check update_status throws on not Crispr::crRNA object";
+    
+    # change status of object
+    $mock_crRNA1->mock( 'status', sub { return 'PASSED_EMBRYO_SCREENING' } );
+    ok( $crRNA_adaptor->update_status( $mock_crRNA1 ), "$driver: test update_status" );
+    row_ok(
+        sql => "SELECT * FROM crRNA WHERE crRNA_id = 100",
+        tests => {
+            'eq' => {
+                status_changed => $date,
+            },
+            '==' => {
+                status_id => 7,
+            },
+        },
+        label => "$driver: status changed in db",
+    );
+    
+    ok($crRNAs_tmp = $crRNA_adaptor->fetch_all_by_status( 'INJECTED', ), "$driver: check there are no longer crRNAs with INJECTED status" );
+    is( scalar @{$crRNAs_tmp}, 0, "$driver: check there are no longer crRNAs with INJECTED status 2" );
+    ok($crRNAs_tmp = $crRNA_adaptor->fetch_all_by_status( 'PASSED_EMBRYO_SCREENING', ), "$driver: check status changed successfully" );
+    check_attributes( $crRNAs_tmp->[0], $mock_crRNA1, $driver, "$driver: check status changed successfully" );
+    
 
     # make mock primer and primer pair objects
     my $mock_left_primer = Test::MockObject->new();

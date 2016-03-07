@@ -588,9 +588,30 @@ sub check_plasmid_backbone_exists {
 sub update_status {
     my ( $self, $crRNA ) = @_;
     my $dbh = $self->connection->dbh();
+    
+    # check object is defined and is a crRNA
+    if( !$crRNA ){
+        confess "A crRNA object must be supplied in order to update it's status!\n";
+    }
+    else{
+        if( !ref $crRNA || !$crRNA->isa('Crispr::crRNA') ){
+            confess "The supplied arguments must be a Crispr::crRNA object, not a ",
+                ref $crRNA || 'String', "\n";
+        }
+    }
+
+    # need to check that the crRNA exists in the db
+    if( !$crRNA->crRNA_id ){
+        confess "Supplied Crispr::crRNA does not have a database id.\n";
+    }
+    my $check_statement = 'select count(*) from crRNA where crRNA_id = ?;';
+    if( !$self->check_entry_exists_in_db( $check_statement, [ $crRNA->crRNA_id ] ) ){
+        confess "crRNA, ", $crRNA->name, "does not exists in the database\n";
+    }
+
     my $status_id = $self->_fetch_status_id_from_status( $crRNA->status );
     my $date = DateTime->now()->ymd;
-    my $update_st = join(q{ }, 'UPDATE TABLE crRNA set status_id = ?, status_changed = ?',
+    my $update_st = join(q{ }, 'UPDATE crRNA set status_id = ?, status_changed = ?',
                          'WHERE crRNA_id = ?', );
     my $sth = $dbh->prepare($update_st);
     $sth->execute( $status_id, $date, $crRNA->crRNA_id );
