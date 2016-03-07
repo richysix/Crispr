@@ -153,11 +153,11 @@ while(<>){
 
     my @well_ids;
     if( defined $args{sample_wells} ){
-        @well_ids = $sample_plate->parse_wells( $args{sample_wells} );
+        @well_ids = parse_wells( $args{sample_wells}, $sample_plate );
     }
     my $num_samples = @well_ids ? scalar @well_ids : $args{num_samples};
 
-    my @miseq_well_ids = $miseq_plate->parse_wells( $args{miseq_wells} );
+    my @miseq_well_ids = parse_wells( $args{miseq_wells}, $miseq_plate );
     my @barcodes;
     if( $args{barcodes} ){
         @barcodes = parse_barcodes( $args{barcodes} );
@@ -186,7 +186,7 @@ while(<>){
             }
             my $primer_pair =
                 $primer_pair_adaptor->fetch_by_plate_name_and_well(
-                                        $plate_name, $well_id );
+                                        $plate_name, $well_id )->[0];
             if( defined $primer_pair ){
                 push @primer_pairs, $primer_pair;
                 $primer_pair_cache{$amplicon_info} = $primer_pair;
