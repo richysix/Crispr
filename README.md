@@ -677,7 +677,7 @@ sequencing_results, allele, allele_to_crispr, sample_allele and kasp hold the re
 of the analysis including genotyping assays.
 
 ##### sequencing_results
-| sample_id | crRNA_id | fail | num_indels | total_percentage_of_reads | percentage_major_variant | total_reads |
+| sample_id | crRNA_id | pass | num_indels | total_percentage_of_reads | percentage_major_variant | total_reads |
 |-----------|----------|------|------------|---------------------------|--------------------------|-------------|
 | 1 | 1 | 0 | 5 | 0.2456 | 0.0853 | 23753 |
 

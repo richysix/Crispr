@@ -480,13 +480,13 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_sample->mock('total_reads', sub{ return 10000 });
     my $seq_results = {
         1 => {
-            fail => 0,
+            pass => 1,
             num_indels => 5,
             total_percentage => 21,
             percentage_major_variant => 12,
         },
         2 => {
-            fail => 1,
+            pass => 0,
             num_indels => 2,
             total_percentage => 4.3,
             percentage_major_variant => 3.1,
@@ -502,15 +502,15 @@ foreach my $db_connection ( @{$db_connections} ){
         label => "$driver: sequencing_results for sample 3",
     );
     my @expected_results = (
-        [ 3, 1, 0, 5, 21.0, 12.0, 10000 ],
-        [ 3, 2, 1, 2, 4.3, 3.1, 10000 ],
+        [ 3, 1, 1, 5, 21.0, 12.0, 10000 ],
+        [ 3, 2, 0, 2, 4.3, 3.1, 10000 ],
     );
     my $s_id = 3;
     foreach my $row ( @rows ){
         my $ex = shift @expected_results;
         is( $row->{sample_id}, $ex->[0], "$driver: store_sequencing_results check sample_id - $s_id" );
         is( $row->{crRNA_id}, $ex->[1], "$driver: store_sequencing_results check crRNA_id - $s_id" );
-        is( $row->{fail}, $ex->[2], "$driver: store_sequencing_results check fail - $s_id" );
+        is( $row->{pass}, $ex->[2], "$driver: store_sequencing_results check pass - $s_id" );
         is( $row->{num_indels}, $ex->[3], "$driver: store_sequencing_results check num_indels - $s_id" );
         is( abs($row->{total_percentage_of_reads} - $ex->[4]) < 0.001, 1, "$driver: store_sequencing_results check total_percentage_of_reads - $s_id" );
         is( abs($row->{percentage_major_variant} - $ex->[5]) < 0.001, 1, "$driver: store_sequencing_results check percentage_major_variant - $s_id" );

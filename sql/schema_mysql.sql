@@ -285,7 +285,7 @@ CREATE INDEX `analysis_analysis_id` ON analysis (`analysis_id`);
 CREATE TABLE sequencing_results (
     sample_id INT UNSIGNED NOT NULL,
     crRNA_id INT UNSIGNED NOT NULL,
-    fail BOOLEAN NOT NULL,
+    pass BOOLEAN NOT NULL,
     num_indels INT UNSIGNED,
     total_percentage_of_reads DECIMAL(4,1),
     percentage_major_variant DECIMAL(4,1),

@@ -235,7 +235,7 @@ sub store_alleles_for_sample {
   Returns     : 1 on Success
   Parameters  : sample => Crispr::DB::Sample object
                 sequencing_results => HashRef {
-                                            fail => 0/1,
+                                            pass => 0/1,
                                             num_indels => Int,
                                             total_percentage => Num,
                                             percentage_major_variant => Num
@@ -257,7 +257,7 @@ sub store_sequencing_results {
             my $results = $sequencing_results->{$crRNA_id};
             $sth->execute(
                 $sample->db_id, $crRNA_id,
-                $results->{'fail'},
+                $results->{'pass'},
                 $results->{'num_indels'},
                 $results->{'total_percentage'},
                 $results->{'percentage_major_variant'},

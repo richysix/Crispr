@@ -182,10 +182,10 @@ foreach my $sample_name ( keys %alleles_for ){
             }
         }
         
-        my $fail = $sample->total_reads < $READS_THRESHOLD ? 1
-        :   $sequencing_results{ $crRNA_id }{'total_percentage'} < $PC_THRESHOLD ? 1
+        my $pass = $sample->total_reads >= $READS_THRESHOLD ? 1
+        :   $sequencing_results{ $crRNA_id }{'total_percentage'} >= $PC_THRESHOLD ? 1
         :   0;
-        $sequencing_results{ $crRNA_id }{'fail'} = $fail;
+        $sequencing_results{ $crRNA_id }{'pass'} = $pass;
         
     }
     if( $options{debug} ){
