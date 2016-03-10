@@ -573,6 +573,51 @@ sub check_plasmid_backbone_exists {
     return $backbone_id;
 }
 
+
+=method aggregate_sequencing_results
+
+  Usage       : $ok = $crRNA_adaptor->aggregate_sequencing_results( $crRNA );
+  Purpose     : return the sequencing results for a list of crispr ids
+  Returns     : HASHREF
+  Parameters  : ARRAYREF of Crispr::crRNA objects
+  Throws      : If crRNA does not exist in the db
+                If argument is not a Crispr::crRNA object
+  Comments    : None
+
+=cut
+
+sub aggregate_sequencing_results {
+    my ( $self, $crRNAs, ) = @_;
+    my $dbh = $self->connection->dbh();
+    
+    my $sql = <<END_ST;
+SELECT select crRNA_id, injection_id, type, SUM(pass) as num_passes
+from sample s, sequencing_results seq where s.sample_id = seq.sample_id
+END_ST
+
+    my $where_clause = 'and crRNA_id IN (' . join(q{,}, ('?') x scalar @{$crRNAs} ) . ') GROUP BY crRNA_id';
+    $sql .= $where_clause;
+    warn "$sql\n";
+    
+    my $where_parameters = [ map { $_->crRNA_id } @{$crRNAs} ];
+    
+    my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
+    $sth->execute();
+
+    my ( $crRNA_id, $injection_id, $type, $num_passes, );
+
+    $sth->bind_columns( \( $crRNA_id, $injection_id, $type, $num_passes, ) );
+    
+    my %results = ();
+    while ( $sth->fetch ) {
+        $results{ $crRNA_id } = {
+            $type => $num_passes,
+        },
+    }
+    
+    return( \%results );
+}
+
 =method update_status
 
   Usage       : $ok = $crRNA_adaptor->update_status( $crRNA );
@@ -586,7 +631,7 @@ sub check_plasmid_backbone_exists {
 =cut
 
 sub update_status {
-    my ( $self, $crRNA ) = @_;
+    my ( $self, $crRNA, ) = @_;
     my $dbh = $self->connection->dbh();
     
     # check object is defined and is a crRNA

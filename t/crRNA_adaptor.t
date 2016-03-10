@@ -629,6 +629,63 @@ foreach my $db_connection ( @{$db_connections} ){
     ok( my $crRNAs_from_db = $crRNA_adaptor->fetch_all_by_primer_pair( $mock_primer_pair ), "$driver: fetch_all_by_primer_pair" );
     check_attributes( $crRNAs_from_db->[0], $mock_crRNA1, $driver, 'fetch_all_by_primer_pair' );
     
+    # check aggregate_sequencing_results
+    # add an injection pool directly into the database
+    my $inj_pool_st = 'insert into injection values(?,?,?,?,?,?,?,?)'
+    
+CREATE TABLE injection (
+    injection_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    injection_name VARCHAR(30) NOT NULL,
+    cas9_prep_id INT UNSIGNED NOT NULL,
+    cas9_concentration DECIMAL(5,1) NOT NULL,
+    date DATE NOT NULL,
+    line_injected VARCHAR(10) NOT NULL,
+    line_raised VARCHAR(10),
+    sorted_by VARCHAR(40),
+    CONSTRAINT `injection_injection_name` UNIQUE ( `injection_name` ),
+    FOREIGN KEY (cas9_prep_id) REFERENCES cas9_prep(cas9_prep_id)
+) ENGINE = InnoDB;
+
+CREATE TABLE injection_pool (
+    injection_id INT UNSIGNED NOT NULL,
+    crRNA_id INT UNSIGNED NOT NULL,
+    guideRNA_prep_id INT UNSIGNED NOT NULL,
+    guideRNA_concentration INT UNSIGNED NOT NULL,
+    CONSTRAINT `injection_pool_injection_id_guideRNA_prep_id` PRIMARY KEY ( `injection_id`, `guideRNA_prep_id` ),
+    FOREIGN KEY (injection_id) REFERENCES injection(injection_id),
+    FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id),
+    FOREIGN KEY (guideRNA_prep_id) REFERENCES guideRNA_prep(guideRNA_prep_id)
+) ENGINE = InnoDB;
+
+CREATE TABLE plex (
+    plex_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    plex_name VARCHAR(10) NOT NULL,
+    run_id INT UNSIGNED NOT NULL,
+    analysis_started DATE,
+    analysis_finished DATE,
+    CONSTRAINT `plex_plex_name` UNIQUE ( `plex_name` )
+) ENGINE = InnoDB;
+
+CREATE TABLE sample (
+    sample_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    sample_name VARCHAR(20) NOT NULL,
+    sample_number INT UNSIGNED NOT NULL,
+    injection_id INT UNSIGNED NOT NULL,
+    generation ENUM('G0', 'F1', 'F2') NOT NULL,
+    type ENUM('sperm', 'embryo', 'finclip', 'earclip', 'blastocyst' ) NOT NULL,
+    species VARCHAR(50) NOT NULL,
+    well_id CHAR(3),
+    cryo_box VARCHAR(30),
+    FOREIGN KEY (injection_id) REFERENCES injection(injection_id)
+) ENGINE = InnoDB;
+CREATE UNIQUE INDEX `sample_name` ON sample (`sample_name`);
+    # add some samples
+    my @seq_results = (
+        [ 100, 1, 1, 5, 21.0, 12.0, 10000 ],
+        [ 100, 2, 0, 2, 4.3, 3.1, 10000 ],
+    );
+
+    
     # destroy database
     $db_connection->destroy();
 }
