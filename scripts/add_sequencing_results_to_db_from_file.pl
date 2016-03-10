@@ -141,6 +141,17 @@ if( $options{debug} > 1 ){
     warn "ALLELES: ", Dumper( %alleles_for );
 }
 
+#my %passes_for;
+#my %statuses = (
+#    pass => {
+#        embryo => 'PASSED_EMBRYO_SCREENING',
+#        sperm => 'PASSED_SPERM_SCREENING',
+#    },
+#    fail => {
+#        embryo => 'FAILED_EMBRYO_SCREENING',
+#        sperm => 'FAILED_SPERM_SCREENING',
+#    }
+#);
 # go through samples
 foreach my $sample_name ( keys %alleles_for ){
     warn "SAMPLE_NAME: $sample_name\n" if $options{debug};
@@ -186,8 +197,8 @@ foreach my $sample_name ( keys %alleles_for ){
         :   $sequencing_results{ $crRNA_id }{'total_percentage'} >= $PC_THRESHOLD ? 1
         :   0;
         $sequencing_results{ $crRNA_id }{'pass'} = $pass;
-        
     }
+    
     if( $options{debug} ){
         warn "SAMPLE: \n", Dumper( $sample );
         warn "ALLELES_FOR: \n", Dumper( $alleles_for{$sample_name} );
@@ -203,9 +214,16 @@ foreach my $sample_name ( keys %alleles_for ){
 }
 
 # update crispr and target status based on sequencing results
-foreach my $crispr ( values %crisprs ){
-    $crRNA_adaptor->update_status( $crispr );
-}
+my @crisprs = ( values %crisprs )
+my $results_hash = $crRNA_adaptor->aggregate_sequencing_results( \@crisprs );
+print Dumper( $results_hash );
+
+#foreach my $crispr ( values %crisprs ){
+#    if( $passes_for{ $crispr->crRNA_id } > $SCREENING_THRESHOLD ){
+#        $crisprs{ $crRNA_id }->
+#    }
+#    $crRNA_adaptor->update_status( $crispr );
+#}
 
 # get_and_check_options
 #Usage       :   get_and_check_options();
