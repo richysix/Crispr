@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::AlleleAdaptor;
+
 ## use critic
 
 # ABSTRACT: AlleleAdaptor object - object for storing Allele objects in and retrieving them from an SQL database

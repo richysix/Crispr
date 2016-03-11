@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::PlexAdaptor;
+
 ## use critic
 
 # ABSTRACT: PlexAdaptor object - object for storing Plex objects in and retrieving them from a SQL database

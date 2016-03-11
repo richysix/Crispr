@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::InjectionPool;
+
 ## use critic
 
 # ABSTRACT: InjectionPool object - representing a pool of Cas9/CRISPR guide RNAs for injection/transfection

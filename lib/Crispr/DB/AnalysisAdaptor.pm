@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::AnalysisAdaptor;
+
 ## use critic
 
 # ABSTRACT: AnalysisAdaptor object - object for storing Analysis objects in and retrieving them from a SQL database

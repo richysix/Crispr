@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::Plex;
+
 ## use critic
 
 # ABSTRACT: Plex object - representing a multiplexed sequencing run

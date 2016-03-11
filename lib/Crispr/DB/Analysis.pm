@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::Analysis;
+
 ## use critic
 
 # ABSTRACT: Analysis object - representing a subset of samples on a multiplexed sequencing run

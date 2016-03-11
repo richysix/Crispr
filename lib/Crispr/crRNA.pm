@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::crRNA;
+
 ## use critic
 
 # ABSTRACT: crRNA object - representing a synthetic guide_RNA

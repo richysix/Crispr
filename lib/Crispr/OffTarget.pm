@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::OffTarget;
+
 ## use critic
 
 # ABSTRACT: OffTarget object - representing an off-target position for a crispr guide RNA

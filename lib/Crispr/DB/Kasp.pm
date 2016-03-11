@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::Kasp;
+
 ## use critic
 
 # ABSTRACT: Sample object - representing a sample to be sequenced

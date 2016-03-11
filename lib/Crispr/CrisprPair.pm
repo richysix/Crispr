@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::CrisprPair;
+
 ## use critic
 
 # ABSTRACT: CrisprPair object - a representation of a pair of crispr guide RNAs

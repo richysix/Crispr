@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::Primer;
+
 ## use critic
 
 # ABSTRACT: Primer object - representing a PCR primer

@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::PrimerPairAdaptor;
+
 ## use critic
 
 # ABSTRACT: PrimerPairAdaptor object - object for storing PrimerPair objects in and retrieving them from a SQL database

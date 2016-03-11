@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::GuideRNAPrepAdaptor;
+
 ## use critic
 
 # ABSTRACT: GuideRNAPrepAdaptor object - object for storing GuideRNAPrep objects in and retrieving them from a SQL database

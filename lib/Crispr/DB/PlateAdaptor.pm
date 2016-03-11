@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::PlateAdaptor;
+
 ## use critic
 
 # ABSTRACT: PlateAdaptor - object for storing Plate objects in and

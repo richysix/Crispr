@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::GuideRNAPrep;
+
 ## use critic
 
 # ABSTRACT: GuideRNAPrep object - represents a prep of a specific guide RNA

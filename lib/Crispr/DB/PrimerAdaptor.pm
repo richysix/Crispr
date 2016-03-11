@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::PrimerAdaptor;
+
 ## use critic
 
 # ABSTRACT: PrimerAdaptor object - object for storing Primer objects in and retrieving them from a SQL database

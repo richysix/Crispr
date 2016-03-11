@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::Cas9PrepAdaptor;
+
 ## use critic
 
 # ABSTRACT: Cas9PrepAdaptor object - object for storing Cas9Prep objects in and retrieving them from a SQL database

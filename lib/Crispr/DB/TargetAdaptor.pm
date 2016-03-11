@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::TargetAdaptor;
+
 ## use critic
 
 # ABSTRACT: TargetAdaptor object - object for storing Target objects in and retrieving them from a SQL database

@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::SharedMethods;
+
 ## use critic
 
 # ABSTRACT: SharedMethods Role - provides methods share across modules

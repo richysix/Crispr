@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::PrimerPair;
+
 ## use critic
 
 # ABSTRACT: PrimerPair object - representing a pair of PCR primers

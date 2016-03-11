@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::Target;
+
 ## use critic
 
 # ABSTRACT: Target object - representing a target piece of DNA

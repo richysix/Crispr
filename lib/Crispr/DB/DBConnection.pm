@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::DBConnection;
+
 ## use critic
 
 # ABSTRACT: DBConnection object - A object for connecting to a MySQL/SQLite database

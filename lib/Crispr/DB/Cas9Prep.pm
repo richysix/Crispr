@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::Cas9Prep;
+
 ## use critic
 
 # ABSTRACT: Cas9Prep object - representing a specific prep of the Cas9 endonuclease

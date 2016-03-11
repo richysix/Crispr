@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::SampleAmplicon;
+
 ## use critic
 
 # ABSTRACT: SampleAmplicon object - representing a pairing of a sample with amplicons for analysis

@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::PrimerDesign;
+
 ## use critic
 
 # ABSTRACT: primer design object - for designing primers using primer3

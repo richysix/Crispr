@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::BaseAdaptor;
+
 ## use critic
 
 # ABSTRACT: BaseAdaptor object - Parent Class for objects adaptor for a MySQL/SQLite database

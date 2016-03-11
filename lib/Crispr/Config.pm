@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::Config;
+
 ## use critic
 
 # ABSTRACT: Config - for parsing and loading config files

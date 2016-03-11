@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::InjectionPoolAdaptor;
+
 ## use critic
 
 # ABSTRACT: InjectionPoolAdaptor object - object for storing InjectionPool objects in and retrieving them from a SQL database

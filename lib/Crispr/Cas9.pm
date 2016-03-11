@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::Cas9;
+
 ## use critic
 
 # ABSTRACT: Cas9 object - representing the Cas9 endonuclease

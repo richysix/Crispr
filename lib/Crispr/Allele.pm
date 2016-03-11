@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::Allele;
+
 ## use critic
 
 # ABSTRACT: Allele object - representing a sequence variant

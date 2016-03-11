@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::EnzymeInfo;
+
 ## use critic
 
 # ABSTRACT: EnzymeInfo object - holds information on restriction enzymes for the screening PCR product for a crRNA.

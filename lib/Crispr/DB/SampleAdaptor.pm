@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr::DB::SampleAdaptor;
+
 ## use critic
 
 # ABSTRACT: SampleAdaptor object - object for storing Sample objects in and retrieving them from a SQL database
