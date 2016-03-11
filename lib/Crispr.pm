@@ -1,5 +1,6 @@
 ## no critic (RequireUseStrict, RequireUseWarnings, RequireTidyCode)
 package Crispr;
+
 ## use critic
 
 # ABSTRACT: Crispr - used for designing crispr guide RNAs
@@ -712,6 +713,14 @@ sub filter_crRNAs_from_target_by_snps_and_indels {
 
 sub count_var_for_crRNA {
     my ( $self, $crRNA, $common_var_file, ) = @_;
+    
+    # check whether tabix is installed in the current PATH
+    my $tabix_path = which( 'tabix' );
+    if( !$tabix_path ){
+        croak join("\n", 'Could not find tabix installed in the current path!',
+            'Either install tabix in the current path or alter the path to include the tabix directory', ), "\n";
+    }
+    
     my $file_type = $common_var_file =~ m/\.vcf\.gz \z/xms ? 'vcf'
         :           $common_var_file =~ m/\.var\.gz \z/xms ? 'var'
         :                                                    undef;
