@@ -121,8 +121,11 @@ foreach my $db_connection ( @{$db_connections} ){
     my ( $mock_injection_pool, $mock_injection_pool_id, ) =
         $test_method_obj->create_mock_object_and_add_to_db( 'injection_pool', $args, $db_connection, );
     $args->{mock_injection_pool} = $mock_injection_pool;
-    my ( $mock_sample, $mock_sample_id, ) =
+    $args->{sample_ids} = [ 1..10 ];
+    $args->{well_ids} = [ qw{A01 A02 A03 A04 A05 A06 A07 A08 A09 A10} ];
+    my ( $mock_samples, $mock_sample_ids, ) =
         $test_method_obj->create_mock_object_and_add_to_db( 'sample', $args, $db_connection, );
+    my $mock_sample = $mock_samples->[0];
 
     my ( $statement, $sth );
 
