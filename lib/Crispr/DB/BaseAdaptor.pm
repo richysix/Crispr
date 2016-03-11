@@ -301,6 +301,43 @@ has 'allele_adaptor' => (
     builder => '_build_allele_adaptor',
 );
 
+my $statuses = {
+	REQUESTED => 1,
+	DESIGNED => 2,
+	ORDERED => 3,
+	MADE => 4,
+	INJECTED => 5,
+	MISEQ_EMBRYO_SCREENING => 6,
+	FAILED_EMBRYO_SCREENING => 7,
+	PASSED_EMBRYO_SCREENING => 8,
+	SPERM_FROZEN => 9,
+	MISEQ_SPERM_SCREENING => 10,
+	FAILED_SPERM_SCREENING => 11,
+	PASSED_SPERM_SCREENING => 12,
+	SHIPPED => 13,
+	SHIPPED_AND_IN_SYSTEM => 13,
+	IN_SYSTEM => 13,
+	CARRIERS => 14,
+	F1_FROZEN => 15, 
+};
+
+=method get_status_position
+
+  Usage       : $self->get_status_position( $check_statement, $params );
+  Purpose     : returns the position of a supplied status in the hierarchy of statuses
+  Returns     : Int (undef if status doesn't exist)
+  Parameters  : Str (status)
+  Throws      :
+  Comments    :
+
+=cut
+
+sub get_status_position {
+    my ( $self, $status ) = @_;
+    if( exists $statuses->{$status} ){
+        return $statuses->{$status};
+    }
+}
 
 =method check_entry_exists_in_db
 

@@ -363,12 +363,12 @@ sub create_and_add_crRNA_object {
     my $crRNA_args = {
         1 => {
             'crRNA_id' => sub{ return 1 },
-            'crRNA_name', => sub{ return 'crRNA:5:50383-50405:-1' },
-            'chr' => sub{ return '5' },
-            'start' => sub{ return '50383' },
-            'end' => sub{ return '50405' },
-            'strand' => sub{ return '-1' },
-            'cut_site' => sub{ return '50388' },
+            'name', => sub{ return 'crRNA:test_chr1:101-123:1' },
+            'chr' => sub{ return 'test_chr1' },
+            'start' => sub{ return '101' },
+            'end' => sub{ return '123' },
+            'strand' => sub{ return '1' },
+            'cut_site' => sub{ return '117' },
             'sequence' => sub{ return 'GGAATAGAGAGATAGAGAGTCGG' },
             'forward_oligo' => sub{ return 'ATGGGGAATAGAGAGATAGAGAGT' },
             'reverse_oligo' => sub{ return 'AAACACTCTCTATCTCTCTATTCC' },
@@ -381,20 +381,20 @@ sub create_and_add_crRNA_object {
             'coding_scores' => sub { return undef },
             'off_target_hits' => sub { return undef },
             'plasmid_backbone' => sub { return 'pDR274' },
-            'num_five_prime_Gs' => sub { return 2 },
+            'five_prime_Gs' => sub { return 2 },
             'plate_id' => sub { return 1 },
             'well_id' => sub { return 'A01' },
             'primer_pairs' => sub { return undef },
-            'status' => sub { return 'PASSED_EMBRYO_SCREENING' },
+            'status' => sub { return 'DESIGNED' },
             'status_id' => sub { return 7 },
             'status_changed' => sub { return '2015-01-26' },
-            'info' => sub { return ( qw{ crRNA:5:50383-50405:-1 5 50383
-                50405 -1 0.853 GGAATAGAGAGATAGAGAGTCGG ATGGGGAATAGAGAGATAGAGAGT
+            'info' => sub { return ( qw{ crRNA:test_chr1:101-123:1 test_chr 101
+                123 1 0.853 GGAATAGAGAGATAGAGAGTCGG ATGGGGAATAGAGAGATAGAGAGT
                 AAACACTCTCTATCTCTCTATTCC NULL NULL NULL NULL NULL NULL NULL 2 pDR274 } ); },
         },
         2 => {
             'crRNA_id' => sub{ return 2 },
-            'crRNA_name', => sub{ return 'crRNA:4:21-43:1' },
+            'name', => sub{ return 'crRNA:4:21-43:1' },
             'chr' => sub{ return '4' },
             'start' => sub{ return 21 },
             'end' => sub{ return 43 },
@@ -412,7 +412,7 @@ sub create_and_add_crRNA_object {
             'coding_scores' => sub { return undef },
             'off_target_hits' => sub { return undef },
             'plasmid_backbone' => sub { return 'pDR274' },
-            'num_five_prime_Gs' => sub { return 0 },
+            'five_prime_Gs' => sub { return 0 },
             'plate_id' => sub { return 1 },
             'well_id' => sub { return 'B01' },
             'primer_pairs' => sub { return undef },
@@ -438,13 +438,13 @@ sub create_and_add_crRNA_object {
         my $sth = $dbh->prepare($statement);
         $sth->execute(
             $mock_crRNA->crRNA_id,
-            $mock_crRNA->crRNA_name,
+            $mock_crRNA->name,
             $mock_crRNA->chr,
             $mock_crRNA->start,
             $mock_crRNA->end,
             $mock_crRNA->strand,
             $mock_crRNA->sequence,
-            $mock_crRNA->num_five_prime_Gs,
+            $mock_crRNA->five_prime_Gs,
             $mock_crRNA->score,
             $mock_crRNA->off_target_score,
             $mock_crRNA->coding_score,
@@ -473,6 +473,7 @@ sub create_well_object {
 sub create_and_add_gRNA_object {
     my ( $self, $db_connection, $args, ) = @_;
     
+    my $crRNA = $args->{mock_crRNA};
     my $gRNA_args = {
         1 => {
             'db_id' => sub{ return 1 },
@@ -481,8 +482,8 @@ sub create_and_add_gRNA_object {
             'injection_concentration' => sub{ return 10 },
             'made_by' => sub{ return 'cr1' },
             'date' => sub{ return '2014-10-02' },
-            'crRNA' => sub{ return $args->{mock_crRNA} },
-            'crRNA_id' => sub{ return $args->{mock_crRNA}->crRNA_id },
+            'crRNA' => sub{ return $crRNA; },
+            'crRNA_id' => sub{ return $crRNA->crRNA_id; },
             'well' => sub{ return $args->{mock_well} },
         },
         2 => {
@@ -492,8 +493,8 @@ sub create_and_add_gRNA_object {
             'injection_concentration' => sub{ return 10 },
             'made_by' => sub{ return 'cr1' },
             'date' => sub{ return '2014-10-02' },
-            'crRNA' => sub{ return $args->{mock_crRNA} },
-            'crRNA_id' => sub{ return $args->{mock_crRNA}->crRNA_id },
+            'crRNA' => sub{ return $crRNA; },
+            'crRNA_id' => sub{ return $crRNA->crRNA_id; },
             'well' => sub{ return $args->{mock_well} },
         },
     };
@@ -606,39 +607,43 @@ sub create_and_add_injection_pool_object {
 sub create_and_add_sample_object {
     my ( $self, $db_connection, $args, ) = @_;
     
-    my $mock_sample = Test::MockObject->new();
-    $mock_sample->set_isa( 'Crispr::DB::InjectionPool' );
-    my $s_id = 1;
-    $mock_sample->mock( 'db_id', sub{ my @args = @_; if( $_[1] ){ $s_id = $_[1] } return $s_id; } );
-    $mock_sample->mock( 'sample_name', sub{ return '170_A01' } );
-    $mock_sample->mock( 'sample_number', sub{ return 1 } );
-    $mock_sample->mock( 'injection_pool', sub{ return $args->{mock_injection_pool} } );
-    $mock_sample->mock( 'generation', sub{ return 'G0' } );
-    $mock_sample->mock( 'type', sub{ return 'embryo' } );
-    $mock_sample->mock( 'species', sub{ return 'zebrafish' } );
-    $mock_sample->mock( 'well_id', sub{ return 'A01' } );
-    $mock_sample->mock( 'cryo_box', sub{ return 'Cr_Sperm_1' } );
-    $mock_sample->mock( 'alleles', sub{ my @args = @_; if( $_[1] ){ $args->{alleles} = $_[1] } return $args->{alleles}; } );
-
-    if( $args->{add_to_db} ){
-        my $dbh = $db_connection->connection->dbh;
-        # add to db
-        my $statement = "insert into sample values( ?, ?, ?, ?, ?, ?, ?, ?, ? );";
-        my $sth = $dbh->prepare($statement);
-        $sth->execute(
-            $mock_sample->db_id,
-            $mock_sample->sample_name,
-            $mock_sample->sample_number,
-            $mock_sample->injection_pool->db_id,
-            $mock_sample->generation,
-            $mock_sample->type,
-            $mock_sample->species,
-            $mock_sample->well_id,
-            $mock_sample->cryo_box,
-        );
+    my @mock_samples;
+    for( my $i = 0; $i < scalar @{$args->{sample_ids}}; $i++ ){
+        my $sample_id = $args->{sample_ids}->[$i];
+        my $well_id = $args->{well_ids}->[$i];
+        my $mock_sample = Test::MockObject->new();
+        $mock_sample->set_isa( 'Crispr::DB::InjectionPool' );
+        $mock_sample->mock( 'db_id', sub{ return $sample_id; } );
+        $mock_sample->mock( 'sample_name', sub{ return '170_' . $sample_id } );
+        $mock_sample->mock( 'sample_number', sub{ return $sample_id } );
+        $mock_sample->mock( 'injection_pool', sub{ return $args->{mock_injection_pool} } );
+        $mock_sample->mock( 'generation', sub{ return 'G0' } );
+        $mock_sample->mock( 'type', sub{ return $args->{samples}{type} || 'embryo' } );
+        $mock_sample->mock( 'species', sub{ return 'zebrafish' } );
+        $mock_sample->mock( 'well_id', sub{ return $well_id } );
+        $mock_sample->mock( 'cryo_box', sub{ return 'Cr_Sperm_1' } );
+        $mock_sample->mock( 'alleles', sub{ my @args = @_; if( $_[1] ){ $args->{alleles} = $_[1] } return $args->{alleles}; } );
+        
+        if( $args->{add_to_db} ){
+            my $dbh = $db_connection->connection->dbh;
+            # add to db
+            my $statement = "insert into sample values( ?, ?, ?, ?, ?, ?, ?, ?, ? );";
+            my $sth = $dbh->prepare($statement);
+            $sth->execute(
+                $mock_sample->db_id,
+                $mock_sample->sample_name,
+                $mock_sample->sample_number,
+                $mock_sample->injection_pool->db_id,
+                $mock_sample->generation,
+                $mock_sample->type,
+                $mock_sample->species,
+                $mock_sample->well_id,
+                $mock_sample->cryo_box,
+            );
+        }
+        push @mock_samples, $mock_sample;
     }
-    
-    return ( $mock_sample, $s_id );
+    return ( \@mock_samples, );
 }
 
 sub _build_slice_adaptor {

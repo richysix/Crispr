@@ -591,13 +591,12 @@ sub aggregate_sequencing_results {
     my $dbh = $self->connection->dbh();
     
     my $sql = <<END_ST;
-SELECT select crRNA_id, injection_id, type, SUM(pass) as num_passes
-from sample s, sequencing_results seq where s.sample_id = seq.sample_id
+SELECT crRNA_id, injection_id, type, SUM(pass) as num_passes
+FROM sample s, sequencing_results seq WHERE s.sample_id = seq.sample_id
 END_ST
 
-    my $where_clause = 'and crRNA_id IN (' . join(q{,}, ('?') x scalar @{$crRNAs} ) . ') GROUP BY crRNA_id';
+    my $where_clause = 'AND crRNA_id IN (' . join(q{,}, ('?') x scalar @{$crRNAs} ) . ') GROUP BY crRNA_id, type';
     $sql .= $where_clause;
-    warn "$sql\n";
     
     my $where_parameters = [ map { $_->crRNA_id } @{$crRNAs} ];
     
@@ -610,9 +609,7 @@ END_ST
     
     my %results = ();
     while ( $sth->fetch ) {
-        $results{ $crRNA_id } = {
-            $type => $num_passes,
-        },
+        $results{ $crRNA_id }{$type} = $num_passes,
     }
     
     return( \%results );
@@ -653,13 +650,18 @@ sub update_status {
     if( !$self->check_entry_exists_in_db( $check_statement, [ $crRNA->crRNA_id ] ) ){
         confess "crRNA, ", $crRNA->name, "does not exists in the database\n";
     }
-
-    my $status_id = $self->_fetch_status_id_from_status( $crRNA->status );
-    my $date = DateTime->now()->ymd;
-    my $update_st = join(q{ }, 'UPDATE crRNA set status_id = ?, status_changed = ?',
-                         'WHERE crRNA_id = ?', );
-    my $sth = $dbh->prepare($update_st);
-    $sth->execute( $status_id, $date, $crRNA->crRNA_id );
+    
+    # get current status in db
+    my $current_db_status = $self->fetch_status_for_crispr( $crRNA );
+    
+    if( $self->get_status_position( $crRNA->status ) > $self->get_status_position( $current_db_status ) ){
+        my $status_id = $self->_fetch_status_id_from_status( $crRNA->status );
+        my $date = DateTime->now()->ymd;
+        my $update_st = join(q{ }, 'UPDATE crRNA set status_id = ?, status_changed = ?',
+                             'WHERE crRNA_id = ?', );
+        my $sth = $dbh->prepare($update_st);
+        $sth->execute( $status_id, $date, $crRNA->crRNA_id );
+    }
 }
 
 =method fetch_by_id
@@ -1035,6 +1037,37 @@ END_SQL
     }
 
     return \@crRNAs;
+}
+
+=method fetch_status_for_crispr
+
+   Usage       : $crRNAs = $crRNA_adaptor->fetch_status_for_crispr( $crRNA );
+   Purpose     : Fetch the current status of the supplied crispr from the database.
+   Returns     : Str (status)
+   Parameters  : Crispr::crRNA object
+   Throws      : 
+   Comments    : 
+
+=cut
+
+sub fetch_status_for_crispr {
+    my ( $self, $crRNA ) = @_;
+    my $dbh = $self->connection->dbh();
+
+    my $sql = <<'END_SQL';
+SELECT status FROM crRNA cr, status st WHERE cr.status_id = st.status_id
+END_SQL
+
+    my $where_clause = ' AND cr.crRNA_id = ?';
+    $sql .= $where_clause;
+    my $sth = $self->_prepare_sql( $sql, $where_clause, [ $crRNA->crRNA_id ] );
+    $sth->execute();
+
+    my $status;
+    $sth->bind_columns( \( $status, ) );
+
+    $sth->fetch;
+    return $status;
 }
 
 # =method _fetch

@@ -19,22 +19,22 @@ use English qw( -no_match_vars );
 use DateTime;
 my $date = DateTime->now()->ymd;
 
-my $test_data = File::Spec->catfile( 't', 'data', 'test_targets_plus_crRNAs_plus_coding_scores.txt' );
+#my $test_data = File::Spec->catfile( 't', 'data', 'test_targets_plus_crRNAs_plus_coding_scores.txt' );
 
-GetOptions(
-    'data=s' => \$test_data,
-);
+#GetOptions(
+#    'data=s' => \$test_data,
+#);
 
-my $count_output = qx/wc -l $test_data/;
-chomp $count_output;
-$count_output =~ s/\s$test_data//mxs;
-
-my $cmd = "grep -oE 'ENSDART[0-9]+' $test_data | wc -l";
-my $transcript_count = qx/$cmd/;
-chomp $transcript_count;
+#my $count_output = qx/wc -l $test_data/;
+#chomp $count_output;
+#$count_output =~ s/\s$test_data//mxs;
+#
+#my $cmd = "grep -oE 'ENSDART[0-9]+' $test_data | wc -l";
+#my $transcript_count = qx/$cmd/;
+#chomp $transcript_count;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 23 + 2 + $count_output * 13 + 1 + $transcript_count + 2 + 13 + 1 + 15 + 9 + 9 + 9 + 9 + 9 + 19 + 11 + 15 + 10;
+Readonly my $TESTS_IN_COMMON => 1 + 23 + 2 + 4 + 14 + 9 + 9 + 9 + 9 + 9 + 19 + 11 + 17 + 10 + 1;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
@@ -103,285 +103,44 @@ foreach my $db_connection ( @{$db_connections} ){
     my $plate_adaptor = $crRNA_adaptor->plate_adaptor();
     is( $plate_adaptor->db_connection, $db_conn, 'check plate adaptor' );
     
-    my ( $rowi, $coli ) = ( 0, 0 );
-    # insert some data directly into db
-    my $statement = "insert into plate values( ?, ?, ?, ?, ?, ? );";
+    # mock objects
+    my $args = {
+        add_to_db => 1,
+    };
+    my ( $mock_plex, $mock_plex_id, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( 'plex', $args, $db_connection, );
+    my ( $mock_cas9, $mock_cas9_id, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( 'cas9', $args, $db_connection, );
+    $args->{mock_cas9_object} = $mock_cas9;
+    my ( $mock_cas9_prep, $mock_cas9_prep_id, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( 'cas9_prep', $args, $db_connection, );
+    my ( $mock_target, $mock_target_id, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( 'target', $args, $db_connection, );
+    my ( $mock_plate, $mock_plate_id, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( 'plate', $args, $db_connection, );
+    $args->{mock_plate} = $mock_plate;
+    my ( $mock_well, $mock_well_id, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( 'well', $args, $db_connection, );
+    $args->{mock_well} = $mock_well;
+    $args->{mock_target} = $mock_target;
+    $args->{add_to_db} = 0;
+    $args->{crRNA_num} = 1;
+    my ( $mock_crRNA_1, $mock_crRNA_1_id, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( 'crRNA', $args, $db_connection, );
+    $args->{crRNA_num} = 2;
+    my ( $mock_crRNA_2, $mock_crRNA_2_id, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( 'crRNA', $args, $db_connection, );
     
-    my $sth ;
-    $sth = $dbh->prepare($statement);
-    $sth->execute( 1, 'CR_000001-', '96', 'crispr', undef, undef, );
-    $sth->execute( 2, 'CR_000001a', '96', 'cloning_oligos', undef, undef, );
-    $sth->execute( 3, 'CR_000001b', '96', 'expression_construct', undef, undef, );
-    $sth->execute( 4, 'CR_000001c', '96', 'expression_construct', undef, undef, );
+    # check store method - 4 tests
+    $mock_well->mock('contents', sub { return $mock_crRNA_1 } );
+    ok( $crRNA_adaptor->store( $mock_well ), 'store mock crRNA 1');
+    $mock_well->mock('contents', sub { return $mock_crRNA_2 } );
+    $mock_well->mock('position', sub { return 'A02' } );
+    ok( $crRNA_adaptor->store( $mock_well ), 'store mock crRNA 2');
     
-    my $count = 0;
-    # load data into objects
-    open my $fh, '<', $test_data or die "Couldn't open file: $test_data!\n";
-    
-    my $cr_name;
-    my $last_target_id;
-    my $mock_target = Test::MockObject->new();
-    $mock_target->set_isa( 'Crispr::Target' );
-    my $mock_crRNA = Test::MockObject->new();
-    $mock_crRNA->set_isa( 'Crispr::crRNA' );
-    
-    my $mock_plate = Test::MockObject->new();
-    $mock_plate->set_isa( 'Crispr::Plate' );
-    $mock_plate->mock('plate_name', sub { return 'CR_000001-' } );
-    my $mock_well = Test::MockObject->new();
-    $mock_well->set_isa( 'Labware::Well' );
-    $mock_well->mock('contents', sub { return $mock_crRNA } );
-    $mock_well->mock('plate', sub { return $mock_plate } );
-
-    my $test_warning = 1;
-    # 12 tests per crRNA
-    while(<$fh>){
-        $mock_plate->mock('plate_id', sub { return 1 } );
-        
-        $count++;
-        my $well_id = $rows[ $rowi ] . $cols[ $coli ];
-        chomp;
-        my ( $target_id, $name, $assembly, $target_chr, $target_start, $target_end, $target_strand,
-            $species, $requires_enzyme, $gene_id, $gene_name, $requestor, $ensembl_version, $designed,
-            $id, $chr, $start, $end, $strand, $score, $sequence, $forward_oligo, $reverse_oligo,
-            $off_target_score, $seed_score, $seed_hits, $align_score, $alignments,
-            $coding_score, $coding_scores_by_transcript ) = split /\s/, $_;
-        
-        #my ( $seed_exon_hits, $seed_intron_hits, $seed_nongenic_hits ) = split /\//, $seed_hits;
-        #my ( $exon_hits, $intron_hits, $nongenic_hits )  = split /\//, $alignments;
-        #
-        my $mock_off_target = Test::MockObject->new();
-        $mock_off_target->set_isa( 'Crispr::OffTarget' );
-        #$mock_off_target->mock('crRNA_name', sub { return $id } );
-        #$mock_off_target->mock('bwa_exon_alignments', sub { return [ '5:1-23:1', '10:100-123:-1' ] } );
-        #$mock_off_target->mock('number_bwa_intron_hits', sub { return 2 } );
-        #$mock_off_target->mock('number_bwa_nongenic_hits', sub { return 2 } );
-        #$mock_off_target->mock('number_seed_intron_hits', sub { return $seed_intron_hits } );
-        #$mock_off_target->mock('number_seed_nongenic_hits', sub { return $seed_nongenic_hits } );
-        #$mock_off_target->mock('number_exonerate_intron_hits', sub { return $intron_hits } );
-        #$mock_off_target->mock('number_exonerate_nongenic_hits', sub { return $nongenic_hits } );
-        $mock_off_target->mock('score', sub { return $off_target_score } );
-        #$mock_off_target->mock('seed_score', sub { return $seed_score } );
-        #$mock_off_target->mock('seed_hits', sub { return $seed_hits } );
-        #$mock_off_target->mock('exonerate_score', sub { return $align_score } );
-        #$mock_off_target->mock('exonerate_hits', sub { return $alignments } );
-        #$mock_off_target->mock('number_bwa_exon_hits', sub { return undef } );
-        
-        $coding_score = $coding_score eq 'NULL' ? undef : $coding_score;
-        my %coding_scores_for;
-        if( $coding_scores_by_transcript ne 'NULL' ){
-            foreach ( split /;/, $coding_scores_by_transcript ){
-                my( $transcript, $score ) = split /=/, $_;
-                $coding_scores_for{ $transcript } = $score;
-            }
-        }
-        #print Dumper( %coding_scores_for );
-        
-        my %bool_for = (
-            y => 1,
-            n => 0,
-        );
-        
-        my $t_id;
-        $mock_target->mock('target_id', sub { my @args = @_; if( $_[1] ){ $t_id = $_[1] } return $t_id; } );
-        $mock_target->mock('target_name', sub { return $gene_id } );
-        $mock_target->mock('assembly', sub { return $assembly } );
-        $mock_target->mock('chr', sub { return $target_chr } );
-        $mock_target->mock('start', sub { return $target_start } );
-        $mock_target->mock('end', sub { return $target_end } );
-        $mock_target->mock('strand', sub { return $target_strand } );
-        $mock_target->mock('species', sub { return $species } );
-        $mock_target->mock('requires_enzyme', sub { return $bool_for{$requires_enzyme} } );
-        $mock_target->mock('gene_id', sub { return $gene_id } );
-        $mock_target->mock('gene_name', sub { return $gene_name } );
-        $mock_target->mock('requestor', sub { return $requestor } );
-        $mock_target->mock('ensembl_version', sub { return $ensembl_version } );
-        $mock_target->mock('status', sub { return 'REQUESTED'; } );
-        $mock_target->mock('status_changed', sub { return '2015-11-30'; } );
-        
-        my $c_id;        
-        $mock_crRNA->mock('target', sub { return undef } );
-        $mock_crRNA->mock('crRNA_id', sub { my @args = @_; if( $_[1] ){ $c_id = $_[1] } return $c_id; } );
-        $mock_crRNA->mock('chr', sub { return $chr } );
-        $mock_crRNA->mock('start', sub { return $start } );
-        $mock_crRNA->mock('end', sub { return $end } );
-        $mock_crRNA->mock('strand', sub { return $strand } );
-        $mock_crRNA->mock('sequence', sub { return $sequence } );
-        $mock_crRNA->mock('forward_oligo', sub { return $forward_oligo } );
-        $mock_crRNA->mock('reverse_oligo', sub { return $reverse_oligo } );
-        $mock_crRNA->mock('plasmid_backbone', sub { return 'pDR274' } );
-        $mock_crRNA->mock('off_target_hits', sub { return $mock_off_target } );
-        $mock_crRNA->mock('coding_scores', sub { return \%coding_scores_for } );
-        $mock_crRNA->mock('crRNA_adaptor', sub { return $crRNA_adaptor } );
-        $mock_crRNA->mock('target_id', sub { return $mock_crRNA->target->target_id } );
-        $mock_crRNA->mock('target_name', sub { return $mock_target->target_name } );
-        $mock_crRNA->mock('name', sub { return $id } );
-        $mock_crRNA->mock('score', sub { return $score } );
-        $mock_crRNA->mock('coding_score', sub { return $coding_score } );
-        $mock_crRNA->mock('unique_restriction_sites', sub { return undef } );
-        $mock_crRNA->mock('coding_scores', sub { return \%coding_scores_for } );
-        $mock_crRNA->mock('off_target_score', sub { return $mock_off_target->score } );
-        $mock_crRNA->mock('seed_score', sub { return $mock_off_target->seed_score } );
-        $mock_crRNA->mock('seed_hits', sub { return $mock_off_target->seed_hits } );
-        $mock_crRNA->mock('exonerate_score', sub { return $mock_off_target->exonerate_score } );
-        $mock_crRNA->mock('exonerate_hits', sub { return $mock_off_target->exonerate_hits } );
-        $mock_crRNA->mock('five_prime_Gs', sub { return 2 } );
-        $mock_crRNA->mock('status', sub { return 'DESIGNED' } );
-        $mock_crRNA->mock('status_changed', sub { return '2015-11-30'; } );
-        
-        $mock_well->mock('position', sub { return $well_id } );
-        
-        # store crRNA - 3 tests
-        #check throws on no target
-        throws_ok{ $crRNA_adaptor->store($mock_well) } qr/must\shave\san\sassociated\sTarget/, 'Store crRNA without target';
-        my $target = $mock_target;
-        $mock_crRNA->mock('target', sub { my @args = @_; if( $_[1] ){ $target = $_[1] } return $target; } );
-        is($crRNA_adaptor->store($mock_well), 1, 'Store crRNA');
-        is( $mock_crRNA->crRNA_id, $count, 'Check database id' );
-        $t_id = $mock_crRNA->target->target_id;
-        
-        my %strand_for = (
-            '+' => '1',
-            '-' => '-1',
-            1   => '1',
-            -1  => '-1',
-        );
-        
-        # check database rows - 4 tests (not including transcript test. calculated elsewhere)
-        my %row;
-        row_ok(
-            sql => "SELECT * FROM crRNA WHERE crRNA_id = $count",
-            store_row => \%row,
-            tests => {
-                'eq' => {
-                     chr  => $chr,
-                     strand => $strand_for{$strand},
-                     sequence => $sequence,
-                },
-                '==' => {
-                     start  => $start,
-                     end    => $end,
-                     target_id => $mock_crRNA->target_id,
-                },
-            },
-            label => "crRNA stored - $id",
-        );
-        #print $row{'score'}, "\t", $score, "\t", abs($row{'score'} - $score), "\n";
-        is( abs($row{'score'} - $score) < 0.002, 1, "score from db - $id" );
-        #print $row{'coding_score'}, "\t", $coding_score, abs($row{'score'} - $score), "\n";
-        if( !defined $coding_score ){
-            is( $row{'coding_score'}, undef, "coding score from db - $id" );
-        }
-        else{
-            is( abs($row{'coding_score'} - $coding_score) < 0.002, 1, "coding score from db - $id" );
-        }
-        
-        # store coding scores
-        my @rows;
-        ok( $crRNA_adaptor->store_coding_scores( $mock_crRNA ), 'store coding scores' );
-        SKIP: {
-            skip 'undef coding scores', 1 if !defined $coding_score;
-            row_ok(
-                table => 'coding_scores',
-                where => [ crRNA_id => $count ],
-                store_rows => \@rows,
-            );
-            foreach my $row ( @rows ){
-                is( $row->{'score'} - $coding_scores_for{ $row->{'transcript_id'} } < 0.002, 1, "Transcript scores from db - $id");
-            }
-        }
-        
-        # make mock well object
-        $mock_plate->mock('plate_name', sub { return 'CR_000001a' } );
-        
-        # store construction oligos - 1 test
-        if( $test_warning == 1 ){
-            warning_like { $crRNA_adaptor->store_construction_oligos( $mock_well, 'cloning_oligos' ) }
-                qr/Plasmid\sbackbone\spDR274\sdoesn't\sexist\sin\sthe\sdatabase\s-\sAdding/,
-                "Warn if plasmid backbone doesn't exist in the db.";
-            $test_warning = 0;
-        }
-        else{
-            $crRNA_adaptor->store_construction_oligos( $mock_well, 'cloning_oligos' );
-        }
-        row_ok(
-            sql => "SELECT * FROM construction_oligos WHERE crRNA_id = $count",
-            tests => {
-                'eq' => {
-                     forward_oligo => $forward_oligo,
-                     reverse_oligo => $reverse_oligo,
-                     well_id => $well_id,
-                },
-                '==' => {
-                    plate_id => $mock_plate->plate_id,
-                },
-            },
-            label => "construction oligos stored - $id",
-        );
-        
-        # store expression construct - 4 tests
-        foreach my $suffix ( qw{ b c } ){
-            my $plate_id = $suffix eq 'b'   ?   3   :   4;
-            $mock_plate->mock('plate_id', sub { return $plate_id } );
-            $mock_plate->mock('plate_name', sub { return 'CR_000001' . $suffix } );
-            $crRNA_adaptor->store_expression_construct_info( $mock_well );
-            
-            row_ok(
-                sql => "SELECT * FROM expression_construct WHERE crRNA_id = $count",
-                store_rows => \@rows,
-                tests => {
-                    'eq' => {
-                         trace_file => undef,
-                         seq_verified => undef,
-                         well_id => $well_id,
-                    },
-                    '==' => {
-                        plasmid_backbone_id => 1,
-                    },
-                },
-                label => "expression constructs stored - $id",
-            );
-            my @plate_ids;
-            foreach my $row ( @rows ){
-                push @plate_ids, $row->{'plate_id'};
-            }
-            is( (any { $_ == $plate_id } @plate_ids ), 1, "check expression construct plate id - $id");
-        }
-        $cr_name = $id;
-        $last_target_id = $mock_crRNA->target_id;
-        ( $rowi, $coli ) = increment( $rowi, $coli );
-    }
-    
-    $mock_plate->mock('plate_id', sub { return 1 } );
-    
-    # check exists_in_db method - 2 tests
-    is( $crRNA_adaptor->exists_in_db( $mock_crRNA->name ), 1, 'check exists_in_db - crRNA is in db' );
-    is( $crRNA_adaptor->exists_in_db( 'crRNA:5:109-131:-1' ), undef, "check exists_in_db - crRNA isn't in db" );
-    
-    #my $crRNA_3 = $crRNA_adaptor->fetch_by_name_and_requestor( $cr_name, $target_requestor );
-    $mock_target->mock('target_id', sub { return $last_target_id } );
-    my $crRNA_3 = $crRNA_adaptor->fetch_by_name_and_target( $cr_name, $mock_target );
-    # 13 tests
-    is( $crRNA_3->crRNA_id, 13, 'Get id' );
-    is( $crRNA_3->name, 'crRNA:5:75465364-75465386:-1', 'Get name' );
-    is( $crRNA_3->chr, '5', 'Get chr' );
-    is( $crRNA_3->start, 75465364, 'Get start' );
-    is( $crRNA_3->end, 75465386, 'Get end' );
-    is( $crRNA_3->strand, '-1', 'Get strand' );
-    is( $crRNA_3->species, 'zebrafish', 'Get species' );
-    is( $crRNA_3->target_gene_id , 'ENSDARG00000024894', 'Get gene id' );
-    is( $crRNA_3->target_gene_name , 'tbx5a', 'Get gene name' );
-    is( $crRNA_3->target->requestor , 'crispr_test', 'Get requestor' );
-    is( $crRNA_3->target->ensembl_version , 70, 'Get version' );
-    is( $crRNA_3->target->status_changed, $mock_target->status_changed, 'Get date' );
-    isa_ok( $crRNA_3->crRNA_adaptor, 'Crispr::DB::crRNAAdaptor', 'check crRNA adaptor');
-    
-    # check fetch_by_name throws properly if crRNA is not in db
-    # 1 extra test
-    throws_ok { $crRNA_adaptor->fetch_by_name_and_target( 'crRNA:10:75476583-75476605:-1', $mock_target ) }
-        qr/crRNA\sdoes\snot\sexist\sin\sthe\sdatabase/, 'fetch_by_name throws properly if crRNA not in db';
-    
-    close( $fh );
+    # check fetch_status_for_crispr
+    is( $crRNA_adaptor->fetch_status_for_crispr($mock_crRNA_1), $mock_crRNA_1->status, "$driver: check fetch_status_for_crispr 1" );
+    is( $crRNA_adaptor->fetch_status_for_crispr($mock_crRNA_2), $mock_crRNA_2->status, "$driver: check fetch_status_for_crispr 2" );
     
     # OffTarget objects
     my $mock_exon_off_target = Test::MockObject->new();
@@ -423,59 +182,21 @@ foreach my $db_connection ( @{$db_connections} ){
         }
     );
     $mock_off_target_info->mock( 'number_hits', sub { return 3 } );
+    $mock_crRNA_1->mock( 'off_target_hits', sub{ return $mock_off_target_info } );
     
-    $mock_target->mock('target_id', sub { return 100; } );
-    $mock_target->mock('target_name', sub { return 'gene001' } );
-    $mock_target->mock('assembly', sub { return 'Zv9' } );
-    $mock_target->mock('chr', sub { return 'test_chr1' } );
-    $mock_target->mock('start', sub { return 1 } );
-    $mock_target->mock('end', sub { return 200 } );
-    $mock_target->mock('strand', sub { return '1' } );
-    $mock_target->mock('species', sub { return 'zebrafish' } );
-    $mock_target->mock('requires_enzyme', sub { return 0 } );
-    $mock_target->mock('gene_id', sub { return 'gene_001' } );
-    $mock_target->mock('gene_name', sub { return 'gene1' } );
-    $mock_target->mock('requestor', sub { return 'cr1' } );
-    $mock_target->mock('ensembl_version', sub { return 74 } );
-    $mock_target->mock('designed', sub { return undef } );
-
-    my $mock_crRNA1 = Test::MockObject->new();
-    $mock_crRNA1->set_isa( 'Crispr::crRNA' );
-    $mock_crRNA1->mock( 'crRNA_id', sub{ return 100 });
-    $mock_crRNA1->mock( 'name', sub{ return 'crRNA:test_chr1:101-123:1' });
-    $mock_crRNA1->mock( 'chr', sub{ return 'test_chr1' });
-    $mock_crRNA1->mock( 'start', sub{ return 101 });
-    $mock_crRNA1->mock( 'end', sub{ return 123 });
-    $mock_crRNA1->mock( 'strand', sub{ return '1' });
-    $mock_crRNA1->mock( 'sequence', sub{ return 'AACTGATCGGGATCGCTATCTGG' });
-    $mock_crRNA1->mock( 'off_target_hits', sub{ return $mock_off_target_info } );
-    $mock_crRNA1->mock( 'cut_site', sub{ return 117 });
-    $mock_crRNA1->mock( 'five_prime_Gs', sub{ return 0 });
-    $mock_crRNA1->mock( 'score', sub{ return 0.5 });
-    $mock_crRNA1->mock( 'off_target_score', sub{ return 0.76 });
-    $mock_crRNA1->mock( 'coding_score', sub{ return 0.7 });
-    $mock_crRNA1->mock( 'target', sub { return $mock_target } );
-    $mock_crRNA1->mock( 'target_id', sub { return $mock_target->target_id } );
-    $mock_crRNA1->mock( 'status', sub { return 'INJECTED' } );
-    $mock_crRNA1->mock( 'status_changed', sub { return '2015-12-02' } );
-
-    $mock_well->mock('contents', sub { return $mock_crRNA1 } );
-    $mock_well->mock('position', sub { return 'H12' } );
-    
-    # add target and crRNA to db - 15 tests
-    ok( $crRNA_adaptor->store( $mock_well ), 'store mock crRNA and target');
-    ok( $crRNA_adaptor->store_off_target_info( $mock_crRNA1 ), 'store off target info');
+    # store off-target - 14 tests
+    ok( $crRNA_adaptor->store_off_target_info( $mock_crRNA_1 ), 'store off target info');
     
     my @rows;
     row_ok(
-        sql => "SELECT * FROM off_target_info WHERE crRNA_id = 100;",
+        sql => "SELECT * FROM off_target_info WHERE crRNA_id = 1;",
         store_rows => \@rows,
-        label => "off_target_info stored - $driver: 100",
+        label => "off_target_info stored - $driver: 1",
     );
     my @expected_results = (
-        [ 100, 'test_chr1:1-23:1', 1, 'nongenic' ],
-        [ 100, 'test_chr1:201-223:1', 2, 'exon' ],
-        [ 100, 'test_chr2:201-223:1', 3, 'intron' ],
+        [ 1, 'test_chr1:1-23:1', 1, 'nongenic' ],
+        [ 1, 'test_chr1:201-223:1', 2, 'exon' ],
+        [ 1, 'test_chr2:201-223:1', 3, 'intron' ],
     );
     foreach my $row ( @rows ){
         my $ex = shift @expected_results;
@@ -485,43 +206,72 @@ foreach my $db_connection ( @{$db_connections} ){
         is( $row->{annotation}, $ex->[3], "$driver: off_target_info check annotation" );
     }
     
+    $args->{add_to_db} = 1;
+    $args->{mock_plate} = $mock_plate;
+    $args->{mock_crRNA} = $mock_crRNA_1;
+    $args->{gRNA_num} = 1;
+    my ( $mock_gRNA_1, $mock_gRNA_1_id, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( 'gRNA', $args, $db_connection, );
+    $args->{mock_crRNA} = $mock_crRNA_2;
+    $args->{gRNA_num} = 2;
+    my ( $mock_gRNA_2, $mock_gRNA_2_id, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( 'gRNA', $args, $db_connection, );
+    $args->{mock_cas9_prep} = $mock_cas9_prep;
+    $args->{mock_gRNA_1} = $mock_gRNA_1;
+    $args->{mock_gRNA_2} = $mock_gRNA_2;
+    my ( $mock_injection_pool, $mock_injection_pool_id, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( 'injection_pool', $args, $db_connection, );
+    $args->{mock_injection_pool} = $mock_injection_pool;
+    $args->{sample_ids} = [ 1..10 ];
+    $args->{well_ids} = [ qw{A01 A02 A03 A04 A05 A06 A07 A08 A09 A10} ];
+    my ( $mock_embryo_samples, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( 'sample', $args, $db_connection, );
+    $args->{sample_ids} = [ 11..20 ];
+    $args->{well_ids} = [ qw{B01 B02 B03 B04 B05 B06 B07 B08 B09 B10} ];
+    $args->{samples}{type} = 'sperm';
+    my ( $mock_sperm_samples, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( 'sample', $args, $db_connection, );
+    $args->{sample_ids} = [ 1..20 ];
+    $args->{well_ids} = [ qw{A01 A02 A03 A04 A05 A06 A07 A08 A09 A10 B01 B02 B03 B04 B05 B06 B07 B08 B09 B10} ];
+    my $mock_samples = [ @{$mock_embryo_samples}, @{$mock_sperm_samples} ];
+
     # test _fetch - 9 tests
     my $crRNAs_tmp;
-    ok($crRNAs_tmp = $crRNA_adaptor->_fetch( 'crRNA_id = ?', [ 100 ], ), "$driver: test _fetch method" );
-    check_attributes( $crRNAs_tmp->[0], $mock_crRNA1, $driver, '_fetch' );
+    ok($crRNAs_tmp = $crRNA_adaptor->_fetch( 'crRNA_id = ?', [ 1 ], ), "$driver: test _fetch method" );
+    check_attributes( $crRNAs_tmp->[0], $mock_crRNA_1, $driver, '_fetch' );
 
     # test fetch_by_id - 9 tests
     my $crRNA_tmp;
-    ok($crRNA_tmp = $crRNA_adaptor->fetch_by_id( 100, ), "$driver: test fetch_by_id method" );
-    check_attributes( $crRNA_tmp, $mock_crRNA1, $driver, 'fetch_by_id' );
+    ok($crRNA_tmp = $crRNA_adaptor->fetch_by_id( 1, ), "$driver: test fetch_by_id method" );
+    check_attributes( $crRNA_tmp, $mock_crRNA_1, $driver, 'fetch_by_id' );
     
     # test fetch_all_by_name - 9 tests
     ok($crRNAs_tmp = $crRNA_adaptor->fetch_all_by_name( 'crRNA:test_chr1:101-123:1', ), "$driver: test fetch_all_by_name method" );
-    check_attributes( $crRNAs_tmp->[0], $mock_crRNA1, $driver, 'fetch_all_by_name' );
+    check_attributes( $crRNAs_tmp->[0], $mock_crRNA_1, $driver, 'fetch_all_by_name' );
 
     # test fetch_by_name_and_target - 9 tests
     ok($crRNA_tmp = $crRNA_adaptor->fetch_by_name_and_target( 'crRNA:test_chr1:101-123:1', $mock_target ), "$driver: test fetch_by_name_and_target method" );
-    check_attributes( $crRNA_tmp, $mock_crRNA1, $driver, 'fetch_by_name_and_target' );
+    check_attributes( $crRNA_tmp, $mock_crRNA_1, $driver, 'fetch_by_name_and_target' );
 
     # test fetch_all_by_target - 9 tests
     ok($crRNAs_tmp = $crRNA_adaptor->fetch_all_by_target( $mock_target, ), "$driver: test fetch_all_by_target method" );
-    check_attributes( $crRNAs_tmp->[0], $mock_crRNA1, $driver, 'fetch_all_by_target' );
+    check_attributes( $crRNAs_tmp->[0], $mock_crRNA_1, $driver, 'fetch_all_by_target' );
     
     # test fetch_by_plate_num_and_well - 19 tests
     ok($crRNAs_tmp = $crRNA_adaptor->fetch_by_plate_num_and_well( 1, ), "$driver: test fetch_by_plate_num_and_well method" );
-    is( scalar @{$crRNAs_tmp}, 14, "$driver: fetch_by_plate_num_and_well - check number returned" );
-    check_attributes( $crRNAs_tmp->[13], $mock_crRNA1, $driver, 'fetch_by_plate_num_and_well' );
+    is( scalar @{$crRNAs_tmp}, 2, "$driver: fetch_by_plate_num_and_well - check number returned" );
+    check_attributes( $crRNAs_tmp->[0], $mock_crRNA_1, $driver, 'fetch_by_plate_num_and_well' );
     
-    ok($crRNA_tmp = $crRNA_adaptor->fetch_by_plate_num_and_well( 1, 'H12' ), "$driver: test fetch_by_plate_num_and_well method" );
-    check_attributes( $crRNA_tmp, $mock_crRNA1, $driver, 'fetch_by_plate_num_and_well' );
+    ok($crRNA_tmp = $crRNA_adaptor->fetch_by_plate_num_and_well( 1, 'A01' ), "$driver: test fetch_by_plate_num_and_well method" );
+    check_attributes( $crRNA_tmp, $mock_crRNA_1, $driver, 'fetch_by_plate_num_and_well' );
 
     # test fetch_all_by_status - 11 tests
     ok($crRNAs_tmp = $crRNA_adaptor->fetch_all_by_status( 'DESIGNED', ), "$driver: test fetch_all_by_status method" );
-    is( scalar @{$crRNAs_tmp}, 13, "$driver: fetch_all_by_status method - check number returned" );
-    ok($crRNAs_tmp = $crRNA_adaptor->fetch_all_by_status( 'INJECTED', ), "$driver: test fetch_all_by_status method" );
-    check_attributes( $crRNAs_tmp->[0], $mock_crRNA1, $driver, 'fetch_all_by_status' );
+    is( scalar @{$crRNAs_tmp}, 1, "$driver: fetch_all_by_status method - check number returned" );
+    ok($crRNAs_tmp = $crRNA_adaptor->fetch_all_by_status( 'FAILED_SPERM_SCREENING', ), "$driver: test fetch_all_by_status method" );
+    check_attributes( $crRNAs_tmp->[0], $mock_crRNA_2, $driver, 'fetch_all_by_status' );
     
-    # test update status - 15 tests
+    # test update status - 17 tests
     throws_ok{ $crRNA_adaptor->update_status() }
         qr/A crRNA object must be supplied/,
         "$driver: check update_status throws on no input";
@@ -530,10 +280,10 @@ foreach my $db_connection ( @{$db_connections} ){
         "$driver: check update_status throws on not Crispr::crRNA object";
     
     # change status of object
-    $mock_crRNA1->mock( 'status', sub { return 'PASSED_EMBRYO_SCREENING' } );
-    ok( $crRNA_adaptor->update_status( $mock_crRNA1 ), "$driver: test update_status" );
+    $mock_crRNA_1->mock( 'status', sub { return 'PASSED_EMBRYO_SCREENING' } );
+    ok( $crRNA_adaptor->update_status( $mock_crRNA_1 ), "$driver: test update_status" );
     row_ok(
-        sql => "SELECT * FROM crRNA WHERE crRNA_id = 100",
+        sql => "SELECT * FROM crRNA WHERE crRNA_id = 1",
         tests => {
             'eq' => {
                 status_changed => $date,
@@ -544,13 +294,26 @@ foreach my $db_connection ( @{$db_connections} ){
         },
         label => "$driver: status changed in db",
     );
+    # try updating status to something that comes before the current status
+    $mock_crRNA_2->mock( 'status', sub { return 'INJECTED' } );
+    is( $crRNA_adaptor->update_status( $mock_crRNA_2 ), '', "$driver: test update_status with earlier status" );
+    row_ok(
+        sql => "SELECT * FROM crRNA WHERE crRNA_id = 2",
+        tests => {
+            '==' => {
+                status_id => 12,
+            },
+        },
+        label => "$driver: status unchanged in db",
+    );
+    # reset status
+    $mock_crRNA_2->mock( 'status', sub { return 'FAILED_SPERM_SCREENING' } );
     
-    ok($crRNAs_tmp = $crRNA_adaptor->fetch_all_by_status( 'INJECTED', ), "$driver: check there are no longer crRNAs with INJECTED status" );
-    is( scalar @{$crRNAs_tmp}, 0, "$driver: check there are no longer crRNAs with INJECTED status 2" );
+    ok($crRNAs_tmp = $crRNA_adaptor->fetch_all_by_status( 'DESIGNED', ), "$driver: check there are no longer crRNAs with DESIGNED status" );
+    is( scalar @{$crRNAs_tmp}, 0, "$driver: check there are no longer crRNAs with DESIGNED status 2" );
     ok($crRNAs_tmp = $crRNA_adaptor->fetch_all_by_status( 'PASSED_EMBRYO_SCREENING', ), "$driver: check status changed successfully" );
-    check_attributes( $crRNAs_tmp->[0], $mock_crRNA1, $driver, "$driver: check status changed successfully" );
+    check_attributes( $crRNAs_tmp->[0], $mock_crRNA_1, $driver, "$driver: check status changed successfully" );
     
-
     # make mock primer and primer pair objects
     my $mock_left_primer = Test::MockObject->new();
     my $l_p_id = 1;
@@ -580,7 +343,7 @@ foreach my $db_connection ( @{$db_connections} ){
     
     # add primers and primer pair direct to db
     my $p_insert_st = 'insert into primer values( ?, ?, ?, ?, ?, ?, ?, ?, ? );';
-    $sth = $dbh->prepare( $p_insert_st );
+    my $sth = $dbh->prepare( $p_insert_st );
     foreach my $p ( $mock_left_primer, $mock_right_primer ){
         $sth->execute(
             $p->primer_id, $p->sequence, $p->seq_region, $p->seq_region_start,
@@ -617,7 +380,7 @@ foreach my $db_connection ( @{$db_connections} ){
     $sth = $dbh->prepare( $amp_st );
     $sth->execute(
         $mock_primer_pair->primer_pair_id,
-        $mock_crRNA1->crRNA_id,
+        $mock_crRNA_1->crRNA_id,
     );
     
     # test fetch_all_by_primer_pair - 10 test
@@ -627,67 +390,376 @@ foreach my $db_connection ( @{$db_connections} ){
         "$driver: check fetch_all_by_primer_pair throws when there is no primer_pair_id";
     $pair_id = 1;
     ok( my $crRNAs_from_db = $crRNA_adaptor->fetch_all_by_primer_pair( $mock_primer_pair ), "$driver: fetch_all_by_primer_pair" );
-    check_attributes( $crRNAs_from_db->[0], $mock_crRNA1, $driver, 'fetch_all_by_primer_pair' );
-    
-    # check aggregate_sequencing_results
-    # add an injection pool directly into the database
-    my $inj_pool_st = 'insert into injection values(?,?,?,?,?,?,?,?)'
-    
-CREATE TABLE injection (
-    injection_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    injection_name VARCHAR(30) NOT NULL,
-    cas9_prep_id INT UNSIGNED NOT NULL,
-    cas9_concentration DECIMAL(5,1) NOT NULL,
-    date DATE NOT NULL,
-    line_injected VARCHAR(10) NOT NULL,
-    line_raised VARCHAR(10),
-    sorted_by VARCHAR(40),
-    CONSTRAINT `injection_injection_name` UNIQUE ( `injection_name` ),
-    FOREIGN KEY (cas9_prep_id) REFERENCES cas9_prep(cas9_prep_id)
-) ENGINE = InnoDB;
+    check_attributes( $crRNAs_from_db->[0], $mock_crRNA_1, $driver, 'fetch_all_by_primer_pair' );
 
-CREATE TABLE injection_pool (
-    injection_id INT UNSIGNED NOT NULL,
-    crRNA_id INT UNSIGNED NOT NULL,
-    guideRNA_prep_id INT UNSIGNED NOT NULL,
-    guideRNA_concentration INT UNSIGNED NOT NULL,
-    CONSTRAINT `injection_pool_injection_id_guideRNA_prep_id` PRIMARY KEY ( `injection_id`, `guideRNA_prep_id` ),
-    FOREIGN KEY (injection_id) REFERENCES injection(injection_id),
-    FOREIGN KEY (crRNA_id) REFERENCES crRNA(crRNA_id),
-    FOREIGN KEY (guideRNA_prep_id) REFERENCES guideRNA_prep(guideRNA_prep_id)
-) ENGINE = InnoDB;
-
-CREATE TABLE plex (
-    plex_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    plex_name VARCHAR(10) NOT NULL,
-    run_id INT UNSIGNED NOT NULL,
-    analysis_started DATE,
-    analysis_finished DATE,
-    CONSTRAINT `plex_plex_name` UNIQUE ( `plex_name` )
-) ENGINE = InnoDB;
-
-CREATE TABLE sample (
-    sample_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    sample_name VARCHAR(20) NOT NULL,
-    sample_number INT UNSIGNED NOT NULL,
-    injection_id INT UNSIGNED NOT NULL,
-    generation ENUM('G0', 'F1', 'F2') NOT NULL,
-    type ENUM('sperm', 'embryo', 'finclip', 'earclip', 'blastocyst' ) NOT NULL,
-    species VARCHAR(50) NOT NULL,
-    well_id CHAR(3),
-    cryo_box VARCHAR(30),
-    FOREIGN KEY (injection_id) REFERENCES injection(injection_id)
-) ENGINE = InnoDB;
-CREATE UNIQUE INDEX `sample_name` ON sample (`sample_name`);
-    # add some samples
+    # test aggregate seq results - 1 test
     my @seq_results = (
-        [ 100, 1, 1, 5, 21.0, 12.0, 10000 ],
-        [ 100, 2, 0, 2, 4.3, 3.1, 10000 ],
+        [ 11, 1, 1, 5, 21.0, 12.0, 10000 ],
+        [ 12, 1, 1, 5, 21.0, 12.0, 11000 ],
+        [ 13, 1, 1, 5, 21.0, 12.0, 8000 ],
+        [ 14, 1, 1, 5, 21.0, 12.0, 9000 ],
+        [ 15, 1, 0, 1, 3.0, 3.0, 10000 ],
+        [ 16, 1, 0, 2, 2.4, 1.6, 9000 ],
+        [ 1, 1, 0, 2, 3.0, 2.0, 10000 ],
+        [ 2, 1, 0, 3, 4.0, 2.0, 11000 ],
+        [ 3, 1, 0, 4, 3.0, 2.0, 8000 ],
+        [ 4, 1, 1, 5, 21.0, 12.0, 9000 ],
+        [ 11, 2, 0, 0, 0, 0, 10000 ],
+        [ 12, 2, 0, 1, 2.0, 2.0, 11000 ],
+        [ 13, 2, 0, 2, 2.0, 1.2, 8000 ],
+        [ 14, 2, 1, 5, 21.0, 12.0, 9000 ],
+        [ 15, 2, 0, 1, 3.0, 3.0, 10000 ],
+        [ 16, 2, 0, 2, 2.4, 1.6, 9000 ],
     );
-
+    my $seq_statement = 'insert into sequencing_results values(?,?,?,?,?,?,?);';
+    $sth = $dbh->prepare( $seq_statement );
+    foreach my $results ( @seq_results ){
+        $sth->execute(
+            $results->[0],
+            $results->[1],
+            $results->[2],
+            $results->[3],
+            $results->[4],
+            $results->[5],
+            $results->[6],
+        );
+    }
     
+    my %expected_results = (
+        '1' => {
+                    'embryo' => 1,
+                    'sperm' => 4
+                },
+        '2' => {
+                    'embryo' => 1
+               },
+    );
+    ok( my $results = $crRNA_adaptor->aggregate_sequencing_results( [ $mock_crRNA_1, $mock_crRNA_2, ] ),
+        'aggregate_sequencing_results');
+    print Dumper( $results );
+    
+     #my ( $rowi, $coli ) = ( 0, 0 );
+#    # insert some data directly into db
+#    my $statement = "insert into plate values( ?, ?, ?, ?, ?, ? );";
+#    
+#    my $sth ;
+#    $sth = $dbh->prepare($statement);
+#    $sth->execute( 1, 'CR_000001-', '96', 'crispr', undef, undef, );
+#    $sth->execute( 2, 'CR_000001a', '96', 'cloning_oligos', undef, undef, );
+#    $sth->execute( 3, 'CR_000001b', '96', 'expression_construct', undef, undef, );
+#    $sth->execute( 4, 'CR_000001c', '96', 'expression_construct', undef, undef, );
+#    
+#    my $count = 0;
+#    # load data into objects
+#    open my $fh, '<', $test_data or die "Couldn't open file: $test_data!\n";
+#    
+#    my $cr_name;
+#    my $last_target_id;
+#    my $mock_target = Test::MockObject->new();
+#    $mock_target->set_isa( 'Crispr::Target' );
+#    my $mock_crRNA = Test::MockObject->new();
+#    $mock_crRNA->set_isa( 'Crispr::crRNA' );
+#    
+#    my $mock_plate = Test::MockObject->new();
+#    $mock_plate->set_isa( 'Crispr::Plate' );
+#    $mock_plate->mock('plate_name', sub { return 'CR_000001-' } );
+#    my $mock_well = Test::MockObject->new();
+#    $mock_well->set_isa( 'Labware::Well' );
+#    $mock_well->mock('contents', sub { return $mock_crRNA } );
+#    $mock_well->mock('plate', sub { return $mock_plate } );
+#
+#    my $test_warning = 1;
+#    # 12 tests per crRNA
+#    while(<$fh>){
+#        $mock_plate->mock('plate_id', sub { return 1 } );
+#        
+#        $count++;
+#        my $well_id = $rows[ $rowi ] . $cols[ $coli ];
+#        chomp;
+#        my ( $target_id, $name, $assembly, $target_chr, $target_start, $target_end, $target_strand,
+#            $species, $requires_enzyme, $gene_id, $gene_name, $requestor, $ensembl_version, $designed,
+#            $id, $chr, $start, $end, $strand, $score, $sequence, $forward_oligo, $reverse_oligo,
+#            $off_target_score, $seed_score, $seed_hits, $align_score, $alignments,
+#            $coding_score, $coding_scores_by_transcript ) = split /\s/, $_;
+#        
+#        #my ( $seed_exon_hits, $seed_intron_hits, $seed_nongenic_hits ) = split /\//, $seed_hits;
+#        #my ( $exon_hits, $intron_hits, $nongenic_hits )  = split /\//, $alignments;
+#        #
+#        my $mock_off_target = Test::MockObject->new();
+#        $mock_off_target->set_isa( 'Crispr::OffTarget' );
+#        #$mock_off_target->mock('crRNA_name', sub { return $id } );
+#        #$mock_off_target->mock('bwa_exon_alignments', sub { return [ '5:1-23:1', '10:100-123:-1' ] } );
+#        #$mock_off_target->mock('number_bwa_intron_hits', sub { return 2 } );
+#        #$mock_off_target->mock('number_bwa_nongenic_hits', sub { return 2 } );
+#        #$mock_off_target->mock('number_seed_intron_hits', sub { return $seed_intron_hits } );
+#        #$mock_off_target->mock('number_seed_nongenic_hits', sub { return $seed_nongenic_hits } );
+#        #$mock_off_target->mock('number_exonerate_intron_hits', sub { return $intron_hits } );
+#        #$mock_off_target->mock('number_exonerate_nongenic_hits', sub { return $nongenic_hits } );
+#        $mock_off_target->mock('score', sub { return $off_target_score } );
+#        #$mock_off_target->mock('seed_score', sub { return $seed_score } );
+#        #$mock_off_target->mock('seed_hits', sub { return $seed_hits } );
+#        #$mock_off_target->mock('exonerate_score', sub { return $align_score } );
+#        #$mock_off_target->mock('exonerate_hits', sub { return $alignments } );
+#        #$mock_off_target->mock('number_bwa_exon_hits', sub { return undef } );
+#        
+#        $coding_score = $coding_score eq 'NULL' ? undef : $coding_score;
+#        my %coding_scores_for;
+#        if( $coding_scores_by_transcript ne 'NULL' ){
+#            foreach ( split /;/, $coding_scores_by_transcript ){
+#                my( $transcript, $score ) = split /=/, $_;
+#                $coding_scores_for{ $transcript } = $score;
+#            }
+#        }
+#        #print Dumper( %coding_scores_for );
+#        
+#        my %bool_for = (
+#            y => 1,
+#            n => 0,
+#        );
+#        
+#        my $t_id;
+#        $mock_target->mock('target_id', sub { my @args = @_; if( $_[1] ){ $t_id = $_[1] } return $t_id; } );
+#        $mock_target->mock('target_name', sub { return $gene_id } );
+#        $mock_target->mock('assembly', sub { return $assembly } );
+#        $mock_target->mock('chr', sub { return $target_chr } );
+#        $mock_target->mock('start', sub { return $target_start } );
+#        $mock_target->mock('end', sub { return $target_end } );
+#        $mock_target->mock('strand', sub { return $target_strand } );
+#        $mock_target->mock('species', sub { return $species } );
+#        $mock_target->mock('requires_enzyme', sub { return $bool_for{$requires_enzyme} } );
+#        $mock_target->mock('gene_id', sub { return $gene_id } );
+#        $mock_target->mock('gene_name', sub { return $gene_name } );
+#        $mock_target->mock('requestor', sub { return $requestor } );
+#        $mock_target->mock('ensembl_version', sub { return $ensembl_version } );
+#        $mock_target->mock('status', sub { return 'REQUESTED'; } );
+#        $mock_target->mock('status_changed', sub { return '2015-11-30'; } );
+#        
+#        my $c_id;        
+#        $mock_crRNA->mock('target', sub { return undef } );
+#        $mock_crRNA->mock('crRNA_id', sub { my @args = @_; if( $_[1] ){ $c_id = $_[1] } return $c_id; } );
+#        $mock_crRNA->mock('chr', sub { return $chr } );
+#        $mock_crRNA->mock('start', sub { return $start } );
+#        $mock_crRNA->mock('end', sub { return $end } );
+#        $mock_crRNA->mock('strand', sub { return $strand } );
+#        $mock_crRNA->mock('sequence', sub { return $sequence } );
+#        $mock_crRNA->mock('forward_oligo', sub { return $forward_oligo } );
+#        $mock_crRNA->mock('reverse_oligo', sub { return $reverse_oligo } );
+#        $mock_crRNA->mock('plasmid_backbone', sub { return 'pDR274' } );
+#        $mock_crRNA->mock('off_target_hits', sub { return $mock_off_target } );
+#        $mock_crRNA->mock('coding_scores', sub { return \%coding_scores_for } );
+#        $mock_crRNA->mock('crRNA_adaptor', sub { return $crRNA_adaptor } );
+#        $mock_crRNA->mock('target_id', sub { return $mock_crRNA->target->target_id } );
+#        $mock_crRNA->mock('target_name', sub { return $mock_target->target_name } );
+#        $mock_crRNA->mock('name', sub { return $id } );
+#        $mock_crRNA->mock('score', sub { return $score } );
+#        $mock_crRNA->mock('coding_score', sub { return $coding_score } );
+#        $mock_crRNA->mock('unique_restriction_sites', sub { return undef } );
+#        $mock_crRNA->mock('coding_scores', sub { return \%coding_scores_for } );
+#        $mock_crRNA->mock('off_target_score', sub { return $mock_off_target->score } );
+#        $mock_crRNA->mock('seed_score', sub { return $mock_off_target->seed_score } );
+#        $mock_crRNA->mock('seed_hits', sub { return $mock_off_target->seed_hits } );
+#        $mock_crRNA->mock('exonerate_score', sub { return $mock_off_target->exonerate_score } );
+#        $mock_crRNA->mock('exonerate_hits', sub { return $mock_off_target->exonerate_hits } );
+#        $mock_crRNA->mock('five_prime_Gs', sub { return 2 } );
+#        $mock_crRNA->mock('status', sub { return 'DESIGNED' } );
+#        $mock_crRNA->mock('status_changed', sub { return '2015-11-30'; } );
+#        
+#        $mock_well->mock('position', sub { return $well_id } );
+#        
+#        # store crRNA - 3 tests
+#        #check throws on no target
+#        throws_ok{ $crRNA_adaptor->store($mock_well) } qr/must\shave\san\sassociated\sTarget/, 'Store crRNA without target';
+#        my $target = $mock_target;
+#        $mock_crRNA->mock('target', sub { my @args = @_; if( $_[1] ){ $target = $_[1] } return $target; } );
+#        is($crRNA_adaptor->store($mock_well), 1, 'Store crRNA');
+#        is( $mock_crRNA->crRNA_id, $count, 'Check database id' );
+#        $t_id = $mock_crRNA->target->target_id;
+#        
+#        my %strand_for = (
+#            '+' => '1',
+#            '-' => '-1',
+#            1   => '1',
+#            -1  => '-1',
+#        );
+#        
+#        # check database rows - 4 tests (not including transcript test. calculated elsewhere)
+#        my %row;
+#        row_ok(
+#            sql => "SELECT * FROM crRNA WHERE crRNA_id = $count",
+#            store_row => \%row,
+#            tests => {
+#                'eq' => {
+#                     chr  => $chr,
+#                     strand => $strand_for{$strand},
+#                     sequence => $sequence,
+#                },
+#                '==' => {
+#                     start  => $start,
+#                     end    => $end,
+#                     target_id => $mock_crRNA->target_id,
+#                },
+#            },
+#            label => "crRNA stored - $id",
+#        );
+#        #print $row{'score'}, "\t", $score, "\t", abs($row{'score'} - $score), "\n";
+#        is( abs($row{'score'} - $score) < 0.002, 1, "score from db - $id" );
+#        #print $row{'coding_score'}, "\t", $coding_score, abs($row{'score'} - $score), "\n";
+#        if( !defined $coding_score ){
+#            is( $row{'coding_score'}, undef, "coding score from db - $id" );
+#        }
+#        else{
+#            is( abs($row{'coding_score'} - $coding_score) < 0.002, 1, "coding score from db - $id" );
+#        }
+#        
+#        # store coding scores
+#        my @rows;
+#        ok( $crRNA_adaptor->store_coding_scores( $mock_crRNA ), 'store coding scores' );
+#        SKIP: {
+#            skip 'undef coding scores', 1 if !defined $coding_score;
+#            row_ok(
+#                table => 'coding_scores',
+#                where => [ crRNA_id => $count ],
+#                store_rows => \@rows,
+#            );
+#            foreach my $row ( @rows ){
+#                is( $row->{'score'} - $coding_scores_for{ $row->{'transcript_id'} } < 0.002, 1, "Transcript scores from db - $id");
+#            }
+#        }
+#        
+#        # make mock well object
+#        $mock_plate->mock('plate_name', sub { return 'CR_000001a' } );
+#        
+#        # store construction oligos - 1 test
+#        if( $test_warning == 1 ){
+#            warning_like { $crRNA_adaptor->store_construction_oligos( $mock_well, 'cloning_oligos' ) }
+#                qr/Plasmid\sbackbone\spDR274\sdoesn't\sexist\sin\sthe\sdatabase\s-\sAdding/,
+#                "Warn if plasmid backbone doesn't exist in the db.";
+#            $test_warning = 0;
+#        }
+#        else{
+#            $crRNA_adaptor->store_construction_oligos( $mock_well, 'cloning_oligos' );
+#        }
+#        row_ok(
+#            sql => "SELECT * FROM construction_oligos WHERE crRNA_id = $count",
+#            tests => {
+#                'eq' => {
+#                     forward_oligo => $forward_oligo,
+#                     reverse_oligo => $reverse_oligo,
+#                     well_id => $well_id,
+#                },
+#                '==' => {
+#                    plate_id => $mock_plate->plate_id,
+#                },
+#            },
+#            label => "construction oligos stored - $id",
+#        );
+#        
+#        # store expression construct - 4 tests
+#        foreach my $suffix ( qw{ b c } ){
+#            my $plate_id = $suffix eq 'b'   ?   3   :   4;
+#            $mock_plate->mock('plate_id', sub { return $plate_id } );
+#            $mock_plate->mock('plate_name', sub { return 'CR_000001' . $suffix } );
+#            $crRNA_adaptor->store_expression_construct_info( $mock_well );
+#            
+#            row_ok(
+#                sql => "SELECT * FROM expression_construct WHERE crRNA_id = $count",
+#                store_rows => \@rows,
+#                tests => {
+#                    'eq' => {
+#                         trace_file => undef,
+#                         seq_verified => undef,
+#                         well_id => $well_id,
+#                    },
+#                    '==' => {
+#                        plasmid_backbone_id => 1,
+#                    },
+#                },
+#                label => "expression constructs stored - $id",
+#            );
+#            my @plate_ids;
+#            foreach my $row ( @rows ){
+#                push @plate_ids, $row->{'plate_id'};
+#            }
+#            is( (any { $_ == $plate_id } @plate_ids ), 1, "check expression construct plate id - $id");
+#        }
+#        $cr_name = $id;
+#        $last_target_id = $mock_crRNA->target_id;
+#        ( $rowi, $coli ) = increment( $rowi, $coli );
+#    }
+#    
+#    $mock_plate->mock('plate_id', sub { return 1 } );
+#    
+#    # check exists_in_db method - 2 tests
+#    is( $crRNA_adaptor->exists_in_db( $mock_crRNA->name ), 1, 'check exists_in_db - crRNA is in db' );
+#    is( $crRNA_adaptor->exists_in_db( 'crRNA:5:109-131:-1' ), undef, "check exists_in_db - crRNA isn't in db" );
+#    
+#    #my $crRNA_3 = $crRNA_adaptor->fetch_by_name_and_requestor( $cr_name, $target_requestor );
+#    $mock_target->mock('target_id', sub { return $last_target_id } );
+#    my $crRNA_3 = $crRNA_adaptor->fetch_by_name_and_target( $cr_name, $mock_target );
+#    # 13 tests
+#    is( $crRNA_3->crRNA_id, 13, 'Get id' );
+#    is( $crRNA_3->name, 'crRNA:5:75465364-75465386:-1', 'Get name' );
+#    is( $crRNA_3->chr, '5', 'Get chr' );
+#    is( $crRNA_3->start, 75465364, 'Get start' );
+#    is( $crRNA_3->end, 75465386, 'Get end' );
+#    is( $crRNA_3->strand, '-1', 'Get strand' );
+#    is( $crRNA_3->species, 'zebrafish', 'Get species' );
+#    is( $crRNA_3->target_gene_id , 'ENSDARG00000024894', 'Get gene id' );
+#    is( $crRNA_3->target_gene_name , 'tbx5a', 'Get gene name' );
+#    is( $crRNA_3->target->requestor , 'crispr_test', 'Get requestor' );
+#    is( $crRNA_3->target->ensembl_version , 70, 'Get version' );
+#    is( $crRNA_3->target->status_changed, $mock_target->status_changed, 'Get date' );
+#    isa_ok( $crRNA_3->crRNA_adaptor, 'Crispr::DB::crRNAAdaptor', 'check crRNA adaptor');
+#    
+#    # check fetch_by_name throws properly if crRNA is not in db
+#    # 1 extra test
+#    throws_ok { $crRNA_adaptor->fetch_by_name_and_target( 'crRNA:10:75476583-75476605:-1', $mock_target ) }
+#        qr/crRNA\sdoes\snot\sexist\sin\sthe\sdatabase/, 'fetch_by_name throws properly if crRNA not in db';
+#    
+#    close( $fh );
+#    
+#    $mock_target->mock('target_id', sub { return 100; } );
+#    $mock_target->mock('target_name', sub { return 'gene001' } );
+#    $mock_target->mock('assembly', sub { return 'Zv9' } );
+#    $mock_target->mock('chr', sub { return 'test_chr1' } );
+#    $mock_target->mock('start', sub { return 1 } );
+#    $mock_target->mock('end', sub { return 200 } );
+#    $mock_target->mock('strand', sub { return '1' } );
+#    $mock_target->mock('species', sub { return 'zebrafish' } );
+#    $mock_target->mock('requires_enzyme', sub { return 0 } );
+#    $mock_target->mock('gene_id', sub { return 'gene_001' } );
+#    $mock_target->mock('gene_name', sub { return 'gene1' } );
+#    $mock_target->mock('requestor', sub { return 'cr1' } );
+#    $mock_target->mock('ensembl_version', sub { return 74 } );
+#    $mock_target->mock('designed', sub { return undef } );
+#
+#    my $mock_crRNA_1 = Test::MockObject->new();
+#    $mock_crRNA_1->set_isa( 'Crispr::crRNA' );
+#    $mock_crRNA_1->mock( 'crRNA_id', sub{ return 100 });
+#    $mock_crRNA_1->mock( 'name', sub{ return 'crRNA:test_chr1:101-123:1' });
+#    $mock_crRNA_1->mock( 'chr', sub{ return 'test_chr1' });
+#    $mock_crRNA_1->mock( 'start', sub{ return 101 });
+#    $mock_crRNA_1->mock( 'end', sub{ return 123 });
+#    $mock_crRNA_1->mock( 'strand', sub{ return '1' });
+#    $mock_crRNA_1->mock( 'sequence', sub{ return 'AACTGATCGGGATCGCTATCTGG' });
+#    $mock_crRNA_1->mock( 'cut_site', sub{ return 117 });
+#    $mock_crRNA_1->mock( 'five_prime_Gs', sub{ return 0 });
+#    $mock_crRNA_1->mock( 'score', sub{ return 0.5 });
+#    $mock_crRNA_1->mock( 'off_target_score', sub{ return 0.76 });
+#    $mock_crRNA_1->mock( 'coding_score', sub{ return 0.7 });
+#    $mock_crRNA_1->mock( 'target', sub { return $mock_target } );
+#    $mock_crRNA_1->mock( 'target_id', sub { return $mock_target->target_id } );
+#    $mock_crRNA_1->mock( 'status', sub { return 'INJECTED' } );
+#    $mock_crRNA_1->mock( 'status_changed', sub { return '2015-12-02' } );
+#
+#    $mock_well->mock('contents', sub { return $mock_crRNA_1 } );
+#    $mock_well->mock('position', sub { return 'H12' } );
+#    
+#    # add target and crRNA to db - 15 tests
+#    ok( $crRNA_adaptor->store( $mock_well ), 'store mock crRNA and target');
+
     # destroy database
-    $db_connection->destroy();
+    #$db_connection->destroy();
 }
 
 sub increment {
