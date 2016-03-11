@@ -141,7 +141,7 @@ throws_ok { $design_obj->find_crRNAs_by_target( $mock_target ) }
     qr/Couldn't\sunderstand\sthe\starget's\sregion/, 'find crRNAs by target - incorrect region format';
 
 # set region and num_crisprs according to Ensembl version
-$region = $ensembl_version <= 79 ? '15:17720144-17719978:-1' : '5:15445938-15446104:-1';
+$region = $ensembl_version <= 79 ? '5:17719978-17720144:-1' : '5:15445938-15446104:-1';
 $num_crisprs = $ensembl_version <= 79 ? 27 : 27;
 
 $mock_target->mock( 'region', sub{ return $region });
@@ -181,6 +181,7 @@ $mock_crRNA1->mock( 'strand', sub{ return '1' });
 $mock_crRNA1->mock( 'sequence', sub{ return 'AACTGATCGGGATCGCTATCTGG' });
 $mock_crRNA1->mock( 'off_target_hits', sub{ my @args = @_; if( $args[1] ){ $off_targets1 = $args[1] }else{ return $off_targets1 } } );
 $mock_crRNA1->mock( 'cut_site', sub{ return 117 });
+$mock_crRNA1->mock( 'target', sub{ return $mock_target });
 
 my $off_targets2;
 my $coding_scores2 = {};
@@ -194,6 +195,10 @@ $mock_crRNA2->mock( 'strand', sub{ return '1' });
 $mock_crRNA2->mock( 'sequence', sub{ return 'GATCAAAGGCTGCAGTGCAGAGG' });
 $mock_crRNA2->mock( 'off_target_hits', sub{ my @args = @_; if( $args[1] ){ $off_targets2 = $args[1] }else{ return $off_targets2 } } );
 $mock_crRNA2->mock( 'cut_site', sub{ return 57 });
+$mock_crRNA2->mock( 'target', sub{ return $mock_target });
+
+# this array ref is what the mock target crRNAs method returns
+$crRNAs = [ $mock_crRNA1, $mock_crRNA2 ];
 
 my $crisprs_hash = {
     'crRNA:test_chr1:101-123:1' => $mock_crRNA1,
@@ -341,55 +346,7 @@ SKIP: {
     #}
 };
 
-
-# calculate protein coding scores
-# change output of mock methods
-$mock_crRNA1->mock( 'name', sub{ return 'crRNA:5:15446058-15446080:-1' } );
-$mock_crRNA1->mock( 'chr', sub{ return '5' });
-$mock_crRNA1->mock( 'start', sub{ return 15446058 });
-$mock_crRNA1->mock( 'end', sub{ return 15446080 });
-$mock_crRNA1->mock( 'cut_site', sub{ return 15446063 });
-$mock_crRNA1->mock( 'coding_score_for',
-    sub{ my @args = @_;
-        if( defined $args[2] ){ $coding_scores1->{ $args[1] } = $args[2]; }
-        else{ return $coding_scores1->{ $args[1] }; }  } );
-
-$mock_crRNA2->mock( 'name', sub{ return 'crRNA:5:15446110-15446132:1' });
-$mock_crRNA2->mock( 'chr', sub{ return '5' });
-$mock_crRNA2->mock( 'start', sub{ return 15446110 });
-$mock_crRNA2->mock( 'end', sub{ return 15446132 });
-$mock_crRNA2->mock( 'cut_site', sub{ return 15446126 });
-$mock_crRNA2->mock( 'coding_score_for',
-    sub{ my @args = @_;
-        if( defined $args[2] ){ $coding_scores2->{ $args[1] } = $args[2]; }
-        else{ return $coding_scores2->{ $args[1] }; }  } );
-
-
-my $gene_adaptor = Bio::EnsEMBL::Registry->get_adaptor( 'zebrafish', 'core', 'gene' );
-my $gene = $gene_adaptor->fetch_by_stable_id( 'ENSDARG00000035622' );
-my $transcripts = $gene->get_all_Transcripts();
-
-ok( $design_obj2->calculate_all_pc_coding_scores( $mock_crRNA1, $transcripts ), 'pc coding scores 1');
-ok( $design_obj2->calculate_all_pc_coding_scores( $mock_crRNA2, $transcripts ), 'pc coding scores 2');
-is( abs( $coding_scores1->{ENSDART00000124467} - 0.391 ) < 0.001, 1, 'check coding scores 1');
-is( $coding_scores2->{ENSDART00000124467}, 0, 'check coding scores 2');
-$tests+=4;
-
-# check scores
-$mock_crRNA1->mock( 'score', sub{ return 0 });
-$mock_crRNA1->mock( 'target', sub{ return $mock_target });
-
-$mock_crRNA2->mock( 'score', sub{ return 0.504 });
-$mock_crRNA2->mock( 'target', sub{ return $mock_target });
-
-$crRNAs = [ $mock_crRNA1, $mock_crRNA2 ];
-ok( $design_obj->filter_crRNAs_from_target_by_score( $mock_target, 1 ), 'filter crRNAs by score');
-is( scalar @{ $mock_target->crRNAs }, 1, 'check crisprs left after filtering by score' );
-$tests+=2;
-
-# add crispr 1 back to target
-$crRNAs = [ $mock_crRNA1, $mock_crRNA2 ];
-
+# SNP FILTERING
 SKIP: {
     my $test_num = 7;
     $tests += $test_num;
@@ -418,6 +375,53 @@ SKIP: {
         'check filter_crRNAs_from_target_by_snps_and_indels throws when var file does not exist';
 
 }
+
+# calculate protein coding scores
+# change output of mock methods
+$mock_crRNA1->mock( 'name', sub{
+    return $ensembl_version <= 79 ? 'crRNA:5:17720098-17720120:-1' : 'crRNA:5:15446058-15446080:-1' } );
+$mock_crRNA1->mock( 'chr', sub{ return '5' });
+$mock_crRNA1->mock( 'start', sub{ return $ensembl_version <= 79 ? 17720098 : 15446058 });
+$mock_crRNA1->mock( 'end', sub{ return $ensembl_version <= 79 ? 17720120 : 15446080 });
+$mock_crRNA1->mock( 'cut_site', sub{ return $ensembl_version <= 79 ? 17720103 : 15446063 });
+$mock_crRNA1->mock( 'coding_score_for',
+    sub{ my @args = @_;
+        if( defined $args[2] ){ $coding_scores1->{ $args[1] } = $args[2]; }
+        else{ return $coding_scores1->{ $args[1] }; }  } );
+
+$mock_crRNA2->mock( 'name', sub{ return $ensembl_version <= 79 ? 'crRNA:5:17720150-17720172:-1' : 'crRNA:5:15446110-15446132:-1' });
+$mock_crRNA2->mock( 'chr', sub{ return '5' });
+$mock_crRNA2->mock( 'start', sub{ return $ensembl_version <= 79 ? 17720150 : 15446110 });
+$mock_crRNA2->mock( 'end', sub{ return $ensembl_version <= 79 ? 17720172 : 15446132 });
+$mock_crRNA2->mock( 'cut_site', sub{ return $ensembl_version <= 79 ? 17720155 : 15446115 });
+$mock_crRNA2->mock( 'coding_score_for',
+    sub{ my @args = @_;
+        if( defined $args[2] ){ $coding_scores2->{ $args[1] } = $args[2]; }
+        else{ return $coding_scores2->{ $args[1] }; }  } );
+
+
+my $gene_adaptor = Bio::EnsEMBL::Registry->get_adaptor( 'zebrafish', 'core', 'gene' );
+my $gene = $gene_adaptor->fetch_by_stable_id( 'ENSDARG00000035622' );
+my $transcripts = $gene->get_all_Transcripts();
+
+ok( $design_obj2->calculate_all_pc_coding_scores( $mock_crRNA1, $transcripts ), 'pc coding scores 1');
+ok( $design_obj2->calculate_all_pc_coding_scores( $mock_crRNA2, $transcripts ), 'pc coding scores 2');
+
+is( abs( $coding_scores1->{ENSDART00000124467} - 0.391 ) < 0.001, 1, 'check coding scores 1');
+is( $coding_scores2->{ENSDART00000124467}, 0, 'check coding scores 2');
+$tests+=4;
+
+# check scores
+$mock_crRNA1->mock( 'score', sub{ return 0 });
+$mock_crRNA1->mock( 'target', sub{ return $mock_target });
+
+$mock_crRNA2->mock( 'score', sub{ return 0.504 });
+$mock_crRNA2->mock( 'target', sub{ return $mock_target });
+
+$crRNAs = [ $mock_crRNA1, $mock_crRNA2 ];
+ok( $design_obj->filter_crRNAs_from_target_by_score( $mock_target, 1 ), 'filter crRNAs by score');
+is( scalar @{ $mock_target->crRNAs }, 1, 'check crisprs left after filtering by score' );
+$tests+=2;
 
 # test method remove targets
 ok( $design_obj->remove_target( $mock_target ), 'remove target');
