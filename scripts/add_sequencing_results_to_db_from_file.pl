@@ -182,9 +182,10 @@ foreach my $sample_name ( keys %alleles_for ){
             }
         }
         
-        my $pass = $sample->total_reads >= $READS_THRESHOLD ? 1
-        :   $sequencing_results{ $crRNA_id }{'total_percentage'} >= $PC_THRESHOLD ? 1
+        my $fail = $sample->total_reads < $READS_THRESHOLD ? 1
+        :   $sequencing_results{ $crRNA_id }{'total_percentage'} < $PC_THRESHOLD ? 1
         :   0;
+        my $pass = $fail == 1 ? 0 : 1;
         $sequencing_results{ $crRNA_id }{'pass'} = $pass;
     }
     
@@ -203,7 +204,7 @@ foreach my $sample_name ( keys %alleles_for ){
 }
 
 # update crispr and target status based on sequencing results
-my @crisprs = ( values %crisprs )
+my @crisprs = ( values %crisprs );
 my $results_hash = $crRNA_adaptor->aggregate_sequencing_results( \@crisprs );
 print Dumper( $results_hash );
 
@@ -221,13 +222,13 @@ my %statuses = (
 foreach my $crispr_id ( keys %{$results_hash} ){
     foreach my $type ( sort keys %{$results_hash->{$crispr_id}} ){
         if( $results_hash->{$crispr_id}{$type} >= $SCREENING_THRESHOLD ){
-            $crisprs{ $crRNA_id }->status( $statuses{$type}{'pass'} )
+            $crisprs{ $crispr_id }->status( $statuses{$type}{'pass'} )
         }
         else{
-            $crisprs{ $crRNA_id }->status( $statuses{$type}{'fail'} )
+            $crisprs{ $crispr_id }->status( $statuses{$type}{'fail'} )
         }
     }
-    $crRNA_adaptor->update_status( $crispr );
+    $crRNA_adaptor->update_status( $crisprs{ $crispr_id } );
 }
 
 # get_and_check_options
