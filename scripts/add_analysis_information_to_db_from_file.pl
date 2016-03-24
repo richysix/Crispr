@@ -126,16 +126,17 @@ while(<>){
             if( length $well_id == 2 ){
                 substr($well_id, 1, 0, '0');
             }
-            my $primer_pair =
+            my $primer_pairs =
                 $primer_pair_adaptor->fetch_by_plate_name_and_well(
                                         $plate_name, $well_id );
-            if( defined $primer_pair ){
-                push @primer_pairs, $primer_pair;
-                $primer_pair_cache{$amplicon_info} = $primer_pair;
+            
+            if( scalar @{$primer_pairs} > 0 ){
+                push @primer_pairs, @{$primer_pairs};
+                $primer_pair_cache{$amplicon_info} = $primer_pairs;
             }
         }
         else{
-            push @primer_pairs, $primer_pair_cache{$amplicon_info};
+            push @primer_pairs, @{$primer_pair_cache{$amplicon_info}};
         }
     }
     if( !@primer_pairs ){
