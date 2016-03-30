@@ -908,10 +908,6 @@ Directory for output files [default: results]
 
 Directory in which to find the sample bam files [default: sample-bams]
 
-=item B<--pindel_directory>
-
-Directory in which to find the pindel output files [default: pindel]
-
 =item B<--pc_filter>
 
 A threshold for the percentage of reads that a variant has to achieve for output
@@ -940,22 +936,6 @@ If no value is supplied the default level of filtering is 100 reads per amplicon
 
 Turns on filtering of variants by depth.
 If no value is supplied the default level of filtering is 10 reads supporting the variant.
-
-=item B<--pindel_path>
-
-Path for the pindel program
-
-=item B<--no_pindel>
-
-option to skip running pindel
-
-=item B<--no_dindel>
-
-option to skip using Dindel
-
-=item B<--vcftools_path>
-
-file path for vcftools
 
 =item B<--reference>
 

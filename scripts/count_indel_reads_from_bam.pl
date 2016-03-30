@@ -2357,6 +2357,8 @@ Description
         --pindel_path           file path for the pindel program            
         --no_pindel             option to skip using pindel
         --no_dindel             option to skip using dindel
+        --dindel_bin            location of the dindel binary
+        --dindel_scripts        location of the dindel pythons scripts directory
         --vcftools_path         file path for vcftools
         --reference             genome reference file
         --assembly              name for the genome assembly
@@ -2460,6 +2462,16 @@ option to skip running pindel
 =item B<--no_dindel>
 
 option to skip using Dindel
+
+=item B<--dindel_bin>
+
+location of the dindel binary. If this is not supplied the script tries to find
+dindel in the current path and if that fails it exits.
+
+=item B<--dindel_scripts>
+
+location of the dindel pythons scripts directory. This must be set unless the
+no_dindel option is used.
 
 =item B<--vcftools_path>
 
