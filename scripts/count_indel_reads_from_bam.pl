@@ -506,7 +506,8 @@ if( $no_combined ){
                                                             },
                                                         );
                                         # add read name to read_names hash
-                                        my $read_name = join(":", $align->query->name, $align->strand, );
+                                        #my $read_name = join(":", $align->query->name, $align->strand, );
+                                        my $read_name = $align->query->name;
                                         if( $results_hash->{indels}->{$crispr_name}->{$variant}->{count} > $DOWNSAMPLE_LIMIT ){
                                             my $fraction = $DOWNSAMPLE_LIMIT / $results_hash->{indels}->{$crispr_name}->{$variant}->{count};
                                             if( rand() < $fraction ){
@@ -553,7 +554,7 @@ if( $no_combined ){
                             my ( $bam, $read_names, $bam_fhs, ) = @{$data};
                             # write read to output bam file if the read name exists in the hash
                             foreach my $variant ( keys %{$read_names} ){
-                                my $read_name = $alignment->qname . ":" . ($alignment->reversed ? "-1" : "1" );
+                                my $read_name = $alignment->qname;
                                 if( exists $read_names->{ $variant}{ $read_name } ){
                                     $bam_fhs->{ $variant }->write1($alignment);
                                 }

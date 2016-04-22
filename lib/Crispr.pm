@@ -24,7 +24,8 @@ use Crispr::OffTargetInfo;
 use Tree::AnnotationTree;
 use Tree::GenomicIntervalTree;
 
-use Bio::Seq;
+use BioPerl 1.006900;
+use Bio::Seq ;
 use Bio::SeqIO;
 use Bio::DB::Fasta;
 
