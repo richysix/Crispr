@@ -55,7 +55,10 @@ foreach my $db_connection ( @{$db_connections} ){
     # $dbh is a DBI database handle
     local $Test::DatabaseRow::dbh = $dbh;
     
-    if( $driver eq 'sqlite' ){
+    if($driver eq 'mysql' ){
+        $ENV{MYSQL_DBNAME} = $ENV{MYSQL_TEST_DBNAME};
+    }
+    elsif( $driver eq 'sqlite' ){
         foreach my $variable ( qw{MYSQL_TEST_DBNAME MYSQL_DBHOST MYSQL_DBPORT MYSQL_DBUSER MYSQL_DBPASS } ){
             $ENV{$variable} = undef;
         }
