@@ -177,6 +177,9 @@ sub create_mock_object_and_add_to_db {
     elsif( $type eq 'sample' ){
         ( $mock_object, $db_id ) = $self->create_and_add_sample_object( $db_connection, $args, );
     }
+    elsif( $type eq 'primer' ){
+        ( $mock_object, $db_id ) = $self->create_and_add_primer_object( $db_connection, $args, );
+    }
 
     return ( $mock_object, $db_id );
 }
@@ -644,6 +647,67 @@ sub create_and_add_sample_object {
         push @mock_samples, $mock_sample;
     }
     return ( \@mock_samples, );
+}
+
+sub create_and_add_primer_object {
+    my ( $self, $db_connection, $args, ) = @_;
+    
+    my $primer_args = {
+        left => {
+            'primer_id' => sub{ return 1 },
+            'sequence' => sub{ return 'ACACTCTTTCCCTACACGACGCTCTTCCGATCTTGGGAGTCCTGCTAATCTCTC' },
+            'seq_region' => sub{ return '5' },
+            'seq_region_start' => sub{ return 60341090 },
+            'seq_region_end' => sub{ return 60341110 },
+            'seq_region_strand' => sub{ return '1' },
+            'primer_name' => sub{ return '5:60341090-60341110:1'; },
+            'well' => sub{ return $args->{mock_well} },
+        },
+        right => {
+            'primer_id' => sub{ return 2 },
+            'sequence' => sub{ return 'TCGGCATTCCTGCTGAACCGCTCTTCCGATCTCACAGCACTGTATATAAACAGTG' },
+            'seq_region' => sub{ return '5' },
+            'seq_region_start' => sub{ return 60341311 },
+            'seq_region_end' => sub{ return 60341333 },
+            'seq_region_strand' => sub{ return '-1' },
+            'primer_name' => sub{ return '5:60341311-60341333:-1'; },
+            'well' => sub{ return $args->{mock_well} },
+        },
+    };
+    
+    my $side = $args->{primer_side} || 'left';
+    my $mock_primer = Test::MockObject->new();
+    $mock_primer->set_isa( 'Crispr::Primer' );
+    foreach my $meth ( keys $primer_args->{ $side } ){
+        $mock_primer->mock($meth, $primer_args->{ $side }->{$meth} );
+    }
+    
+    if( $args->{add_to_db} ){
+        my $dbh = $db_connection->connection->dbh;
+        # add to db
+        my $statement = "insert into primer values( ?, ?, ?, ?, ?, ?, ?, ?, ? );";
+        my $primer_seq = $mock_primer->sequence;
+        my $tail;
+        foreach my $tail_seq ( qw{ ACACTCTTTCCCTACACGACGCTCTTCCGATCT TCGGCATTCCTGCTGAACCGCTCTTCCGATCT } ){
+            if( $primer_seq =~ m/$tail_seq/xms){
+                $primer_seq =~ s/$tail_seq//xms;
+                $tail = $tail_seq;
+            }
+        }
+        my $sth = $dbh->prepare($statement);
+        $sth->execute(
+            $mock_primer->primer_id,
+            $primer_seq,
+            $mock_primer->seq_region,
+            $mock_primer->seq_region_start, $mock_primer->seq_region_end,
+            $mock_primer->seq_region_strand,
+            $tail,
+            $mock_primer->well->plate->plate_id,
+            $mock_primer->well->position,
+        );
+    }
+    
+    return( $mock_primer, $mock_primer->primer_id, );
 }
 
 sub _build_slice_adaptor {
