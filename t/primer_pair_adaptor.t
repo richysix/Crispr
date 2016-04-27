@@ -14,7 +14,7 @@ use Readonly;
 use File::Spec;
 use English qw( -no_match_vars );
 
-Readonly my $TESTS_FOREACH_DBC => 1 + 13 + 9 + 22 + 22 + 23 + 22;
+Readonly my $TESTS_FOREACH_DBC => 1 + 11 + 9 + 22 + 22 + 23 + 22;
 if( $ENV{NO_DB} ) {
     plan skip_all => 'Not testing database';
 }
@@ -61,12 +61,12 @@ foreach my $db_connection ( @{$db_connections} ){
     # 1 test
     isa_ok( $primer_pair_ad, 'Crispr::DB::PrimerPairAdaptor' );
     
-    # check attributes and methods exist 3 + 10 tests
+    # check attributes and methods exist 3 + 8 tests
     my @attributes = ( qw{ dbname db_connection connection } );
     
     my @methods = (
-        qw{ store fetch_all_by_crRNA fetch_all_by_crRNA_id _fetch _make_new_primer_pair_from_db
-        _build_plate_adaptor check_entry_exists_in_db fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement _db_error_handling }
+        qw{ store fetch_all_by_crRNA fetch_all_by_crRNA_id _fetch check_entry_exists_in_db
+        fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement _db_error_handling }
     );
 
     foreach my $attribute ( @attributes ) {
