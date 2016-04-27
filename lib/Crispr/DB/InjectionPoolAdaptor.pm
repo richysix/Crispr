@@ -17,8 +17,6 @@ use Crispr::DB::InjectionPool;
 
 extends 'Crispr::DB::BaseAdaptor';
 
-my %inj_pool_cache;
-
 =method new
 
   Usage       : my $injection_pool_adaptor = Crispr::DB::InjectionPoolAdaptor->new(
@@ -32,6 +30,15 @@ my %inj_pool_cache;
                 get_adaptor method with a previously constructed DBConnection object
 
 =cut
+
+# cache for injection_pool objects from db
+has '_injection_pool_cache' => (
+	is => 'ro',
+	isa => 'HashRef',
+    init_arg => undef,
+    writer => '_set_injection_pool_cache',
+    default => sub { return {}; },
+);
 
 =method store
 
@@ -350,7 +357,7 @@ END_SQL
         # if not, then make a new injection pool/ get it from the cache
         if( !@pools ){        
             my $inj_pool;
-            if( !exists $inj_pool_cache{ $injection_id } ){
+            if( !exists $self->_injection_pool_cache->{ $injection_id } ){
                 $inj_pool = Crispr::DB::InjectionPool->new(
                     db_id => $injection_id,
                     pool_name => $injection_name,
@@ -361,10 +368,12 @@ END_SQL
                     line_raised => $line_raised,
                     sorted_by => $sorted_by,
                 );
-                $inj_pool_cache{ $injection_id } = $inj_pool;
+                my $inj_pool_cache = $self->_injection_pool_cache;
+                $inj_pool_cache->{ $injection_id } = $inj_pool;
+                $self->_set_injection_pool_cache( $inj_pool_cache );
             }
             else{
-                $inj_pool = $inj_pool_cache{ $injection_id };
+                $inj_pool = $self->_injection_pool_cache->{ $injection_id };
             }
             $inj_pool->guideRNAs(
                 $self->guideRNA_prep_adaptor->fetch_all_by_injection_pool( $inj_pool )
@@ -463,7 +472,7 @@ END_SQL
         );
         
         my $inj_pool;
-        if( !exists $inj_pool_cache{ $injection_id } ){
+        if( !exists $self->_injection_pool_cache->{ $injection_id } ){
             $inj_pool = Crispr::DB::InjectionPool->new(
                 db_id => $injection_id,
                 pool_name => $injection_name,
@@ -474,10 +483,12 @@ END_SQL
                 line_raised => $line_raised,
                 sorted_by => $sorted_by,
             );
-            $inj_pool_cache{ $injection_id } = $inj_pool;
+            my $inj_pool_cache = $self->_injection_pool_cache;
+            $inj_pool_cache->{ $injection_id } = $inj_pool;
+            $self->_set_injection_pool_cache( $inj_pool_cache );
         }
         else{
-            $inj_pool = $inj_pool_cache{ $injection_id };
+            $inj_pool = $self->_injection_pool_cache->{ $injection_id };
         }
         $inj_pool->guideRNAs(
             $self->guideRNA_prep_adaptor->fetch_all_by_injection_pool( $inj_pool )

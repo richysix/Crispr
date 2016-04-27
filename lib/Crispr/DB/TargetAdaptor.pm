@@ -13,10 +13,6 @@ use Carp qw( cluck confess );
 use English qw( -no_match_vars );
 extends 'Crispr::DB::BaseAdaptor';
 
-# cache for targets from db
-# HashRef keyed on db_id
-my %target_cache;
-
 =method new
 
   Usage       : my $target_adaptor = Crispr::TargetAdaptor->new(
@@ -31,6 +27,15 @@ my %target_cache;
   Comments    : None
 
 =cut
+
+# cache for target objects from db
+has '_target_cache' => (
+	is => 'ro',
+	isa => 'HashRef',
+    init_arg => undef,
+    writer => '_set_target_cache',
+    default => sub { return {}; },
+);
 
 =method store_targets
 
@@ -447,7 +452,7 @@ END_SQL
     while ( $sth->fetch ) {
 
         my $target;
-        if( !exists $target_cache{ $target_id } ){
+        if( !exists $self->_target_cache->{ $target_id } ){
             $target = Crispr::Target->new(
                 target_id => $target_id,
                 target_name => $target_name,
@@ -466,10 +471,12 @@ END_SQL
                 status_changed => $status_changed,
             );
             $target->target_adaptor( $self );
-            $target_cache{ $target_id } = $target;
+            my $target_cache = $self->_target_cache;
+            $target_cache->{ $target_id } = $target;
+            $self->_set_target_cache( $target_cache );
         }
         else{
-            $target = $target_cache{ $target_id };
+            $target = $self->_target_cache->{ $target_id };
         }
 
         push @targets, $target;
@@ -548,7 +555,7 @@ END_SQL
 
         my $target;
         my $status = $self->_fetch_status_from_id( $status_id );
-        if( !exists $target_cache{ $target_id } ){
+        if( !exists $self->_target_cache->{ $target_id } ){
             $target = Crispr::Target->new(
                 target_id => $target_id,
                 target_name => $target_name,
@@ -567,10 +574,12 @@ END_SQL
                 status_changed => $status_changed,
             );
             $target->target_adaptor( $self );
-            $target_cache{ $target_id } = $target;
+            my $target_cache = $self->_target_cache;
+            $target_cache->{ $target_id } = $target;
+            $self->_set_target_cache( $target_cache );
         }
         else{
-            $target = $target_cache{ $target_id };
+            $target = $self->_target_cache->{ $target_id };
         }
 
         push @targets, $target;
@@ -669,7 +678,7 @@ END_SQL
 
         my $target;
         my $status = $self->_fetch_status_from_id( $status_id );
-        if( !exists $target_cache{ $target_id } ){
+        if( !exists $self->_target_cache->{ $target_id } ){
             $target = Crispr::Target->new(
                 target_id => $target_id,
                 target_name => $target_name,
@@ -688,10 +697,12 @@ END_SQL
                 status_changed => $status_changed,
             );
             $target->target_adaptor( $self );
-            $target_cache{ $target_id } = $target;
+            my $target_cache = $self->_target_cache;
+            $target_cache->{ $target_id } = $target;
+            $self->_set_target_cache( $target_cache );
         }
         else{
-            $target = $target_cache{ $target_id };
+            $target = $self->_target_cache->{ $target_id };
         }
 
         push @targets, $target;

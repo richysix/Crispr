@@ -28,6 +28,15 @@ extends 'Crispr::DB::BaseAdaptor';
 
 =cut
 
+# cache for cas9 objects from db
+has '_cas9_cache' => (
+	is => 'ro',
+	isa => 'HashRef',
+    init_arg => undef,
+    writer => '_set_cas9_cache',
+    default => sub { return {} },
+);
+
 =method store
 
   Usage       : $cas9 = $cas9_adaptor->store( $cas9 );
@@ -229,7 +238,6 @@ sub get_db_id_by_name {
 #Throws      : 
 #Comments    :
 
-my %cas9_cache;
 sub _fetch {
     my ( $self, $where_clause, $where_parameters ) = @_;
     my $dbh = $self->connection->dbh();
@@ -258,7 +266,7 @@ END_SQL
     my @cas9s = ();
     while ( $sth->fetch ) {
         my $cas9;
-        if( !exists $cas9_cache{ $cas9_id } ){
+        if( !exists $self->_cas9_cache->{ $cas9_id } ){
             $cas9 = Crispr::Cas9->new(
                 db_id => $cas9_id,
                 name => $name,
@@ -266,10 +274,12 @@ END_SQL
                 vector => $vector,
                 species => $species,
             );
-            $cas9_cache{ $cas9_id } = $cas9;
+            my $cas9_cache = $self->_cas9_cache->{ $cas9_id };
+            $cas9_cache->{ $cas9_id } = $cas9;
+            $self->_set_cas9_cache( $cas9_cache );
         }
         else{
-            $cas9 = $cas9_cache{ $cas9_id };
+            $cas9 = $self->_cas9_cache->{ $cas9_id };
         }
         
         push @cas9s, $cas9;
@@ -303,7 +313,7 @@ sub _make_new_cas9_from_db {
     }
     my $cas9;
 	
-    if( !exists $cas9_cache{ $fields->[0] } ){
+    if( !exists $self->_cas9_cache->{ $fields->[0] } ){
         my %args = (
             db_id => $fields->[0],
             name => $fields->[1],
@@ -313,10 +323,12 @@ sub _make_new_cas9_from_db {
         );
         
         $cas9 = Crispr::Cas9->new( %args );
-        $cas9_cache{ $fields->[0] } = $cas9;
+        my $cas9_cache = $self->_cas9_cache->{ $fields->[0] };
+        $cas9_cache->{ $fields->[0] } = $cas9;
+        $self->_set_cas9_cache( $cas9_cache );
     }
     else{
-        $cas9 = $cas9_cache{ $fields->[0] };
+        $cas9 = $self->_cas9_cache->{ $fields->[0] };
     }
 	
     return $cas9;

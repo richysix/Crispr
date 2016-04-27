@@ -22,8 +22,6 @@ use Crispr::DB::TargetAdaptor;
 
 extends 'Crispr::DB::BaseAdaptor';
 
-my %crRNA_cache; # Cache for crRNA objects. HashRef keyed on crRNA_id
-
 =method new
 
   Usage       : my $crRNA_adaptor = Crispr::DB::crRNAAdaptor->new(
@@ -38,6 +36,15 @@ my %crRNA_cache; # Cache for crRNA objects. HashRef keyed on crRNA_id
                 and call get_adaptor( 'crRNA' );
 
 =cut
+
+# cache for crRNA objects from db
+has '_crRNA_cache' => (
+	is => 'ro',
+	isa => 'HashRef',
+    init_arg => undef,
+    writer => '_set_crRNA_cache',
+    default => sub { return {}; },
+);
 
 =method store
 
@@ -956,15 +963,18 @@ END_ST
         $target_id, $plate_id, $well_id, $status_id, $status_changed, ) );
 
     while ( $sth->fetch ) {
-        if( !exists $crRNA_cache{ $crRNA_id } ){
+        if( !exists $self->_crRNA_cache->{ $crRNA_id } ){
             my $crRNA = $self->_make_new_crRNA_from_db(
                 [ $crRNA_id, $crRNA_name, $chr, $start, $end, $strand,
                 $sequence, $num_five_prime_Gs, $score, $off_target_score, $coding_score,
                 $target_id, $plate_id, $well_id, $status_id, $status_changed, ] );
             push @crRNAs, $crRNA;
+            my $crRNA_cache = $self->_crRNA_cache;
+            $crRNA_cache->{ $crRNA_id } = $crRNA;
+            $self->_set_crRNA_cache( $crRNA_cache );
         }
         else{
-            push @crRNAs, $crRNA_cache{ $crRNA_id };
+            push @crRNAs, $self->_crRNA_cache->{ $crRNA_id };
         }
     }
 
@@ -1012,7 +1022,7 @@ END_SQL
     my @crRNAs = ();
     while ( $sth->fetch ) {
         my $crRNA;
-        if( !exists $crRNA_cache{ $crRNA_id } ){
+        if( !exists $self->_crRNA_cache->{ $crRNA_id } ){
             # fetch target by target_id
             my $target = $self->target_adaptor->fetch_by_id( $target_id );
             $crRNA = Crispr::crRNA->new(
@@ -1028,10 +1038,12 @@ END_SQL
                 status => $status,
                 status_changed => $status_changed,
             );
-            $crRNA_cache{ $crRNA_id } = $crRNA;
+            my $crRNA_cache = $self->_crRNA_cache;
+            $crRNA_cache->{ $crRNA_id } = $crRNA;
+            $self->_set_crRNA_cache( $crRNA_cache );
         }
         else{
-            $crRNA = $crRNA_cache{ $crRNA_id };
+            $crRNA = $self->_crRNA_cache->{ $crRNA_id };
         }
 
         push @crRNAs, $crRNA;
@@ -1115,7 +1127,7 @@ END_SQL
     while ( $sth->fetch ) {
         my $status = $self->_fetch_status_from_id( $status_id );
         my $crRNA;
-        if( !exists $crRNA_cache{ $crRNA_id } ){
+        if( !exists $self->_crRNA_cache->{ $crRNA_id } ){
             # fetch target by target_id
             my $target = $self->target_adaptor->fetch_by_id( $target_id );
             $crRNA = Crispr::crRNA->new(
@@ -1131,10 +1143,12 @@ END_SQL
                 status => $status,
                 status_changed => $status_changed,
             );
-            $crRNA_cache{ $crRNA_id } = $crRNA;
+            my $crRNA_cache = $self->_crRNA_cache;
+            $crRNA_cache->{ $crRNA_id } = $crRNA;
+            $self->_set_crRNA_cache( $crRNA_cache );
         }
         else{
-            $crRNA = $crRNA_cache{ $crRNA_id };
+            $crRNA = $self->_crRNA_cache->{ $crRNA_id };
         }
 
         push @crRNAs, $crRNA;

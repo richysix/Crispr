@@ -15,9 +15,6 @@ use Readonly;
 
 extends 'Crispr::DB::BaseAdaptor';
 
-# Cache for primers. HashRef keyed on db_id
-my %primer_cache;
-
 =method new
 
   Usage       : my $primer_adaptor = Crispr::DB::PrimerAdaptor->new(
@@ -31,6 +28,15 @@ my %primer_cache;
                 get_adaptor method with a previously constructed DBConnection object
 
 =cut
+
+# cache for primer objects from db
+has '_primer_cache' => (
+	is => 'ro',
+	isa => 'HashRef',
+    init_arg => undef,
+    writer => '_set_primer_cache',
+    default => sub { return {}; },
+);
 
 =method store
 
@@ -254,7 +260,7 @@ END_SQL
     my @primers = ();
     while ( $sth->fetch ) {
         my $primer;
-        if( !exists $primer_cache{ $primer_id } ){
+        if( !exists $self->_primer_cache->{ $primer_id } ){
             my $primer_name = join(":", $primer_chr,
                                    join("-", $primer_start, $primer_end, ),
                                    $primer_strand, );
@@ -279,10 +285,12 @@ END_SQL
                     seq_region_start => $primer_start,
                     seq_region_end => $primer_end,
             );
-            $primer_cache{ $primer_id } = $primer;
+            my $primer_cache = $self->_primer_cache;
+            $primer_cache->{ $primer_id } = $primer;
+            $self->_set_primer_cache( $primer_cache );
         }
         else{
-            $primer = $primer_cache{ $primer_id };
+            $primer = $self->_primer_cache->{ $primer_id };
         }
         
         push @primers, $primer;

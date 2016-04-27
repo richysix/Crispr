@@ -29,6 +29,15 @@ extends 'Crispr::DB::BaseAdaptor';
 
 =cut
 
+# cache for guide_rna_prep objects from db
+has '_guideRNA_prep_cache' => (
+	is => 'ro',
+	isa => 'HashRef',
+    init_arg => undef,
+    writer => '_set_guide_rna_prep_cache',
+    default => sub { return {}; },
+);
+
 =method store
 
   Usage       : $guideRNA_prep = $guideRNA_prep_adaptor->store( $guideRNA_prep );
@@ -315,7 +324,6 @@ END_SQL
 #Throws      : 
 #Comments    :
 
-my %guideRNA_prep_cache;
 sub _fetch {
     my ( $self, $where_clause, $where_parameters ) = @_;
     my $dbh = $self->connection->dbh();
@@ -358,7 +366,7 @@ END_SQL
     my @guideRNA_preps = ();
     while ( $sth->fetch ) {
         my $guideRNA_prep;
-        if( !exists $guideRNA_prep_cache{ $guideRNA_prep_id } ){
+        if( !exists $self->_guideRNA_prep_cache->{ $guideRNA_prep_id } ){
             my $crRNA = $self->crRNA_adaptor->_make_new_crRNA_from_db(
                 [ $crRNA_id, $crRNA_name, $chr, $start, $end, $strand,
                 $sequence, $num_five_prime_Gs, $score, $off_target_score, $coding_score,
@@ -383,10 +391,12 @@ END_SQL
                 date => $date,
                 well => $well,
             );
-            $guideRNA_prep_cache{ $guideRNA_prep_id } = $guideRNA_prep;
+            my $guideRNA_prep_cache = $self->_guideRNA_prep_cache;
+            $guideRNA_prep_cache->{ $guideRNA_prep_id } = $guideRNA_prep;
+            $self->_set_guide_rna_prep_cache( $guideRNA_prep_cache );
         }
         else{
-            $guideRNA_prep = $guideRNA_prep_cache{ $guideRNA_prep_id };
+            $guideRNA_prep = $self->_guideRNA_prep_cache->{ $guideRNA_prep_id };
         }
         
         push @guideRNA_preps, $guideRNA_prep;
@@ -410,7 +420,7 @@ sub _make_new_guideRNA_prep_from_db {
     my $guideRNA_prep;
 	
     my $guide_rna_info = $info->{guide_rna_prep};
-    if( !exists $guideRNA_prep_cache{ $guide_rna_info->{db_id} } ){
+    if( !exists $self->_guideRNA_prep_cache->{ $guide_rna_info->{db_id} } ){
         my ( $crRNA, $plate, $well, );
         my $crRNA_info = $info->{crRNA};
         if( defined $crRNA_info ){
@@ -450,12 +460,14 @@ sub _make_new_guideRNA_prep_from_db {
             well => $well,
             injection_concentration => $guide_rna_info->{injection_concentration},
         );
-        $guideRNA_prep_cache{ $guide_rna_info->{db_id} } =
+        my $guideRNA_prep_cache = $self->_guideRNA_prep_cache;
+        $guideRNA_prep_cache->{ $guide_rna_info->{db_id} } =
             $guideRNA_prep;
+        $self->_set_guide_rna_prep_cache( $guideRNA_prep_cache );
     }
     else{
         $guideRNA_prep =
-            $guideRNA_prep_cache{ $guide_rna_info->{db_id} };
+            $self->_guideRNA_prep_cache->{ $guide_rna_info->{db_id} };
     }
 	
     return $guideRNA_prep;

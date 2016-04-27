@@ -14,8 +14,6 @@ use Crispr::Allele;
 
 extends 'Crispr::DB::BaseAdaptor';
 
-my %allele_cache;
-
 =method new
 
   Usage       : my $allele_adaptor = Crispr::DB::AlleleAdaptor->new(
@@ -29,6 +27,15 @@ my %allele_cache;
                 get_adaptor method with a previously constructed DBConnection object
 
 =cut
+
+# cache for allele objects from db
+has '_allele_cache' => (
+	is => 'ro',
+	isa => 'HashRef',
+    init_arg => undef,
+    writer => '_set_allele_cache',
+    default => sub { return {}; },
+);
 
 =method store
 
@@ -205,8 +212,8 @@ sub fetch_by_id {
     my ( $self, $id ) = @_;
 
     my $allele;
-    if( exists $allele_cache{ $id } ){
-        $allele = $allele_cache{ $id };
+    if( exists $self->_allele_cache->{ $id } ){
+        $allele = $self->_allele_cache->{ $id };
     } else{
         $allele = $self->_fetch( 'a.allele_id = ?', [ $id ] )->[0];
     }
@@ -325,7 +332,7 @@ END_SQL
     my @alleles = ();
     while ( $sth->fetch ) {
         my $allele;
-        if( !exists $allele_cache{ $allele_id } ){
+        if( !exists $self->_allele_cache->{ $allele_id } ){
             $allele = Crispr::Allele->new(
                 db_id => $allele_id,
                 allele_number => $allele_number,
@@ -334,10 +341,12 @@ END_SQL
                 ref_allele => $ref_allele,
                 alt_allele => $alt_allele,
             );
-            $allele_cache{ $allele_id } = $allele;
+            my $allele_cache = $self->_allele_cache;
+            $allele_cache->{ $allele_id } = $allele;
+            $self->_set_allele_cache( $allele_cache );
         }
         else{
-            $allele = $allele_cache{ $allele_id };
+            $allele = $self->_allele_cache->{ $allele_id };
         }
 
         push @alleles, $allele;
@@ -457,7 +466,7 @@ END_SQL
     my @alleles = ();
     while ( $sth->fetch ) {
         my $allele;
-        if( !exists $allele_cache{ $allele_id } ){
+        if( !exists $self->_allele_cache->{ $allele_id } ){
             $allele = Crispr::Allele->new(
                 db_id => $allele_id,
                 allele_number => $allele_number,
@@ -466,10 +475,12 @@ END_SQL
                 ref_allele => $ref_allele,
                 alt_allele => $alt_allele,
             );
-            $allele_cache{ $allele_id } = $allele;
+            my $allele_cache = $self->_allele_cache;
+            $allele_cache->{ $allele_id } = $allele;
+            $self->_set_allele_cache( $allele_cache );
         }
         else{
-            $allele = $allele_cache{ $allele_id };
+            $allele = $self->_allele_cache->{ $allele_id };
         }
 #        my $crisprs = $self->crRNA_adaptor->fetch_crisprs_by_allele( $allele );
 
@@ -500,12 +511,14 @@ sub _make_new_allele_from_db {
     }
     my $allele;
 
-    if( !exists $allele_cache{ $args->{db_id} } ){
+    if( !exists $self->_allele_cache->{ $args->{db_id} } ){
         $allele = Crispr::Allele->new( $args );
-        $allele_cache{ $args->{db_id} } = $allele;
+        my $allele_cache = $self->_allele_cache;
+        $allele_cache->{ $args->{db_id} } = $allele;
+        $self->_set_allele_cache( $allele_cache );
     }
     else{
-        $allele = $allele_cache{ $args->{db_id} };
+        $allele = $self->_allele_cache->{ $args->{db_id} };
     }
 
     return $allele;

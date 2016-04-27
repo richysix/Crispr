@@ -29,6 +29,15 @@ extends 'Crispr::DB::BaseAdaptor';
 
 =cut
 
+# cache for analysis objects from db
+has '_analysis_cache' => (
+	is => 'ro',
+	isa => 'HashRef',
+    init_arg => undef,
+    writer => '_set_analysis_cache',
+    default => sub { return {}; },
+);
+
 =method store
 
   Usage       : $analysis = $analysis_adaptor->store( $analysis );
@@ -322,7 +331,6 @@ sub fetch_all_by_plex {
 #Throws      : 
 #Comments    : 
 
-my %analysis_cache; # Cache for Analysis objects. HashRef keyed on analysis_id (db_id)
 sub _fetch {
     my ( $self, $where_clause, $where_parameters ) = @_;
     my $dbh = $self->connection->dbh();
@@ -351,7 +359,7 @@ END_SQL
     while ( $sth->fetch ) {
         
         my $analysis;
-        if( !exists $analysis_cache{ $analysis_id } ){
+        if( !exists $self->_analysis_cache->{ $analysis_id } ){
             # fetch plex by plex_id
             my $plex = $self->plex_adaptor->fetch_by_id( $plex_id );
             my $sample_amplicons = $self->sample_amplicon_adaptor->fetch_all_by_analysis_id( $analysis_id );
@@ -363,10 +371,12 @@ END_SQL
                 analysis_finished => $analysis_finished,
                 info => $sample_amplicons,
             );
-            $analysis_cache{ $analysis_id } = $analysis;
+            my $analysis_cache = $self->_analysis_cache;
+            $analysis_cache->{ $analysis_id } = $analysis;
+            $self->_set_analysis_cache( $analysis_cache );
         }
         else{
-            $analysis = $analysis_cache{ $analysis_id };
+            $analysis = $self->_analysis_cache->{ $analysis_id };
         }
         
         push @analyses, $analysis;

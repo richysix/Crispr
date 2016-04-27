@@ -18,8 +18,6 @@ use English qw( -no_match_vars );
 
 extends 'Crispr::DB::BaseAdaptor';
 
-my %plate_cache; # cache for Plate object from db
-
 =method new
 
   Usage       : my $injection_pool_adaptor = Crispr::DB::InjectionPoolAdaptor->new(
@@ -33,6 +31,15 @@ my %plate_cache; # cache for Plate object from db
                 get_adaptor method with a previously constructed DBConnection object
 
 =cut
+
+# cache for plate objects from db
+has '_plate_cache' => (
+	is => 'ro',
+	isa => 'HashRef',
+    init_arg => undef,
+    writer => '_set_plate_cache',
+    default => sub { return {}; },
+);
 
 =method store
 
@@ -340,7 +347,7 @@ END_SQL
     my @plates = ();
     while ( $sth->fetch ) {
         my $plate;
-        if( !exists $plate_cache{ $plate_id } ){
+        if( !exists $self->_plate_cache->{ $plate_id } ){
             $plate = Crispr::Plate->new(
                     plate_id => $plate_id,
                     plate_name => $plate_name,
@@ -349,15 +356,22 @@ END_SQL
                     ordered => $ordered,
                     received => $received,
                 );
-            $plate_cache{ $plate_id } = $plate;
+            my $plate_cache_ref = $self->_plate_cache;
+            $plate_cache_ref->{ $plate_id } = $plate;
+            $self->_set_plate_cache( $plate_cache_ref );
         }
         else{
-            $plate = $plate_cache{ $plate_id };
+            $plate = $self->_plate_cache->{ $plate_id };
         }
         push @plates, $plate;
     }
 
     return \@plates;    
+}
+
+sub _build_plate_cache {
+    my ( $self, ) = @_;
+    return {};
 }
 
 __PACKAGE__->meta->make_immutable;

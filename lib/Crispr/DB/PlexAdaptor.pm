@@ -29,6 +29,15 @@ extends 'Crispr::DB::BaseAdaptor';
 
 =cut
 
+# cache for plex objects from db
+has '_plex_cache' => (
+	is => 'ro',
+	isa => 'HashRef',
+    init_arg => undef,
+    writer => '_set_plex_cache',
+    default => sub { return {}; },
+);
+
 =method store
 
   Usage       : $plex = $plex_adaptor->store( $plex );
@@ -188,7 +197,6 @@ sub fetch_by_name {
 #Throws      : 
 #Comments    : 
 
-my %plex_cache; # Cache for Plex objects. HashRef keyed on plex_id (db_id)
 sub _fetch {
     my ( $self, $where_clause, $where_parameters ) = @_;
     my $dbh = $self->connection->dbh();
@@ -217,7 +225,7 @@ END_SQL
     while ( $sth->fetch ) {
         
         my $plex;
-        if( !exists $plex_cache{ $plex_id } ){
+        if( !exists $self->_plex_cache->{ $plex_id } ){
             $plex = Crispr::DB::Plex->new(
                 db_id => $plex_id,
                 plex_name => $plex_name,
@@ -225,10 +233,12 @@ END_SQL
                 analysis_started => $analysis_started,
                 analysis_finished => $analysis_finished,
             );
-            $plex_cache{ $plex_id } = $plex;
+            my $plex_cache = $self->_plex_cache;
+            $plex_cache->{ $plex_id } = $plex;
+            $self->_set_plex_cache( $plex_cache );
         }
         else{
-            $plex = $plex_cache{ $plex_id };
+            $plex = $self->_plex_cache->{ $plex_id };
         }
         
         push @plexes, $plex;

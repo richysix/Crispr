@@ -15,9 +15,6 @@ use Crispr::DB::Cas9Prep;
 
 extends 'Crispr::DB::BaseAdaptor';
 
-# Cache - HASHREF of Cas9Prep objects keyed on cas9_prep_id
-my %cas9_prep_cache; 
-
 =method new
 
   Usage       : my $cas9_prep_adaptor = Crispr::DB::Cas9PrepAdaptor->new(
@@ -31,6 +28,15 @@ my %cas9_prep_cache;
                 get_adaptor method with a previously constructed DBConnection object
 
 =cut
+
+# cache for cas9_prep objects from db
+has '_cas9_prep_cache' => (
+	is => 'ro',
+	isa => 'HashRef',
+    init_arg => undef,
+    writer => '_set_cas9_prep_cache',
+    default => sub { return {} },
+);
 
 =method store
 
@@ -177,8 +183,8 @@ sub fetch_by_id {
     
     my $cas9_prep;
     # check cache
-    if( exists $cas9_prep_cache{ $id } ){
-        $cas9_prep = $cas9_prep_cache{ $id }
+    if( exists $self->_cas9_prep_cache->{ $id } ){
+        $cas9_prep = $self->_cas9_prep_cache->{ $id };
     }
     else{
         $cas9_prep = $self->_fetch( 'cas9_prep_id = ?', [ $id ] )->[0];    
@@ -380,7 +386,7 @@ END_SQL
     my @cas9_preps = ();
     while ( $sth->fetch ) {
         my $cas9_prep;
-        if( !exists $cas9_prep_cache{ $cas9_prep_id } ){
+        if( !exists $self->_cas9_prep_cache->{ $cas9_prep_id } ){
             my $cas9 = $self->cas9_adaptor->_make_new_cas9_from_db(
                 [ $cas9_id, $name, $type, $vector, $species, ],
             );
@@ -392,10 +398,12 @@ END_SQL
                 date => $cas9_date,
                 notes => $notes,
             );
-            $cas9_prep_cache{ $cas9_prep_id } = $cas9_prep;
+            my $cas9_prep_cache = $self->_cas9_prep_cache;
+            $cas9_prep_cache->{ $cas9_prep_id } = $cas9_prep;
+            $self->_set_cas9_prep_cache( $cas9_prep_cache );
         }
         else{
-            $cas9_prep = $cas9_prep_cache{ $cas9_prep_id };
+            $cas9_prep = $self->_cas9_prep_cache->{ $cas9_prep_id };
         }
         
         push @cas9_preps, $cas9_prep;
@@ -435,7 +443,7 @@ sub _make_new_cas9_prep_from_db {
     my ( $self, $fields ) = @_;
     my $cas9_prep;
     
-    if( !exists $cas9_prep_cache{ $fields->[0] } ){
+    if( !exists $self->_cas9_prep_cache->{ $fields->[0] } ){
         my $cas9 = $self->cas9_adaptor->_make_new_cas9_from_db(
             [ @{$fields}[5..9] ],
         );
@@ -449,10 +457,12 @@ sub _make_new_cas9_prep_from_db {
         );
         
         $cas9_prep = Crispr::DB::Cas9Prep->new( %args );
-        $cas9_prep_cache{ $fields->[0] } = $cas9_prep;
+        my $cas9_prep_cache = $self->_cas9_prep_cache->{ $fields->[0] };
+        $cas9_prep_cache->{ $fields->[0] } = $cas9_prep;
+        $self->_set_cas9_prep_cache( $cas9_prep_cache );
     }
     else{
-        $cas9_prep = $cas9_prep_cache{ $fields->[0] };
+        $cas9_prep = $self->_cas9_prep_cache->{ $fields->[0] };
     }
     
     return $cas9_prep;

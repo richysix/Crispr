@@ -29,6 +29,15 @@ extends 'Crispr::DB::BaseAdaptor';
 
 =cut
 
+# cache for sample_amplicon objects from db
+has '_sample_amplicon_cache' => (
+	is => 'ro',
+	isa => 'HashRef',
+    init_arg => undef,
+    writer => '_set_sample_amplicon_cache',
+    default => sub { return {}; },
+);
+
 =method store
 
   Usage       : $sample_amplicon = $sample_amplicon_adaptor->store( $sample_amplicon );
@@ -287,7 +296,6 @@ sub fetch_all_by_analysis {
 #Throws      : 
 #Comments    : 
 
-my %sample_amplicon_cache; # Cache for SampleAmplicon objects. HashRef keyed on analysis_id.sample_id
 sub _fetch {
     my ( $self, $where_clause, $where_parameters ) = @_;
     my $dbh = $self->connection->dbh();
@@ -334,13 +342,15 @@ END_SQL
         my $sample_amplicon_id =
             join(q{.}, $samples_amplicons_for{ $sample_name }{ 'sample' }->db_id,
                 $samples_amplicons_for{ $sample_name }{ 'analysis_id' } );
-        if( !exists $sample_amplicon_cache{ $sample_amplicon_id } ){
+        if( !exists $self->_sample_amplicon_cache->{ $sample_amplicon_id } ){
             
             $sample_amplicon = Crispr::DB::SampleAmplicon->new( $args );
-            $sample_amplicon_cache{ $sample_amplicon_id } = $sample_amplicon;
+            my $sample_amplicon_cache = $self->_sample_amplicon_cache;
+            $sample_amplicon_cache->{ $sample_amplicon_id } = $sample_amplicon;
+            $self->_set_sample_amplicon_cache( $sample_amplicon_cache );
         }
         else{
-            $sample_amplicon = $sample_amplicon_cache{ $sample_amplicon_id };
+            $sample_amplicon = $self->_sample_amplicon_cache->{ $sample_amplicon_id };
         }
         
         push @sample_amplicons, $sample_amplicon;

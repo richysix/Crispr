@@ -17,8 +17,6 @@ use Data::Dumper;
 
 extends 'Crispr::DB::BaseAdaptor';
 
-my %sample_cache; # Cache for Sample objects. HashRef keyed on sample_id (db_id)
-
 =method new
 
   Usage       : my $sample_adaptor = Crispr::DB::SampleAdaptor->new(
@@ -32,6 +30,15 @@ my %sample_cache; # Cache for Sample objects. HashRef keyed on sample_id (db_id)
                 get_adaptor method with a previously constructed DBConnection object
 
 =cut
+
+# cache for sample objects from db
+has '_sample_cache' => (
+	is => 'ro',
+	isa => 'HashRef',
+    init_arg => undef,
+    writer => '_set_sample_cache',
+    default => sub { return {}; },
+);
 
 =method store
 
@@ -284,8 +291,8 @@ sub store_sequencing_results {
 sub fetch_by_id {
     my ( $self, $id ) = @_;
     my $sample;
-    if( exists $sample_cache{$id} ){
-        $sample = $sample_cache{$id};
+    if( exists $self->_sample_cache->{$id} ){
+        $sample = $self->_sample_cache->{$id};
     }
     else{
         $sample = $self->_fetch( 'sample_id = ?;', [ $id ] )->[0];
@@ -416,7 +423,7 @@ END_SQL
     while ( $sth->fetch ) {
 
         my $sample;
-        if( !exists $sample_cache{ $sample_id } ){
+        if( !exists $self->_sample_cache->{ $sample_id } ){
             # fetch injection pool by id
             my $injection_pool = $self->injection_pool_adaptor->fetch_by_id( $injection_id );
 
@@ -434,10 +441,12 @@ END_SQL
                 well => $well,
                 cryo_box => $cryo_box,
             );
-            $sample_cache{ $sample_id } = $sample;
+            my $sample_cache = $self->_sample_cache;
+            $sample_cache->{ $sample_id } = $sample;
+            $self->_set_sample_cache( $sample_cache );
         }
         else{
-            $sample = $sample_cache{ $sample_id };
+            $sample = $self->_sample_cache->{ $sample_id };
         }
 
         push @samples, $sample;
@@ -514,7 +523,7 @@ END_SQL
     while ( $sth->fetch ) {
 
         my $sample;
-        if( !exists $sample_cache{ $sample_id } ){
+        if( !exists $self->_sample_cache->{ $sample_id } ){
             # fetch injection pool by id
             my $injection_pool = $self->injection_pool_adaptor->fetch_by_id( $injection_id );
 
@@ -532,10 +541,12 @@ END_SQL
                 well => $well,
                 cryo_box => $cryo_box,
             );
-            $sample_cache{ $sample_id } = $sample;
+            my $sample_cache = $self->_sample_cache;
+            $sample_cache->{ $sample_id } = $sample;
+            $self->_set_sample_cache( $sample_cache );
         }
         else{
-            $sample = $sample_cache{ $sample_id };
+            $sample = $self->_sample_cache->{ $sample_id };
         }
 
         push @samples, $sample;

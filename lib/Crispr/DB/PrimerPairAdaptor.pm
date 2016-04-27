@@ -15,9 +15,6 @@ use Crispr::PrimerPair;
 
 extends 'Crispr::DB::BaseAdaptor';
 
-# Cache for primer_pairs. HashRef keyed on db_id
-my %primer_pair_cache;
-
 =method new
 
   Usage       : my $primer_adaptor = Crispr::DB::PrimerPairAdaptor->new(
@@ -34,6 +31,15 @@ my %primer_pair_cache;
 
 my $date_obj = DateTime->now();
 Readonly my $PLATE_TYPE => '96';
+
+# cache for primer_pair objects from db
+has '_primer_pair_cache' => (
+	is => 'ro',
+	isa => 'HashRef',
+    init_arg => undef,
+    writer => '_set_primer_pair_cache',
+    default => sub { return {}; },
+);
 
 =method store
 
@@ -245,7 +251,7 @@ END_SQL
         $primer_strand, $primer_tail, $plate_id, $well_id ) );
     
     while ( $sth->fetch ) {
-        if( !exists $primer_pair_cache{ $primer_pair_id } ){
+        if( !exists $self->_primer_pair_cache->{ $primer_pair_id } ){
             my $primer_sequence = defined $primer_tail
                     ?   $primer_tail . $primer_sequence
                     :   $primer_sequence;
@@ -275,11 +281,13 @@ END_SQL
                 product_size => $product_size,
                 type => $type,
             );
-            $primer_pair_cache{ $primer_pair_id } = $primer_pair;
+            my $primer_pair_cache = $self->_primer_pair_cache;
+            $primer_pair_cache->{ $primer_pair_id } = $primer_pair;
+            $self->_set_primer_pair_cache( $primer_pair_cache );
             push @{$primer_pairs}, $primer_pair;
         }
         else{
-            push @{$primer_pairs}, $primer_pair_cache{ $primer_pair_id };
+            push @{$primer_pairs}, $self->_primer_pair_cache->{ $primer_pair_id };
         }
     }
     return $primer_pairs;
@@ -352,7 +360,7 @@ END_SQL
     my @primer_pairs = ();
     while ( $sth->fetch ) {
         my $primer_pair;
-        if( !exists $primer_pair_cache{ $primer_pair_id } ){
+        if( !exists $self->_primer_pair_cache->{ $primer_pair_id } ){
             $left_sequence = $left_tail ? $left_tail . $left_sequence
                 : $left_sequence;
             my $left_well;
@@ -401,10 +409,12 @@ END_SQL
                 left_primer => $left_primer,
                 right_primer => $right_primer,
             );
-            $primer_pair_cache{ $primer_pair_id } = $primer_pair;
+            my $primer_pair_cache = $self->_primer_pair_cache;
+            $primer_pair_cache->{ $primer_pair_id } = $primer_pair;
+            $self->_set_primer_pair_cache( $primer_pair_cache );
         }
         else{
-            $primer_pair = $primer_pair_cache{ $primer_pair_id };
+            $primer_pair = $self->_primer_pair_cache->{ $primer_pair_id };
         }
         
         push @primer_pairs, $primer_pair;
