@@ -15,8 +15,7 @@ extends 'PCR::Primer';
 
   Usage       : my $primer = PCR::Primer->new(
                     primer_id => undef,
-                    plate_id => 1,
-                    well_id => 'A01',
+                    well => $well_object,
                     sequence => 'ATGTACCAGGAGAGAAGCCGAGC',
                     primer_name => '5:12345797-12345819:-1',
                     seq_region => '5',
@@ -35,8 +34,7 @@ extends 'PCR::Primer';
   Purpose     : Constructor for creating Primer objects
   Returns     : Crispr::Primer object
   Parameters  : primer_id           => Int,
-                plate_id            => Int,
-                well_id             => Str,
+                well                => Labware::Well,
                 sequence            => Str
                 primer_name         => Str
                 seq_region          => Str
@@ -72,36 +70,20 @@ has 'primer_id' => (
 	isa => 'Int',
 );
 
-=method plate_id
+=method well
 
-  Usage       : $primer->plate_id;
-  Purpose     : Getter for plate_id attribute
-  Returns     : Str (must be a valid DNA string)
+  Usage       : $primer->well;
+  Purpose     : Getter for well attribute
+  Returns     : Labware::Well
   Parameters  : None
   Throws      : If input is given
   Comments    : Can be undef
 
 =cut
 
-has 'plate_id' => (
-	is => 'ro',
-	isa => 'Maybe[Int]',
-);
-
-=method well_id
-
-  Usage       : $primer->well_id;
-  Purpose     : Getter for well_id attribute
-  Returns     : Str (must be a valid DNA string)
-  Parameters  : None
-  Throws      : If input is given
-  Comments    : Can be undef
-
-=cut
-
-has 'well_id' => (
-	is => 'ro',
-	isa => 'Maybe[Str]',
+has 'well' => (
+	is => 'rw',
+	isa => 'Maybe[Labware::Well]',
 );
 
 =method sequence
@@ -321,8 +303,7 @@ PCR::Primer - Object representing a PCR primer.
     use Crispr::Primer;
     my $primer = Crispr::Primer->new(
         primer_id => undef,
-        plate_id => 1,
-        well_id => 'A01',
+        well => $well_object,
         sequence => 'ATGTACCAGGAGAGAAGCCGAGC',
         primer_name => '5:12345797-12345819:-1',
         seq_region => '5',
