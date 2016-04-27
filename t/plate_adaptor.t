@@ -15,7 +15,7 @@ use English qw( -no_match_vars );
 use Crispr::DB::PlateAdaptor;
 use Crispr::DB::PrimerPairAdaptor;
 
-Readonly my $TESTS_IN_COMMON => 1 + 15 + 4 + 3 + 1 + 6 + 6 + 6 + 3 + 3;
+Readonly my $TESTS_IN_COMMON => 1 + 13 + 4 + 3 + 1 + 6 + 6 + 6 + 3 + 3;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
@@ -74,10 +74,10 @@ foreach my $db_connection ( @{$db_connections} ){
     # 1 test
     isa_ok( $plate_ad, 'Crispr::DB::PlateAdaptor' );
     
-    # check methods 15 tests
+    # check methods 13 tests
     my @methods = qw( dbname db_connection connection check_entry_exists_in_db fetch_rows_expecting_single_row
         fetch_rows_for_generic_select_statement _db_error_handling store get_plate_id_from_name fetch_empty_plate_by_id
-        fetch_empty_plate_by_name _fetch_empty_plate_by_attribute fetch_crispr_plate_by_plate_name _make_new_plate_from_db _build_crRNA_adaptor
+        fetch_empty_plate_by_name fetch_crispr_plate_by_plate_name _build_crRNA_adaptor
     );
     
     foreach my $method ( @methods ) {
@@ -277,8 +277,8 @@ foreach my $db_connection ( @{$db_connections} ){
     
     # 3 tests
     my $pp_plate;
-    throws_ok { $plate_ad->fetch_primer_pair_plate_by_plate_name( 'CR_000001b' ) }
-        qr/Plate CR_000001b does not exist in the database/, 'fetch primer plate throws if plate nonexistant or empty';
+    throws_ok { $plate_ad->fetch_primer_pair_plate_by_plate_name( 'CR0001b' ) }
+        qr/Plate CR0001b does not exist in the database/, 'fetch primer plate throws if plate nonexistant or empty';
     ok( $pp_plate = $plate_ad->fetch_primer_pair_plate_by_plate_name( 'CR-000001b' ), 'fetch primer plate' );
     
     my $well = $pp_plate->return_well( 'A01');

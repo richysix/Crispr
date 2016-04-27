@@ -18,6 +18,8 @@ use English qw( -no_match_vars );
 
 extends 'Crispr::DB::BaseAdaptor';
 
+my %plate_cache; # cache for Plate object from db
+
 =method new
 
   Usage       : my $injection_pool_adaptor = Crispr::DB::InjectionPoolAdaptor->new(
@@ -129,19 +131,11 @@ sub get_plate_id_from_name {
 
 sub fetch_empty_plate_by_id {
     my ( $self, $plate_id ) = @_;
-    # statement - fetch plate by id
-    my $statement = "select * from plate where plate_id = ?;";
     
-    my ( $plate, $num_rows ) = $self->_fetch_empty_plate_by_attribute( $statement, $plate_id );
-    if( $num_rows == 0 ){
-        "Couldn't find plate:$plate_id in database.\n";
-    }
-    elsif( $num_rows > 1 ){
-        "Plate id:$plate_id should be unique, but got more than one row returned!\n";
-    }
-    else{
-        return $plate;
-    }
+    # where clause
+    my $where_clause = 'plate_id = ?';
+    my $plates = $self->_fetch( $where_clause, [ $plate_id ] );
+    return $plates->[0];
 }
 
 =method fetch_empty_plate_by_name
@@ -158,50 +152,11 @@ sub fetch_empty_plate_by_id {
 
 sub fetch_empty_plate_by_name {
     my ( $self, $plate_name ) = @_;
-    # statement - fetch plate by id
-    my $statement = "select * from plate where plate_name = ?;";
     
-    my ( $plate, $num_rows ) = $self->_fetch_empty_plate_by_attribute( $statement, $plate_name );
-    if( $num_rows == 0 ){
-        "Couldn't find plate:$plate_name in database.\n";
-    }
-    elsif( $num_rows > 1 ){
-        "Plate name:$plate_name should be unique, but got more than one row returned!\n";
-    }
-    else{
-        return $plate;
-    }
-}
-
-=method _fetch_empty_plate_by_attribute
-
-  Usage       : $plate_adaptor->_fetch_empty_plate_by_attribute;
-  Purpose     : Stores a plate in the db
-  Returns     : Crispr::Plate
-  Parameters  : Crispr::Plate
-  Throws      : If plate is not supplied
-                If supplied parameter is not a Crispr::Plate object
-  Comments    : 
-
-=cut
-
-sub _fetch_empty_plate_by_attribute {
-    my ( $self, $fetch_statement, $attribute ) = @_;
-    my $dbh = $self->connection->dbh();
-    my $plate;
-    my $num_rows = 0;
-    $self->connection->txn(  fixup => sub {
-		my $sth = $dbh->prepare($fetch_statement);
-        $sth->execute( $attribute );
-        
-        while( my @fields = $sth->fetchrow_array ){
-            $num_rows++;
-            $plate = $self->_make_new_plate_from_db( \@fields );
-        }
-		$sth->finish();
-    } );
-	
-    return ( $plate, $num_rows );
+    # where clause
+    my $where_clause = 'plate_name = ?';
+    my $plates = $self->_fetch( $where_clause, [ $plate_name ] );
+    return $plates->[0];
 }
 
 =method fetch_crispr_plate_by_plate_name
@@ -253,28 +208,92 @@ sub fetch_primer_pair_plate_by_plate_name {
     my ( $self, $plate_name ) = @_;
     
     my $plate = $self->fetch_empty_plate_by_name( $plate_name );
-    
-    my $select_statement = join(q{ },
-        'select * from plate pl, primer p1, primer p2, primer_pair pp',
-        'where plate_name = ? and',
-        'pl.plate_id = p1.plate_id and pl.plate_id = p2.plate_id and',
-        'p1.primer_id = pp.left_primer_id and p2.primer_id = pp.right_primer_id;' );
-    
-    my $results;
-    
-    eval{
-        $results = $self->fetch_rows_for_generic_select_statement(
-                                    $select_statement, [ $plate_name ] );
-    };
-    if( $EVAL_ERROR ){
-        if( $EVAL_ERROR =~ m/NO\sROWS/xms ){
-            die join(q{ }, "Plate", $plate_name, "does not exist in the database or is empty!\n" );
-        }
+    if( !defined $plate ){
+        die "Plate $plate_name does not exist in the database!\n";
     }
     
-    foreach my $row ( @{$results} ){
-        my $primer_pair = $self->primer_pair_adaptor->_make_new_primer_pair_from_db( [ @{$row}[6..32] ] );
-        $plate->fill_well( $primer_pair, $row->[14] );
+    my $sql = <<'END_SQL';
+SELECT p1.primer_id, p1.primer_sequence, p1.primer_chr, p1.primer_start, p1.primer_end,
+p1.primer_strand, p1.primer_tail, p1.well_id,
+p2.primer_id, p2.primer_sequence, p2.primer_chr, p2.primer_start, p2.primer_end,
+p2.primer_strand, p2.primer_tail, p2.well_id,
+primer_pair_id, type, chr, start, end, strand, product_size
+FROM plate pl, primer p1, primer p2, primer_pair pp
+WHERE pl.plate_id = p1.plate_id and pl.plate_id = p2.plate_id AND
+p1.primer_id = pp.left_primer_id and p2.primer_id = pp.right_primer_id
+END_SQL
+    
+    my $where_clause = "plate_name = ?";
+    my $where_parameters = [ $plate_name, ];
+    $sql .= 'AND ' . $where_clause;
+    
+    my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
+    $sth->execute();
+
+    my ( $left_primer_id, $left_primer_sequence, $left_primer_chr,
+        $left_primer_start, $left_primer_end, $left_primer_strand,
+        $left_primer_tail, $left_well_id,
+        $right_primer_id, $right_primer_sequence, $right_primer_chr,
+        $right_primer_start, $right_primer_end, $right_primer_strand,
+        $right_primer_tail, $right_well_id,
+        $primer_pair_id, $type, $chr, $start, $end, $strand, $product_size, );
+    
+    $sth->bind_columns( \( $left_primer_id, $left_primer_sequence, $left_primer_chr,
+        $left_primer_start, $left_primer_end, $left_primer_strand,
+        $left_primer_tail, $left_well_id,
+        $right_primer_id, $right_primer_sequence, $right_primer_chr,
+        $right_primer_start, $right_primer_end, $right_primer_strand,
+        $right_primer_tail, $right_well_id,
+        $primer_pair_id, $type, $chr, $start, $end, $strand, $product_size, ) );
+
+    while ( $sth->fetch ) {
+        
+        my $left_primer_seq = defined $left_primer_tail ?
+            $left_primer_tail . $left_primer_sequence : $left_primer_sequence;
+        my $left_primer = Crispr::Primer->new(
+            primer_id => $left_primer_id,
+            sequence => $left_primer_seq,
+            seq_region => $left_primer_chr,
+            seq_region_start => $left_primer_start,
+            seq_region_end => $left_primer_end,
+            seq_region_strand => $left_primer_strand,
+        );
+        my $right_primer_seq = defined $right_primer_tail ?
+            $right_primer_tail . $right_primer_sequence : $right_primer_sequence;
+        my $right_primer = Crispr::Primer->new(
+            primer_id => $right_primer_id,
+            sequence => $right_primer_seq,
+            seq_region => $right_primer_chr,
+            seq_region_start => $right_primer_start,
+            seq_region_end => $right_primer_end,
+            seq_region_strand => $right_primer_strand,
+        );
+        
+        if( $left_well_id ne $right_well_id ){
+            # add primers separately
+            $plate->fill_well( $left_primer, $left_well_id, );
+            $plate->fill_well( $right_primer, $right_well_id, );
+        }
+        else{
+            # make a primer pair and add it to well
+            my $pair_name;
+            if( defined $chr ){
+                $pair_name .= $chr . ":";
+            }
+            $pair_name .= join("-", $start, $end, );
+            if( defined $strand, ){
+                $pair_name .= ":" . $strand;
+            }
+            my $primer_pair = Crispr::PrimerPair->new(
+                primer_pair_id => $primer_pair_id,
+                type => $type,
+                pair_name => $pair_name,
+                product_size => $product_size,
+                left_primer => $left_primer,
+                right_primer => $right_primer,
+            );
+            $plate->fill_well( $primer_pair, $left_well_id );
+        }
     }
     
     return $plate;
@@ -290,7 +309,6 @@ sub fetch_primer_pair_plate_by_plate_name {
 #Throws      : 
 #Comments    : 
 
-my %plate_cache;
 sub _fetch {
     my ( $self, $where_clause, $where_parameters ) = @_;
     my $dbh = $self->connection->dbh();
@@ -323,14 +341,14 @@ END_SQL
     while ( $sth->fetch ) {
         my $plate;
         if( !exists $plate_cache{ $plate_id } ){
-            my $plate = Crispr::Plate->new(
-                                            plate_id => $plate_id,
-                                            plate_name => $plate_name,
-                                            plate_type => $plate_type,
-                                            plate_category => $plate_category,
-                                            ordered => $ordered,
-                                            received => $received,
-                                        );
+            $plate = Crispr::Plate->new(
+                    plate_id => $plate_id,
+                    plate_name => $plate_name,
+                    plate_type => $plate_type,
+                    plate_category => $plate_category,
+                    ordered => $ordered,
+                    received => $received,
+                );
             $plate_cache{ $plate_id } = $plate;
         }
         else{
@@ -340,36 +358,6 @@ END_SQL
     }
 
     return \@plates;    
-}
-
-=method _make_new_plate_from_db
-
-  Usage       : $crRNA_adaptor->_make_new_plate_from_db;
-  Purpose     : Stores a plate in the db
-  Returns     : Crispr::Plate
-  Parameters  : Crispr::Plate
-  Throws      : If plate is not supplied
-                If supplied parameter is not a Crispr::Plate object
-  Comments    : 
-
-=cut
-
-sub _make_new_plate_from_db {
-    my ( $self, $fields, $category ) = @_;
-    
-    my $plate = Crispr::Plate->new(
-        plate_id => $fields->[0],
-        plate_name => $fields->[1],
-        plate_type => $fields->[2],
-		plate_category => $fields->[3],
-        ordered => $fields->[4],
-        received => $fields->[5],
-    );
-	
-	if( $category ){
-		$plate->plate_category( $category );
-	}
-    return $plate;
 }
 
 __PACKAGE__->meta->make_immutable;
