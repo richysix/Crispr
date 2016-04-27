@@ -677,7 +677,7 @@ sub _build_injection_pool_adaptor {
 
 #_build_plate_adaptor
 
-  #Usage       : $crRNAs = $crRNA_adaptor->_build_plate_adaptor( $well, $type );
+  #Usage       : $crRNAs = $crRNA_adaptor->_build_plate_adaptor();
   #Purpose     : Internal method to create a new Crispr::DB::PlateAdaptor
   #Returns     : Crispr::DB::PlateAdaptor
   #Parameters  : None
