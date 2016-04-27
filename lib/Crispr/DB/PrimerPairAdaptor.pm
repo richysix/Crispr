@@ -355,17 +355,42 @@ END_SQL
         if( !exists $primer_pair_cache{ $primer_pair_id } ){
             $left_sequence = $left_tail ? $left_tail . $left_sequence
                 : $left_sequence;
-            my $left_primer = $self->primer_adaptor->_make_new_primer_from_db(
-                [ $left_primer_id, $left_sequence, $left_primer_chr,
-                    $left_primer_start, $left_primer_end, $left_primer_strand,
-                    $left_primer_plate_id, $left_primer_well_id, ]
+            my $left_well;
+            if( defined $left_primer_plate_id && defined $left_primer_well_id ){
+                my $plate = $self->plate_adaptor->fetch_empty_plate_by_id( $left_primer_plate_id, );
+                $left_well = Labware::Well->new(
+                    position => $left_primer_well_id,
+                    plate => $plate,
+                );
+            }
+            my $left_primer = Crispr::Primer->new(
+                primer_id => $left_primer_id,
+                sequence => $left_sequence,
+                seq_region => $left_primer_chr,
+                seq_region_start => $left_primer_start,
+                seq_region_end => $left_primer_end,
+                seq_region_strand => $left_primer_strand,
+                well => $left_well,
             );
+            
             $right_sequence = $right_tail ? $right_tail . $right_sequence
                 : $right_sequence;
-            my $right_primer = $self->primer_adaptor->_make_new_primer_from_db(
-                [ $right_primer_id, $right_sequence, $right_primer_chr,
-                    $right_primer_start, $right_primer_end, $right_primer_strand,
-                    $right_primer_plate_id, $right_primer_well_id, ]
+            my $right_well;
+            if( defined $right_primer_plate_id && defined $right_primer_well_id ){
+                my $plate = $self->plate_adaptor->fetch_empty_plate_by_id( $right_primer_plate_id, );
+                $right_well = Labware::Well->new(
+                    position => $right_primer_well_id,
+                    plate => $plate,
+                );
+            }
+            my $right_primer = Crispr::Primer->new(
+                primer_id => $right_primer_id,
+                sequence => $right_sequence,
+                seq_region => $right_primer_chr,
+                seq_region_start => $right_primer_start,
+                seq_region_end => $right_primer_end,
+                seq_region_strand => $right_primer_strand,
+                well => $right_well,
             );
             
             my $pair_name = join(":", $chr, join("-", $start, $end, ), $strand, );
@@ -386,64 +411,6 @@ END_SQL
     }
 
     return \@primer_pairs;    
-}
-
-=method _make_new_primer_pair_from_db
-
-  Usage       : $primer_pair_adaptor->_make_new_primer_pair_from_db( $primer_info );
-  Purpose     : internal method to make a new PrimerPair from an ArrayRef of fields
-  Returns     : Crispr::PrimerPair
-  Parameters  : ArrayRef[ Str ] - db info for primer pair
-  Throws      : 
-  Comments    : 
-
-=cut
-
-sub _make_new_primer_pair_from_db {
-    my ( $self, $fields, ) = @_;
-    
-    my $l_p_seq = defined $fields->[6] ? $fields->[6] . $fields->[1] : $fields->[1];
-    my $left_primer = Crispr::Primer->new(
-        primer_id => $fields->[0],
-        sequence => $l_p_seq,
-        seq_region => $fields->[2],
-        seq_region_start => $fields->[3],
-        seq_region_end => $fields->[4],
-        seq_region_strand => $fields->[5],
-        plate_id => $fields->[7],
-        well => $fields->[8],
-    );
-    
-    my $r_p_seq = defined $fields->[15] ? $fields->[15] . $fields->[10] : $fields->[10];
-    my $right_primer = Crispr::Primer->new(
-        primer_id => $fields->[9],
-        sequence => $r_p_seq,
-        seq_region => $fields->[11],
-        seq_region_start => $fields->[12],
-        seq_region_end => $fields->[13],
-        seq_region_strand => $fields->[14],
-        plate_id => $fields->[16],
-        well => $fields->[17],
-    );
-    
-    my $pair_name;
-    if( defined $fields->[22] ){
-        $pair_name .= $fields->[22] . ":";
-    }
-    $pair_name .= join("-", $fields->[23], $fields->[24], );
-    if( defined $fields->[25] ){
-        $pair_name .= ":" . $fields->[25];
-    }
-    my $primer_pair = Crispr::PrimerPair->new(
-        primer_pair_id => $fields->[18],
-        pair_name => $pair_name,
-        type => $fields->[19],
-        product_size => $fields->[26],
-        left_primer => $left_primer,
-        right_primer => $right_primer,
-    );
-    
-    return $primer_pair;
 }
 
 1;

@@ -135,7 +135,7 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_left_primer->set_isa('Crispr::Primer');
     $mock_left_primer->mock('primer_id', sub { my @args = @_; if( $_[1]){ return $_[1] }else{ return $l_p_id} } );
     $mock_left_primer->mock( 'primer_name', sub { return '5:101-124:1' } );
-    $mock_left_primer->mock( 'well_id', sub { return 'A01' } );
+    $mock_left_primer->mock( 'well', sub { return $mock_well } );
     $mock_p1 = $mock_left_primer;
     
     my $mock_right_primer = Test::MockObject->new();
@@ -149,7 +149,7 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_right_primer->set_isa('Crispr::Primer');
     $mock_right_primer->mock('primer_id', sub { my @args = @_; if( $_[1]){ return $_[1] }else{ return $r_p_id} } );
     $mock_right_primer->mock( 'primer_name', sub { return '5:600-623:-1' } );
-    $mock_right_primer->mock( 'well_id', sub { return 'A01' } );
+    $mock_right_primer->mock( 'well', sub { return $mock_well } );
     $mock_p2 = $mock_right_primer;
         
     my $mock_primer_pair = Test::MockObject->new();
@@ -176,7 +176,7 @@ foreach my $db_connection ( @{$db_connections} ){
     foreach my $p ( $mock_left_primer, $mock_right_primer ){
         $sth->execute( $p->primer_id, $p->sequence, $p->seq_region,
             $p->seq_region_start, $p->seq_region_end, $p->seq_region_strand,
-            $p->tail, 1, $p->well_id,
+            $p->tail, 1, $p->well->position,
         );
     }
     
@@ -274,5 +274,5 @@ sub check_primer_attributes {
     is( $obj_1->seq_region_end, $obj_2->seq_region_end, "$driver: object from db $method - check primer end" );
     is( $obj_1->seq_region_strand, $obj_2->seq_region_strand, "$driver: object from db $method - check primer strand" );
     is( $obj_1->primer_name, $obj_2->primer_name, "$driver: object from db $method - check primer name" );
-    is( $obj_1->well_id, $obj_2->well_id, "$driver: object from db $method - check primer well id" );
+    is( $obj_1->well->position, $obj_2->well->position, "$driver: object from db $method - check primer well id" );
 }
