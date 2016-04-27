@@ -94,7 +94,7 @@ foreach my $db_connection ( @{$db_connections} ){
     
     # mock objects
     my $args = {
-        add_to_db => 0,
+        add_to_db => 1,
     };
     my ( $mock_plate, $mock_plate_id, ) =
         $test_method_obj->create_mock_object_and_add_to_db( 'plate', $args, $db_connection, );
@@ -103,6 +103,7 @@ foreach my $db_connection ( @{$db_connections} ){
         $test_method_obj->create_mock_object_and_add_to_db( 'well', $args, $db_connection, );
     $args->{mock_well} = $mock_well;
     $args->{primer_side} = 'left';
+    $args->{'add_to_db'} = 0;
     my ( $mock_left_primer, $mock_left_primer_id, ) =
         $test_method_obj->create_mock_object_and_add_to_db( 'primer', $args, $db_connection, );
     $args->{primer_side} = 'right';
