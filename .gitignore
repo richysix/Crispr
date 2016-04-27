@@ -8,3 +8,4 @@ t/data/mock_genome.fa.index
 .build/
 perltidy.LOG
 test.db
+_Inline/*
