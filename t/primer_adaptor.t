@@ -25,7 +25,7 @@ my $count_output = qx/wc -l $test_data/;
 chomp $count_output;
 $count_output =~ s/\s$test_data//mxs;
 
-Readonly my $TESTS_FOREACH_DBC => 1 + 14 + $count_output * 2 + 2 + 9;
+Readonly my $TESTS_FOREACH_DBC => 1 + 12 + $count_output * 2 + 2 + 9;
 if( $ENV{NO_DB} ) {
     plan skip_all => 'Not testing database';
 }
@@ -67,16 +67,21 @@ foreach my $db_connection ( @{$db_connections} ){
     
     # get adaptors
     my $plate_ad = Crispr::DB::PlateAdaptor->new( db_connection => $mock_db_connection, );
-    my $primer_ad = Crispr::DB::PrimerAdaptor->new( db_connection => $mock_db_connection, );
+
+    # make a real DBConnection object
+    my $db_conn = Crispr::DB::DBConnection->new( $db_connection_params->{$driver} );
+
+    # make a new real Primer Adaptor
+    my $primer_ad = Crispr::DB::PrimerAdaptor->new( db_connection => $db_conn, );
     # 1 test
     isa_ok( $primer_ad, 'Crispr::DB::PrimerAdaptor' );
     
-    # check attributes and methods exist 3 + 11 tests
+    # check attributes and methods exist 3 + 9 tests
     my @attributes = ( qw{ dbname db_connection connection } );
     
     my @methods = (
-        qw{ store _split_primer_into_seq_and_tail fetch_by_id fetch_by_name _fetch_primers_by_attributes
-        _make_new_primer_from_db _build_plate_adaptor check_entry_exists_in_db fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement
+        qw{ store _split_primer_into_seq_and_tail fetch_by_id fetch_by_name _build_plate_adaptor
+        check_entry_exists_in_db fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement
             _db_error_handling }
     );
 
@@ -87,10 +92,64 @@ foreach my $db_connection ( @{$db_connections} ){
         can_ok( $primer_ad, $method );
     }
     
+    # mock objects
+    my $args = {
+        add_to_db => 0,
+    };
+    my ( $mock_plate, $mock_plate_id, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( 'plate', $args, $db_connection, );
+    $args->{mock_plate} = $mock_plate;
+    my ( $mock_well, $mock_well_id, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( 'well', $args, $db_connection, );
+    $args->{mock_well} = $mock_well;
+    $args->{primer_side} = 'left';
+    my ( $mock_left_primer, $mock_left_primer_id, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( 'primer', $args, $db_connection, );
+    $args->{primer_side} = 'right';
+    my ( $mock_right_primer, $mock_right_primer_id, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( 'primer', $args, $db_connection, );
+    
+    # store primers
+    $primer_ad->store( $mock_left_primer );
+    $primer_ad->store( $mock_right_primer );
+    
+    # check database rows - 2 tests
+    foreach my $primer ( $mock_left_primer, $mock_right_primer ){
+        my $primer_seq = $primer->sequence;
+        my $primer_tail;
+        if( $primer_seq =~ m/\A ACACTCTTTCCCTACACGACGCTCTTCCGATCT/xms ){
+            $primer_seq =~ s/\A ACACTCTTTCCCTACACGACGCTCTTCCGATCT//xms;
+            $primer_tail = 'ACACTCTTTCCCTACACGACGCTCTTCCGATCT';
+        }
+        elsif( $primer_seq =~ m/\A TCGGCATTCCTGCTGAACCGCTCTTCCGATCT/xms){
+            $primer_seq =~ s/\A TCGGCATTCCTGCTGAACCGCTCTTCCGATCT//xms;
+            $primer_tail = 'TCGGCATTCCTGCTGAACCGCTCTTCCGATCT';
+        }
+        row_ok(
+           table => 'primer',
+           where => [ primer_id => $primer->primer_id ],
+           tests => {
+               'eq' => {
+                    primer_sequence  => $primer_seq,
+                    primer_tail => $primer_tail,
+                    primer_chr => $primer->seq_region,
+                    primer_strand => $primer->seq_region_strand,
+                    well_id => $primer->well->position,
+               },
+               '==' => {
+                    primer_start => $primer->seq_region_start,
+                    primer_end => $primer->seq_region_end,
+                    plate_id => $primer->well->plate->plate_id,
+               },
+           },
+           label => "$driver: primers stored - with tail",
+        );
+    }
+    
     my $count = 0;
     # load data into objects
     open my $fh, '<', $test_data or die "Couldn't open file: $test_data!\n";
-    my ( $l_p_id, $r_p_id, $pair_id ) = ( -1, 0, 0 );
+    my ( $l_p_id, $r_p_id, $pair_id ) = ( 1, 2, 1 );
     while(<$fh>){
         $count++;
         chomp;
@@ -184,66 +243,6 @@ foreach my $db_connection ( @{$db_connections} ){
         
     }
     
-    my $mock_left_primer = Test::MockObject->new();
-    $l_p_id += 2;
-    $mock_left_primer->mock( 'sequence', sub { return 'ACACTCTTTCCCTACACGACGCTCTTCCGATCTTGGGAGTCCTGCTAATCTCTC' } );
-    $mock_left_primer->mock( 'seq_region', sub { return 4 } );
-    $mock_left_primer->mock( 'seq_region_start', sub { return 60341090 } );
-    $mock_left_primer->mock( 'seq_region_end', sub { return 60341110 } );
-    $mock_left_primer->mock( 'seq_region_strand', sub { return '1' } );
-    $mock_left_primer->mock( 'well_id', sub { return undef } );
-    $mock_left_primer->mock( 'primer_name', sub { return '4:60341090-60341110:1' } );
-    $mock_left_primer->set_isa('Crispr::Primer');
-    $mock_left_primer->mock('primer_id', sub { my @args = @_; if( $_[1]){ return $_[1] }else{ return $l_p_id} } );
-    
-    my $mock_right_primer = Test::MockObject->new();
-    $r_p_id += 2;
-    $mock_right_primer->mock( 'sequence', sub { return 'TCGGCATTCCTGCTGAACCGCTCTTCCGATCTCACAGCACTGTATATAAACAGTG' } );
-    $mock_right_primer->mock( 'seq_region', sub { return 4 } );
-    $mock_right_primer->mock( 'seq_region_start', sub { return 60341311 } );
-    $mock_right_primer->mock( 'seq_region_end', sub { return 60341333 } );
-    $mock_right_primer->mock( 'seq_region_strand', sub { return '-1' } );
-    $mock_right_primer->mock( 'primer_name', sub { return '4:60341311-60341333:-1' } );
-    $mock_right_primer->mock( 'well_id', sub { return undef } );
-    $mock_right_primer->set_isa('Crispr::Primer');
-    $mock_right_primer->mock('primer_id', sub { my @args = @_; if( $_[1]){ return $_[1] }else{ return $r_p_id} } );
-    
-    # store primers
-    $primer_ad->store( $mock_left_primer );
-    $primer_ad->store( $mock_right_primer );
-    
-    # check database rows - 2 tests
-    foreach my $primer ( $mock_left_primer, $mock_right_primer ){
-        my $primer_seq = $primer->sequence;
-        my $primer_tail;
-        if( $primer_seq =~ m/\A ACACTCTTTCCCTACACGACGCTCTTCCGATCT/xms ){
-            $primer_seq =~ s/\A ACACTCTTTCCCTACACGACGCTCTTCCGATCT//xms;
-            $primer_tail = 'ACACTCTTTCCCTACACGACGCTCTTCCGATCT';
-        }
-        elsif( $primer_seq =~ m/\A TCGGCATTCCTGCTGAACCGCTCTTCCGATCT/xms){
-            $primer_seq =~ s/\A TCGGCATTCCTGCTGAACCGCTCTTCCGATCT//xms;
-            $primer_tail = 'TCGGCATTCCTGCTGAACCGCTCTTCCGATCT';
-        }
-        row_ok(
-           table => 'primer',
-           where => [ primer_id => $primer->primer_id ],
-           tests => {
-               'eq' => {
-                    primer_sequence  => $primer_seq,
-                    primer_tail => $primer_tail,
-                    primer_chr => $primer->seq_region,
-                    primer_strand => $primer->seq_region_strand,
-                    well_id => undef,
-               },
-               '==' => {
-                    primer_start => $primer->seq_region_start,
-                    primer_end => $primer->seq_region_end,
-                    plate_id => undef,
-               },
-           },
-           label => "$driver: primers stored - with tail",
-        );
-    }
     
     # test fetch methods
     # _fetch - 9 tests
@@ -265,6 +264,6 @@ sub check_attributes {
     is( $obj_1->seq_region_end, $obj_2->seq_region_end, "$driver: object from db $method - check primer end" );
     is( $obj_1->seq_region_strand, $obj_2->seq_region_strand, "$driver: object from db $method - check primer strand" );
     is( $obj_1->primer_name, $obj_2->primer_name, "$driver: object from db $method - check primer primer_name" );
-    is( $obj_1->well_id, $obj_2->well_id, "$driver: object from db $method - check primer well id" );
+    is( $obj_1->well->position, $obj_2->well->position, "$driver: object from db $method - check primer well id" );
 }
 

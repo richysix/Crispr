@@ -97,6 +97,11 @@ sub store {
     }
     if( $object->isa('Crispr::Primer') ){
         $primer = $object;
+        # check well attribute
+        if( defined $primer->well() ){
+            $well_id = $primer->well->position;
+            $plate_id = $primer->well->plate->plate_id;
+        }
     }
     
     # check primer for tail
@@ -108,7 +113,7 @@ sub store {
     $self->connection->txn(  fixup => sub {
         my $sth = $dbh->prepare($primer_statement); 
         $sth->execute(
-            undef, $primer_seq,
+            $primer->primer_id, $primer_seq,
             $primer->seq_region,
             $primer->seq_region_start, $primer->seq_region_end,
             $primer->seq_region_strand,
@@ -207,35 +212,6 @@ sub fetch_by_name {
     }
 }
 
-#_fetch_primers_by_attributes
-
-  #Usage       : $primers = $primer_adaptor->_fetch_primers_by_attributes( $fetch_statement, $attributes  );
-  #Purpose     : Internal method to fetch Crispr::Primers
-  #Returns     : Crispr::Primers
-  #Parameters  : None
-  #Throws      : 
-  #Comments    : 
-
-sub _fetch_primers_by_attributes {
-    my ( $self, $fetch_statement, $attributes ) = @_;
-    my $dbh = $self->connection->dbh();
-    my $primers;
-    my $num_rows = 0;
-    $self->connection->txn(  fixup => sub {
-        my $sth = $dbh->prepare($fetch_statement);
-        $sth->execute( @{$attributes} );
-        
-        while( my @fields = $sth->fetchrow_array ){
-            $num_rows++;
-            my $primer = $self->_make_new_primer_from_db( \@fields );
-            push @{$primers}, $primer;
-        }
-        $sth->finish();
-    } );
-    
-    return ( $primers, $num_rows );
-}
-
 =method _fetch
 
   Usage       : $primer = $primer_adaptor->_fetch( $where_clause, $where_params_array  );
@@ -284,10 +260,18 @@ END_SQL
                                    $primer_strand, );
             $primer_sequence = $primer_tail ? $primer_tail . $primer_sequence
                 : $primer_sequence;
+            my $well;
+            if( $well_id && $plate_id ){
+                my $plate = $self->plate_adaptor->fetch_empty_plate_by_id( $plate_id, );
+                $well = Labware::Well->new(
+                    position => $well_id,
+                    plate => $plate,
+                );
+            }
+            
             $primer = Crispr::Primer->new(
                     primer_id => $primer_id,
-                    plate_id => $plate_id,
-                    well_id => $well_id,
+                    well => $well,
                     sequence => $primer_sequence,
                     primer_name => $primer_name,
                     seq_region => $primer_chr,
@@ -305,32 +289,6 @@ END_SQL
     }
 
     return \@primers;    
-}
-
-#_make_new_primer_from_db
-
-  #Usage       : $crRNAs = $primer_adaptor->_make_new_primer_from_db( \@fields );
-  #Purpose     : Internal method to create a new Crispr::Primer object from fields returned for the database
-  #Returns     : Crispr::Primer
-  #Parameters  : None
-  #Throws      : 
-  #Comments    : 
-
-sub _make_new_primer_from_db {
-    my ( $self, $fields, ) = @_;
-    
-    my $primer = Crispr::Primer->new(
-        primer_id => $fields->[0],
-        sequence => $fields->[1],
-        seq_region => $fields->[2],
-        seq_region_start => $fields->[3],
-        seq_region_end => $fields->[4],
-        seq_region_strand => $fields->[5],
-        plate_id => $fields->[6],
-        well_id => $fields->[7],
-    );
-    
-    return $primer;
 }
 
 =method driver
