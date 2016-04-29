@@ -95,17 +95,18 @@ foreach my $db_connection ( @{$db_connections} ){
     my ( $mock_plate, $mock_plate_id, ) =
         $test_method_obj->create_mock_object_and_add_to_db( 'plate', $args, $db_connection, );
     $args->{mock_target} = $mock_target;
-    $args->{crRNA_num} = 1;
-    my ( $mock_crRNA_1, $mock_crRNA_1_id, ) =
-        $test_method_obj->create_mock_object_and_add_to_db( 'crRNA', $args, $db_connection, );
-    $args->{mock_target} = $mock_target;
-    $args->{crRNA_num} = 2;
-    my ( $mock_crRNA_2, $mock_crRNA_2_id, ) =
-        $test_method_obj->create_mock_object_and_add_to_db( 'crRNA', $args, $db_connection, );
     $args->{mock_plate} = $mock_plate;
     my ( $mock_well, $mock_well_id, ) =
         $test_method_obj->create_mock_object_and_add_to_db( 'well', $args, $db_connection, );
     $args->{mock_well} = $mock_well;
+    $args->{crRNA_num} = 1;
+    my ( $mock_crRNA_1, $mock_crRNA_1_id, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( 'crRNA', $args, $db_connection, );
+    $mock_well->mock('position', sub { return 'A02' } );
+    $args->{mock_target} = $mock_target;
+    $args->{crRNA_num} = 2;
+    my ( $mock_crRNA_2, $mock_crRNA_2_id, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( 'crRNA', $args, $db_connection, );
     $args->{mock_crRNA} = $mock_crRNA_1;
     $args->{gRNA_num} = 1;
     my ( $mock_gRNA_1, $mock_gRNA_1_id, ) =
