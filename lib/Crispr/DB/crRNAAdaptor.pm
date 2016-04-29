@@ -1130,6 +1130,15 @@ END_SQL
         if( !exists $self->_crRNA_cache->{ $crRNA_id } ){
             # fetch target by target_id
             my $target = $self->target_adaptor->fetch_by_id( $target_id );
+            # make well if plate_id and well_id are defined
+            my $well;
+            if( defined $plate_id && defined $well_id ){
+                my $plate = $self->plate_adaptor->fetch_empty_plate_by_id( $plate_id, );
+                $well = Labware::Well->new(
+                    position => $well_id,
+                    plate => $plate,
+                );
+            }
             $crRNA = Crispr::crRNA->new(
                 crRNA_id => $crRNA_id,
                 target => $target,
@@ -1142,6 +1151,7 @@ END_SQL
                 crRNA_adaptor => $self,
                 status => $status,
                 status_changed => $status_changed,
+                well => $well,
             );
             my $crRNA_cache = $self->_crRNA_cache;
             $crRNA_cache->{ $crRNA_id } = $crRNA;
@@ -1164,15 +1174,29 @@ END_SQL
   Returns     : Crispr::crRNA
   Parameters  : ArrayRef    (Database row)
   Throws      : If no rows are returned from the database
-  Comments    : None
+  Comments    : Expects the fields to be in this order:
+                crRNA_id, crRNA_name, chr, start, end, strand, sequence,
+                num_five_prime_Gs, score, off_target_score, coding_score,
+                target_id, plate_id, well_id, status_id, status_changed
 
 =cut
 
 sub _make_new_crRNA_from_db {
     my ( $self, $fields ) = @_;
+    my $crRNA;
+    
     my $status = $self->_fetch_status_from_id( $fields->[14] );
     
-    my $crRNA;
+    # make well if plate_id and well_id are defined
+    my $well;
+    if( defined $fields->[12] && defined $fields->[13] ){
+        my $plate = $self->plate_adaptor->fetch_empty_plate_by_id( $fields->[12], );
+        $well = Labware::Well->new(
+            position => $fields->[13],
+            plate => $plate,
+        );
+    }
+
     my %args = (
         crRNA_id => $fields->[0],
         name => $fields->[1],
