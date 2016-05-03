@@ -139,9 +139,9 @@ sub store_plexes {
 sub fetch_by_id {
     my ( $self, $id ) = @_;
     my $plex = $self->_fetch( 'plex_id = ?;', [ $id ] )->[0];
-    if( !$plex ){
-        confess "Couldn't retrieve plex, $id, from database.\n";
-    }
+    #if( !$plex ){
+    #    confess "Couldn't retrieve plex, $id, from database.\n";
+    #}
     return $plex;
 }
 
@@ -181,9 +181,29 @@ sub fetch_by_ids {
 sub fetch_by_name {
     my ( $self, $name ) = @_;
     my $plex = $self->_fetch( 'plex_name = ?;', [ lc($name) ] )->[0];
-    if( !$plex ){
-        confess "Couldn't retrieve plex, $name, from database.\n";
-    }
+    #if( !$plex ){
+    #    confess "Couldn't retrieve plex, $name, from database.\n";
+    #}
+    return $plex;
+}
+
+=method fetch_by_run_id
+
+  Usage       : $plexes = $plex_adaptor->fetch_by_run_id( $plex_run_id );
+  Purpose     : Fetch an plex given a plex run_id
+  Returns     : Crispr::DB::Plex object
+  Parameters  : crispr-db plex run_id - Str
+  Throws      : If no rows are returned from the database or if too many rows are returned
+  Comments    : None
+
+=cut
+
+sub fetch_by_run_id {
+    my ( $self, $run_id ) = @_;
+    my $plex = $self->_fetch( 'run_id = ?;', [ $run_id ] )->[0];
+    #if( !$plex ){
+    #    confess "Couldn't retrieve plex for run, $run_id, from database.\n";
+    #}
     return $plex;
 }
 
