@@ -214,7 +214,7 @@ sub fetch_by_id {
 
 sub fetch_by_plate_name_and_well {
     my ( $self, $plate_name, $well_id, ) = @_;
-    my $primer_pairs;
+    my $primer_pairs = [];
     
     my $sql = <<"END_SQL";
 SELECT pp.primer_pair_id, type, left_primer_id, right_primer_id,
@@ -259,16 +259,23 @@ END_SQL
                                    join("-", $primer_start, $primer_end, ),
                                    $primer_strand, );
             
+            my $well;
+            if( defined $plate_id && defined $well_id ){
+                my $plate = $self->plate_adaptor->fetch_empty_plate_by_id( $plate_id, );
+                $well = Labware::Well->new(
+                    position => $well_id,
+                    plate => $plate,
+                );
+            }
             my $left_primer = Crispr::Primer->new(
                 primer_id => $left_primer_id,
-                plate_id => $plate_id,
-                well_id => $well_id,
                 sequence => $primer_sequence,
                 primer_name => $primer_name,
                 seq_region => $primer_chr,
                 seq_region_strand => $primer_strand,
                 seq_region_start => $primer_start,
                 seq_region_end => $primer_end,
+                well => $well,
             );
             my $right_primer = $self->primer_adaptor->fetch_by_id( $right_primer_id );
             my $pair_name = join(":", $chr, join("-", $start, $end, ), $strand, );
