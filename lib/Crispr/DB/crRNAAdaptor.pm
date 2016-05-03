@@ -1206,7 +1206,8 @@ sub _make_new_crRNA_from_db {
         sequence => $fields->[6],
         five_prime_Gs => $fields->[7],
         status => $status,
-        status_changed => $fields->[15]
+        status_changed => $fields->[15],
+        well => $well,
     );
     $args{ 'chr' } = $fields->[2] if( defined $fields->[2] );
 
