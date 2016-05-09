@@ -247,7 +247,7 @@ sub fetch_all_by_injection_pool {
             gp.plate_id, gp.well_id,
             cr.crRNA_id, crRNA_name, chr, start, end, strand,
             sequence, num_five_prime_Gs, score, coding_score, off_target_score,
-            target_id, status_id, status_changed
+            target_id, cr.plate_id, cr.well_id, status_id, status_changed
         FROM guideRNA_prep gp, crRNA cr, injection i, injection_pool ip
         WHERE gp.crRNA_id = cr.crRNA_id AND
         gp.guideRNA_prep_id = ip.guideRNA_prep_id AND
@@ -299,8 +299,10 @@ END_SQL
                     strand => $row->[13],
                     sequence => $row->[14],
                     five_prime_Gs => $row->[15],
-                    status_id => $row->[20],
-                    status_changed => $row->[21],
+                    plate_id => $row->[20],
+                    well_id => $row->[21],
+                    status_id => $row->[22],
+                    status_changed => $row->[23],
                 },
                 plate => {
                     plate_id => $row->[6],
@@ -339,7 +341,7 @@ sub _fetch {
             gp.well_id,
             cr.crRNA_id, crRNA_name, chr, start, end, strand,
             sequence, num_five_prime_Gs, score, off_target_score, coding_score,
-            target_id, status_id, status_changed
+            target_id, cr.plate_id, cr.well_id, status_id, status_changed
         FROM guideRNA_prep gp, crRNA cr
         WHERE gp.crRNA_id = cr.crRNA_id
 END_SQL
@@ -355,13 +357,13 @@ END_SQL
         $made_by, $date, $plate_id, $well_id, $crRNA_id,
         $crRNA_name, $chr, $start, $end, $strand,
         $sequence, $num_five_prime_Gs, $score, $off_target_score, $coding_score,
-        $target_id, $status_id, $status_changed, );
+        $target_id, $crRNA_plate_id, $crRNA_well_id, $status_id, $status_changed, );
     
     $sth->bind_columns( \( $guideRNA_prep_id, $guideRNA_type, $stock_concentration,
         $made_by, $date, $plate_id, $well_id, $crRNA_id,
         $crRNA_name, $chr, $start, $end, $strand,
         $sequence, $num_five_prime_Gs, $score, $off_target_score, $coding_score,
-        $target_id, $status_id, $status_changed, ) );
+        $target_id, $crRNA_plate_id, $crRNA_well_id, $status_id, $status_changed, ) );
 
     my @guideRNA_preps = ();
     while ( $sth->fetch ) {
@@ -370,7 +372,7 @@ END_SQL
             my $crRNA = $self->crRNA_adaptor->_make_new_crRNA_from_db(
                 [ $crRNA_id, $crRNA_name, $chr, $start, $end, $strand,
                 $sequence, $num_five_prime_Gs, $score, $off_target_score, $coding_score,
-                $target_id, undef, undef, $status_id, $status_changed, ]
+                $target_id, $crRNA_plate_id, $crRNA_well_id, $status_id, $status_changed, ]
             );
             
             my $well;
@@ -433,7 +435,9 @@ sub _make_new_guideRNA_prep_from_db {
                     $crRNA_info->{strand},
                     $crRNA_info->{sequence},
                     $crRNA_info->{five_prime_Gs},
-                    undef, undef, undef, undef, undef, undef,
+                    undef, undef, undef, undef,
+                    $crRNA_info->{plate_id},
+                    $crRNA_info->{well_id},
                     $crRNA_info->{status_id},
                     $crRNA_info->{status_changed},
                  ],
