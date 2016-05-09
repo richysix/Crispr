@@ -17,7 +17,7 @@ use Crispr::DB::PlexAdaptor;
 use Crispr::DB::DBConnection;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 15 + 7 + 2 + 3 + 8 + 6 + 10 + 7 + 1;
+Readonly my $TESTS_IN_COMMON => 1 + 16 + 7 + 2 + 3 + 8 + 6 + 11 + 7 + 7 + 1;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
@@ -29,13 +29,13 @@ else {
     plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
 }
 
-# check attributes and methods - 3 + 12 tests
+# check attributes and methods - 3 + 13 tests
 my @attributes = ( qw{ dbname db_connection connection } );
 
 my @methods = (
     qw{ store store_plex store_plexes fetch_by_id fetch_by_ids
-        fetch_by_name _fetch delete_plex_from_db check_entry_exists_in_db fetch_rows_expecting_single_row
-        fetch_rows_for_generic_select_statement _db_error_handling }
+        fetch_by_name fetch_by_run_id _fetch delete_plex_from_db check_entry_exists_in_db
+        fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement _db_error_handling }
 );
 
 # DB tests
@@ -219,10 +219,11 @@ foreach my $db_connection ( @{$db_connections} ){
     # fetch_by_id - 6 tests
     $plex_from_db = $plex_adaptor->fetch_by_id( 4 );
     check_attributes( $plex_from_db, $mock_plex_2, $driver, 'fetch_by_id', );
-    throws_ok{ $plex_adaptor->fetch_by_id( 10 ) } qr/Couldn't retrieve plex/, 'Plex does not exist in db';
+    is( $plex_adaptor->fetch_by_id( 10 ), undef, 'Plex does not exist in db' );
     
-    # fetch_by_ids - 10 tests
+    # fetch_by_ids - 11 tests
     my @ids = ( 3, 4 );
+    is( $plex_adaptor->fetch_by_ids( [10,11] ), undef, 'Fetch by ids: Plexes do not exist in db' );
     my $plexs_from_db = $plex_adaptor->fetch_by_ids( \@ids );
     
     my @plexes = ( $mock_plex, $mock_plex_2 );
@@ -235,7 +236,13 @@ foreach my $db_connection ( @{$db_connections} ){
     # fetch_by_name - 7 tests
     ok( $plex_from_db = $plex_adaptor->fetch_by_name( 'MPX17' ), 'fetch_by_name');
     check_attributes( $plex_from_db, $mock_plex_2, $driver, 'fetch_by_name', );
-    throws_ok{ $plex_adaptor->fetch_by_name( 'MPX18' ) } qr/Couldn't retrieve plex/, 'fetch_by_name: Plex does not exist in db';
+    is( $plex_adaptor->fetch_by_name( 'MPX18' ), undef, 'fetch_by_name: Plex does not exist in db');
+    
+    # fetch_by_run_id - 7 tests
+    ok( $plex_from_db = $plex_adaptor->fetch_by_run_id( $mock_plex_2->run_id ), 'fetch_by_run_id');
+    check_attributes( $plex_from_db, $mock_plex_2, $driver, 'fetch_by_run_id', );
+    is( $plex_adaptor->fetch_by_run_id( 'MPX18' ), undef, 'fetch_by_run_id: Plex does not exist in db');
+    
 
 TODO: {
     local $TODO = 'methods not implemented yet.';

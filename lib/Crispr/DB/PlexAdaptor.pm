@@ -139,9 +139,9 @@ sub store_plexes {
 sub fetch_by_id {
     my ( $self, $id ) = @_;
     my $plex = $self->_fetch( 'plex_id = ?;', [ $id ] )->[0];
-    #if( !$plex ){
-    #    confess "Couldn't retrieve plex, $id, from database.\n";
-    #}
+    if( !$plex ){
+        return;
+    }
     return $plex;
 }
 
@@ -161,10 +161,17 @@ sub fetch_by_ids {
     my ( $self, $ids ) = @_;
 	my @plexes;
     foreach my $id ( @{$ids} ){
-        push @plexes, $self->fetch_by_id( $id );
+        my $plex = $self->fetch_by_id( $id );
+        if( $plex ){
+            push @plexes, $plex;
+        }
     }
-	
-    return \@plexes;
+    if( @plexes ){
+        return \@plexes;
+    }
+    else{
+        return;
+    }
 }
 
 =method fetch_by_name
@@ -181,9 +188,9 @@ sub fetch_by_ids {
 sub fetch_by_name {
     my ( $self, $name ) = @_;
     my $plex = $self->_fetch( 'plex_name = ?;', [ lc($name) ] )->[0];
-    #if( !$plex ){
-    #    confess "Couldn't retrieve plex, $name, from database.\n";
-    #}
+    if( !$plex ){
+        return;
+    }
     return $plex;
 }
 
@@ -201,9 +208,9 @@ sub fetch_by_name {
 sub fetch_by_run_id {
     my ( $self, $run_id ) = @_;
     my $plex = $self->_fetch( 'run_id = ?;', [ $run_id ] )->[0];
-    #if( !$plex ){
-    #    confess "Couldn't retrieve plex for run, $run_id, from database.\n";
-    #}
+    if( !$plex ){
+        return;
+    }
     return $plex;
 }
 
