@@ -224,9 +224,9 @@ sub store_injection_pools {
 sub fetch_by_id {
     my ( $self, $id ) = @_;
     my $injection_pool = $self->_fetch( 'injection_id = ?', [ $id ] )->[0];
-    if( !$injection_pool ){
-        confess "Couldn't retrieve injection_pool, $id, from database.\n";
-    }
+    #if( !$injection_pool ){
+    #    confess "Couldn't retrieve injection_pool, $id, from database.\n";
+    #}
     return $injection_pool;
 }
 
@@ -266,9 +266,9 @@ sub fetch_by_ids {
 sub fetch_by_name {
     my ( $self, $name ) = @_;
     my $injection_pool = $self->_fetch( 'injection_name = ?', [ $name ] )->[0];
-    if( !$injection_pool ){
-        confess "Couldn't retrieve injection_pool, $name, from database.\n";
-    }
+    #if( !$injection_pool ){
+    #    confess "Couldn't retrieve injection_pool, $name, from database.\n";
+    #}
     return $injection_pool;
 }
 
@@ -286,9 +286,9 @@ sub fetch_by_name {
 sub fetch_all_by_date  {
     my ( $self, $date ) = @_;
     my $injection_pools = $self->_fetch( 'i.date = ?', [ $date ] );
-    if( scalar @{$injection_pools} == 0 ){
-        confess "There are no injection_pools for the date, $date, in the database.\n";
-    }
+    #if( scalar @{$injection_pools} == 0 ){
+    #    confess "There are no injection_pools for the date, $date, in the database.\n";
+    #}
     return $injection_pools;
 }
 
@@ -405,18 +405,18 @@ sub fetch_all_by_gene  {
     if( @{$targets} ){
         $crRNAs = $self->crRNA_adaptor->fetch_all_by_targets( $targets );
     }
-    else{
-        die 'NO TARGETS';
-    }
+    #else{
+    #    die 'NO TARGETS';
+    #}
     if( @{$crRNAs} ){
        $injection_pools = $self->crRNA_adaptor->fetch_all_by_crRNAs( $crRNAs );
     }
-    else{
-        die 'NO CR_RNAS';
-    }
-    if( scalar @{$injection_pools} == 0 ){
-        die "NO INJECTION_POOLS";
-    }
+    #else{
+    #    die 'NO CR_RNAS';
+    #}
+    #if( scalar @{$injection_pools} == 0 ){
+    #    die "NO INJECTION_POOLS";
+    #}
     return $injection_pools;
 }
 
