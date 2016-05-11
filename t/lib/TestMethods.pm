@@ -180,7 +180,15 @@ sub create_mock_object_and_add_to_db {
     elsif( $type eq 'primer' ){
         ( $mock_object, $db_id ) = $self->create_and_add_primer_object( $db_connection, $args, );
     }
-
+    elsif( $type eq 'primer_pair' ){
+        ( $mock_object, $db_id ) = $self->create_and_add_primer_pair_object( $db_connection, $args, );
+    }
+    elsif( $type eq 'sample_amplicon' ){
+        ( $mock_object, $db_id ) = $self->create_and_add_sample_amplicon_object( $db_connection, $args, );
+    }
+    elsif( $type eq 'analysis' ){
+        ( $mock_object, $db_id ) = $self->create_and_add_analysis_object( $db_connection, $args, );
+    }
     return ( $mock_object, $db_id );
 }
 
@@ -706,6 +714,98 @@ sub create_and_add_primer_object {
     }
     
     return( $mock_primer, $mock_primer->primer_id, );
+}
+
+sub create_and_add_primer_pair_object{
+    my ( $self, $db_connection, $args, ) = @_;
+    
+    my $mock_primer_pair = Test::MockObject->new();
+    my $mock_left_primer = $args->{mock_left_primer};
+    my $mock_right_primer = $args->{mock_right_primer};
+    $mock_primer_pair->set_isa( 'Crispr::PrimerPair' );
+    $mock_primer_pair->mock( 'type', sub{ return 'ext' } );
+    $mock_primer_pair->mock( 'left_primer', sub{ return $mock_left_primer } );
+    $mock_primer_pair->mock( 'right_primer', sub{ return $mock_right_primer } );
+    $mock_primer_pair->mock( 'seq_region', sub{ return $mock_left_primer->seq_region } );
+    $mock_primer_pair->mock( 'seq_region_start', sub{ return $mock_left_primer->seq_region_start } );
+    $mock_primer_pair->mock( 'seq_region_end', sub{ return $mock_right_primer->seq_region_end } );
+    $mock_primer_pair->mock( 'seq_region_strand', sub{ return 1 } );
+    $mock_primer_pair->mock( 'product_size', sub{ return 523 } );
+    $mock_primer_pair->mock( 'primer_pair_id', sub { return 1; } );
+    $mock_primer_pair->mock( 'pair_name', sub {
+        return join(":", $mock_left_primer->seq_region,
+                    join("-", $mock_left_primer->seq_region_start,
+                    $mock_right_primer->seq_region_end, ),
+                    '1', ); } );
+    return( $mock_primer_pair, $mock_primer_pair->primer_pair_id, );
+}
+
+sub create_and_add_sample_amplicon_object {
+    my ( $self, $db_connection, $args, ) = @_;
+    
+    my @mock_sample_amplicons;
+    for( my $i = 0; $i < scalar @{$args->{mock_samples}}; $i++ ){
+        my $mock_sample = $args->{mock_samples}->[$i];
+        my $barcode_id = $args->{barcode_ids}->[$i];
+        my $well_id = $args->{well_ids}->[$i];
+        my $mock_sample_amplicon = Test::MockObject->new();
+        $mock_sample_amplicon->set_isa( 'Crispr::DB::SampleAmplicon' );
+        $mock_sample_amplicon->mock('analysis_id', sub { return 1; } );
+        $mock_sample_amplicon->mock('sample', sub { return $mock_sample; } );
+        $mock_sample_amplicon->mock('amplicons', sub { return [ $args->{mock_primer_pair} ]; } );
+        $mock_sample_amplicon->mock('barcode_id', sub { return $barcode_id; } );
+        $mock_sample_amplicon->mock('plate_number', sub { return 10; } );
+        $mock_sample_amplicon->mock('well_id', sub { return $well_id; } );
+        
+        push @mock_sample_amplicons, $mock_sample_amplicon;
+    }
+    
+    return \@mock_sample_amplicons;
+}
+
+sub create_and_add_analysis_object {
+    my ( $self, $db_connection, $args, ) = @_;
+    
+    my $mock_analysis = Test::MockObject->new();
+	$mock_analysis->mock('db_id', sub { return  1; } );
+	$mock_analysis->mock('plex', sub { return  $args->{mock_plex}; } );
+	$mock_analysis->mock('info', sub { return  $args->{mock_sample_amplicons}; } );
+	$mock_analysis->mock('analysis_started', sub { return  '2014-09-30'; } );
+	$mock_analysis->mock('analysis_finished', sub { return  '2014-10-01'; } );
+    $mock_analysis->mock('samples', sub{ return $args->{mock_samples} } );
+    $mock_analysis->mock('amplicons', sub{ return $args->{mock_amplicons} } );
+    $mock_analysis->mock('injection_pool', sub{ return $args->{mock_injection_pool}; } );
+    
+    if( $args->{add_to_db} ){
+        my $dbh = $db_connection->connection->dbh;
+        # add to db
+        my $statement = "insert into analysis values( ?, ?, ?, ? );";
+        my $sth = $dbh->prepare($statement);
+        $sth->execute(
+            $mock_analysis->db_id,
+            $mock_analysis->plex->db_id,
+            $mock_analysis->analysis_started,
+            $mock_analysis->analysis_finished,
+        );
+        
+        my $info_st = "insert into analysis_information values( ?, ?, ?, ?, ?, ? )";
+        $sth = $dbh->prepare($info_st);
+        foreach my $sample_amplicon ( @{ $mock_analysis->info } ){
+            foreach my $primer_pair ( @{ $sample_amplicon->amplicons } ){
+                $sth->execute(
+                    $mock_analysis->db_id,
+                    $sample_amplicon->sample->db_id,
+                    $primer_pair->primer_pair_id,
+                    $sample_amplicon->barcode_id,
+                    $sample_amplicon->plate_number,
+                    $sample_amplicon->well_id,
+                );
+            }
+        }
+        
+    }
+
+    return( $mock_analysis, $mock_analysis->db_id, );
 }
 
 sub _build_slice_adaptor {
