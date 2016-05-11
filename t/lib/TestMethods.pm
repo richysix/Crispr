@@ -627,7 +627,7 @@ sub create_and_add_sample_object {
         $mock_sample->mock( 'sample_number', sub{ return $sample_id } );
         $mock_sample->mock( 'injection_pool', sub{ return $args->{mock_injection_pool} } );
         $mock_sample->mock( 'generation', sub{ return 'G0' } );
-        $mock_sample->mock( 'type', sub{ return $args->{samples}{type} || 'embryo' } );
+        $mock_sample->mock( 'sample_type', sub{ return $args->{samples}{type} || 'embryo' } );
         $mock_sample->mock( 'species', sub{ return 'zebrafish' } );
         $mock_sample->mock( 'well_id', sub{ return $well_id } );
         $mock_sample->mock( 'cryo_box', sub{ return 'Cr_Sperm_1' } );
@@ -644,7 +644,7 @@ sub create_and_add_sample_object {
                 $mock_sample->sample_number,
                 $mock_sample->injection_pool->db_id,
                 $mock_sample->generation,
-                $mock_sample->type,
+                $mock_sample->sample_type,
                 $mock_sample->species,
                 $mock_sample->well_id,
                 $mock_sample->cryo_box,
@@ -772,7 +772,7 @@ sub create_and_add_analysis_object {
 	$mock_analysis->mock('info', sub { return  $args->{mock_sample_amplicons}; } );
 	$mock_analysis->mock('analysis_started', sub { return  '2014-09-30'; } );
 	$mock_analysis->mock('analysis_finished', sub { return  '2014-10-01'; } );
-    $mock_analysis->mock('samples', sub{ return $args->{mock_samples} } );
+    $mock_analysis->mock('samples', sub{ return @{$args->{mock_samples}} } );
     $mock_analysis->mock('amplicons', sub{ return $args->{mock_amplicons} } );
     $mock_analysis->mock('injection_pool', sub{ return $args->{mock_injection_pool}; } );
     
