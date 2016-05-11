@@ -223,6 +223,40 @@ sub amplicons {
     return values %primer_pairs;
 }
 
+=method injection_pool
+
+  Usage       : $analysis->injection_pool;
+  Purpose     : Returns the injection_pool for the analysis
+  Returns     : Crispr::DB::InjectionPool object
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
+sub injection_pool {
+    my ( $self, ) = @_;
+    
+    my $pool_seen; # HASHREF keyed on injection_id
+    foreach my $inj_pool ( map { $_->sample->injection_pool } @{ $self->info } ){
+        if( !exists $pool_seen->{ $inj_pool->db_id } ){
+            $pool_seen->{ $inj_pool->db_id } = $inj_pool;
+        }
+    }
+    if( scalar keys %{$pool_seen} == 0 ){
+        return;
+    }
+    elsif( scalar keys %{$pool_seen} == 1 ){
+        return (values %{$pool_seen})[0];
+    }
+    else{
+        confess join(q{ }, "Got more than one Injection Pool for Analysis",
+                join(":", $self->db_id, $self->plex->plex_name() ),
+                ".\nThat shouldn't happen!"
+            ), "\n";
+    }
+}
+
 __PACKAGE__->meta->make_immutable;
 1;
 
