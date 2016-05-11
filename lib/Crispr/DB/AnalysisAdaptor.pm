@@ -340,6 +340,7 @@ sub fetch_all_by_plex {
                 'total_percentage_of_reads' => $total_percentage_of_reads,
                 'percentage_major_variant' => $percentage_major_variant,
                 'total_reads' => $total_reads,
+                'pass' => $pass,
             }
         },
         'passes' => $num_passes,
@@ -385,6 +386,7 @@ END_SQL
             total_percentage_of_reads => $total_percentage_of_reads,
             percentage_major_variant => $percentage_major_variant,
             total_reads => $total_reads,
+            pass => $pass,
         };
         $seq_results{ $crRNA_id }{ 'passes' }++ if $pass;
     }
