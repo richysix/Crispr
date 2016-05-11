@@ -321,15 +321,76 @@ sub fetch_all_by_plex {
     return $self->fetch_all_by_plex_id( $plex->db_id );
 }
 
-#_fetch
-#
-#Usage       : $analysis = $self->_fetch( \@fields );
-#Purpose     : Fetch a Analysis object from the database with arbitrary parameteres
-#Returns     : ArrayRef of Crispr::DB::Analysis objects
-#Parameters  : where_clause => Str (SQL where clause)
-#               where_parameters => ArrayRef of parameters to bind to sql statement
-#Throws      : 
-#Comments    : 
+=method fetch_sequencing_results_by_analysis_id
+
+  Usage       : $seq_results = $analysis_adaptor->fetch_sequencing_results_by_analysis_id( $analysis_id );
+  Purpose     : Fetch the sequencing results for an Analysis db_id
+  Returns     : HashRef
+  Parameters  : Analysis db_id
+  Throws      : If no rows are returned from the database or if too many rows are returned
+  Comments    : Returns a HashRef of the following form
+  
+  Results_HashRef = {
+    $crRNA_id => {
+        'samples' => {
+            $sample_id => {
+                'crRNA' => $crRNA,
+                'sample' => $sample,
+                'num_indels' => $num_indels,
+                'total_percentage_of_reads' => $total_percentage_of_reads,
+                'percentage_major_variant' => $percentage_major_variant,
+                'total_reads' => $total_reads,
+            }
+        },
+        'passes' => $num_passes,
+    }
+  }
+
+=cut
+
+sub fetch_sequencing_results_by_analysis_id {
+    my ( $self, $analysis_id ) = @_;
+    my $dbh = $self->connection->dbh();
+    
+    my $sql = <<'END_SQL';
+        SELECT crRNA_id, info.sample_id, pass, num_indels,
+            total_percentage_of_reads, percentage_major_variant, total_reads
+        FROM analysis_information info, sequencing_results seq
+        WHERE info.sample_id = seq.sample_id
+END_SQL
+    
+    my $where_clause = 'info.analysis_id = ?';
+    my $where_parameters = [ $analysis_id, ];
+    $sql .= 'AND ' . $where_clause;
+    
+    my $sth = $self->_prepare_sql( $sql, $where_clause, $where_parameters, );
+    $sth->execute();
+    
+    my ( $crRNA_id, $sample_id, $pass, $num_indels, $total_percentage_of_reads,
+            $percentage_major_variant, $total_reads, );
+    
+    $sth->bind_columns( \( $crRNA_id, $sample_id, $pass, $num_indels,
+            $total_percentage_of_reads, $percentage_major_variant, $total_reads, ) );
+
+    my %seq_results = ();
+    my %crRNAs;
+    while ( $sth->fetch ) {
+        my $sample = $self->sample_adaptor->fetch_by_id( $sample_id );
+        my $crRNA = $self->crRNA_adaptor->fetch_by_id( $crRNA_id );
+        $crRNAs{ $crRNA_id } = $crRNA;
+        $seq_results{ $crRNA_id }{ 'samples' }{ $sample_id } = {
+            crRNA => $crRNA,
+            sample => $sample,
+            num_indels => $num_indels,
+            total_percentage_of_reads => $total_percentage_of_reads,
+            percentage_major_variant => $percentage_major_variant,
+            total_reads => $total_reads,
+        };
+        $seq_results{ $crRNA_id }{ 'passes' }++ if $pass;
+    }
+    return \%seq_results;
+}
+
 
 sub _fetch {
     my ( $self, $where_clause, $where_parameters ) = @_;

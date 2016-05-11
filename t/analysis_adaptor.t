@@ -12,12 +12,12 @@ use Data::Dumper;
 use DateTime;
 use Readonly;
 use English qw( -no_match_vars );
-
+use List::Util qw{sum};
 use Crispr::DB::AnalysisAdaptor;
 use Crispr::DB::DBConnection;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 18 + 4 + 4 + 4 + 3 + 1 + 5 + 5 + 10 + 6 + 6 + 1;
+Readonly my $TESTS_IN_COMMON => 1 + 18 + 4 + 4 + 4 + 3 + 1 + 5 + 5 + 10 + 6 + 6 + 1 + 20;
 #Readonly my $TESTS_IN_COMMON => 1 + 20 + 4 + 13 + 2 + 3 + 24 + 24 + 48 + 25 + 2;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
@@ -532,6 +532,33 @@ foreach my $db_connection ( @{$db_connections} ){
     # fetch_by_plex - 6 tests
     ok( $analyses_from_db = $analysis_adaptor->fetch_all_by_plex( $mock_plex ), 'fetch_all_by_plex');
     check_attributes( $analyses_from_db->[3], $mock_analysis_2, $driver, 'fetch_all_by_plex', );
+
+    # check retrieving sequencing results
+    # add some results first
+    $statement = 'insert into sequencing_results values( ?, ?, ?, ?, ?, ?, ? )';
+    $sth = $dbh->prepare($statement);
+    my @info = (
+        [ $mock_sample_1->db_id, $mock_crRNA_object_1->crRNA_id, 1, 5, 20.1, 5.3, 10000 ],
+        [ $mock_sample_2->db_id, $mock_crRNA_object_1->crRNA_id, 1, 7, 26.1, 10.3, 8000 ],
+        [ $mock_sample_1->db_id, $mock_crRNA_object_2->crRNA_id, 0, 0, 0, 0, 1000 ],
+        [ $mock_sample_2->db_id, $mock_crRNA_object_2->crRNA_id, 1, 2, 13.1, 7.3, 7500 ],
+    );
+    foreach my $info ( @info ){
+        $sth->execute( @{$info} );
+    }
+    
+    # check returned results - 20 tests
+    my $seq_results = $analysis_adaptor->fetch_sequencing_results_by_analysis_id( $mock_analysis->db_id );
+    foreach my $info ( @info ){
+        my $results = $seq_results->{ $info->[1] };
+        my $passes = sum map { $_->[2] } grep { $_->[1] == $info->[1] } @info;
+        is( $results->{'passes'}, $passes, 'Seq results: check number of passes' );
+        my $results_hash = $seq_results->{ $info->[1] }{'samples'}{ $info->[0] };
+        is( $results_hash->{'num_indels'}, $info->[3], 'Seq results: number of indels');
+        is( $results_hash->{'total_percentage_of_reads'}, $info->[4], 'Seq results: % of reads');
+        is( $results_hash->{'percentage_major_variant'}, $info->[5], 'Seq results: % major var');
+        is( $results_hash->{'total_reads'}, $info->[6], 'Seq results: number of reads');
+    }
 
 TODO: {
     local $TODO = 'methods not implemented yet.';
