@@ -17,7 +17,7 @@ use Crispr::DB::AnalysisAdaptor;
 use Crispr::DB::DBConnection;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 18 + 4 + 4 + 4 + 3 + 1 + 5 + 5 + 10 + 6 + 6 + 1 + 20;
+Readonly my $TESTS_IN_COMMON => 1 + 19 + 4 + 4 + 4 + 3 + 1 + 5 + 5 + 10 + 6 + 6 + 1 + 20;
 #Readonly my $TESTS_IN_COMMON => 1 + 20 + 4 + 13 + 2 + 3 + 24 + 24 + 48 + 25 + 2;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
@@ -30,13 +30,13 @@ else {
     plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
 }
 
-# check attributes and methods - 5 + 13 tests
+# check attributes and methods - 5 + 14 tests
 my @attributes = ( qw{ dbname db_connection connection plex_adaptor sample_adaptor } );
 
 my @methods = (
     qw{ store store_analysis store_analyses fetch_by_id fetch_by_ids
-        fetch_all_by_plex_id fetch_all_by_plex _fetch delete_analysis_from_db check_entry_exists_in_db
-        fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement _db_error_handling }
+        fetch_all_by_plex_id fetch_all_by_plex fetch_sequencing_results_by_analysis_id _fetch delete_analysis_from_db
+        check_entry_exists_in_db fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement _db_error_handling }
 );
 
 # DB tests
@@ -552,12 +552,12 @@ foreach my $db_connection ( @{$db_connections} ){
     foreach my $info ( @info ){
         my $results = $seq_results->{ $info->[1] };
         my $passes = sum map { $_->[2] } grep { $_->[1] == $info->[1] } @info;
-        is( $results->{'passes'}, $passes, 'Seq results: check number of passes' );
+        is( $results->{'passes'}, $passes, "$driver: Seq results: check number of passes" );
         my $results_hash = $seq_results->{ $info->[1] }{'samples'}{ $info->[0] };
-        is( $results_hash->{'num_indels'}, $info->[3], 'Seq results: number of indels');
-        is( $results_hash->{'total_percentage_of_reads'}, $info->[4], 'Seq results: % of reads');
-        is( $results_hash->{'percentage_major_variant'}, $info->[5], 'Seq results: % major var');
-        is( $results_hash->{'total_reads'}, $info->[6], 'Seq results: number of reads');
+        is( $results_hash->{'num_indels'}, $info->[3], "$driver: Seq results: number of indels");
+        is( $results_hash->{'total_percentage_of_reads'} - $info->[4], 0, "$driver: Seq results: % of reads");
+        is( $results_hash->{'percentage_major_variant'} - $info->[5], 0, "$driver: Seq results: % major var");
+        is( $results_hash->{'total_reads'}, $info->[6], "$driver: Seq results: number of reads");
     }
 
 TODO: {
