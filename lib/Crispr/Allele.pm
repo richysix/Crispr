@@ -35,7 +35,6 @@ subtype 'Crispr::Allele::DNA',
                     alt_allele => 'GACAG',
                     crisprs => $crisprs,
                     allele_number => 'sa564',
-                    percent_of_reads => 10.5,
                     kaspar_assay => $kasp_assay,
                 );
   Purpose     : Constructor for creating Allele objects
@@ -47,7 +46,6 @@ subtype 'Crispr::Allele::DNA',
                 alt_allele => Str,
                 crisprs => ArrayRef[ Crispr::crRNA ],
                 allele_number => Str,
-                percent_of_reads => Num,
                 kaspar_assay => $kasp_assay,
   Throws      : If parameters are not the correct type
   Comments    : None
@@ -173,22 +171,6 @@ has 'allele_number' => (
     isa => 'Maybe[Int]',
 );
 
-=method percent_of_reads
-
-  Usage       : $allele->percent_of_reads;
-  Purpose     : Getter for Allele percent_of_reads attribute
-  Returns     : Num
-  Parameters  : None
-  Throws      : If input is given
-  Comments    :
-
-=cut
-
-has 'percent_of_reads' => (
-    is => 'rw',
-    isa => 'Num',
-);
-
 =method kaspar_assay
 
   Usage       : $allele->kaspar_assay;
@@ -263,7 +245,6 @@ __END__
         ref_allele => 'GT',
         alt_allele => 'GACAG',
         allele_number => 'sa564',
-        percent_of_reads => 10.5,
         crisprs => [ $crRNA1, $crRNA2 ],
         kaspar_assay => $kasp_assay,
     );

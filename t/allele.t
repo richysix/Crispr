@@ -65,7 +65,7 @@ $tests++;
 # check attributes and methods - 9 tests
 my @attributes = (
     qw{ db_id crisprs chr pos ref_allele
-        alt_allele allele_number percent_of_reads kaspar_assay  }
+        alt_allele allele_number kaspar_assay  }
 );
 
 my @methods = ( qw{ allele_name add_crispr } );
@@ -131,14 +131,6 @@ throws_ok { Crispr::Allele->new( %new_args ) } qr/alt_allele.*Not\sa\svalid\sDNA
 $new_args{ alt_allele } = 15;
 throws_ok { Crispr::Allele->new( %new_args ) } qr/alt_allele.*Not\sa\svalid\sDNA\ssequence/, 'check alt_allele throws on Int';
 $tests += 6;
-
-# check percent_of_reads attribute
-$allele->percent_of_reads( 10.5 );
-is( $allele->percent_of_reads, 10.5, 'check value of percent_of_reads' );
-%new_args = %args;
-$new_args{ percent_of_reads } = 'ten point five';
-throws_ok { Crispr::Allele->new( %new_args ) } qr/percent_of_reads.*Validation\sfailed/, 'check percent_of_reads throws on Str';
-$tests += 2;
 
 # make mock kaspar assay object
 my $mock_kaspar_object = Test::MockObject->new();
