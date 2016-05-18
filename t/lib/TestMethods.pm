@@ -177,6 +177,9 @@ sub create_mock_object_and_add_to_db {
     elsif( $type eq 'sample' ){
         ( $mock_object, $db_id ) = $self->create_and_add_sample_object( $db_connection, $args, );
     }
+    elsif( $type eq 'sample_allele' ){
+        ( $mock_object, $db_id ) = $self->create_and_add_sample_allele_object( $db_connection, $args, );
+    }
     elsif( $type eq 'primer' ){
         ( $mock_object, $db_id ) = $self->create_and_add_primer_object( $db_connection, $args, );
     }
@@ -468,13 +471,13 @@ sub create_and_add_crRNA_object {
 }
 
 sub create_well_object {
-    my ( $self, $db_connection, $args, ) = @_;
+    my ( $self, $db_connection, $args, $position, ) = @_;
     
     my $mock_well = Test::MockObject->new();
     $mock_well->set_isa('Labware::Well');
     $mock_well->mock( 'plate', sub{ return $args->{mock_plate} } );
     $mock_well->mock( 'plate_type', sub{ return '96' } );
-    $mock_well->mock( 'position', sub{ return 'A01' } );
+    $mock_well->mock( 'position', sub{ return $position || 'A01' } );
     
     return ( $mock_well );
 }
@@ -620,8 +623,9 @@ sub create_and_add_sample_object {
     for( my $i = 0; $i < scalar @{$args->{sample_ids}}; $i++ ){
         my $sample_id = $args->{sample_ids}->[$i];
         my $well_id = $args->{well_ids}->[$i];
+        my $mock_well = $self->create_well_object( $db_connection, $args, $well_id );
         my $mock_sample = Test::MockObject->new();
-        $mock_sample->set_isa( 'Crispr::DB::InjectionPool' );
+        $mock_sample->set_isa( 'Crispr::DB::Sample' );
         $mock_sample->mock( 'db_id', sub{ return $sample_id; } );
         $mock_sample->mock( 'sample_name', sub{ return '170_' . $sample_id } );
         $mock_sample->mock( 'sample_number', sub{ return $sample_id } );
@@ -629,9 +633,9 @@ sub create_and_add_sample_object {
         $mock_sample->mock( 'generation', sub{ return 'G0' } );
         $mock_sample->mock( 'sample_type', sub{ return $args->{samples}{type} || 'embryo' } );
         $mock_sample->mock( 'species', sub{ return 'zebrafish' } );
-        $mock_sample->mock( 'well_id', sub{ return $well_id } );
+        $mock_sample->mock( 'well', sub{ return $mock_well } );
         $mock_sample->mock( 'cryo_box', sub{ return 'Cr_Sperm_1' } );
-        $mock_sample->mock( 'alleles', sub{ my @args = @_; if( $_[1] ){ $args->{alleles} = $_[1] } return $args->{alleles}; } );
+        $mock_sample->mock( 'sample_alleles', sub{ my @args = @_; if( $_[1] ){ $args->{sample_alleles} = $_[1] } return $args->{sample_alleles}; } );
         
         if( $args->{add_to_db} ){
             my $dbh = $db_connection->connection->dbh;
@@ -646,13 +650,37 @@ sub create_and_add_sample_object {
                 $mock_sample->generation,
                 $mock_sample->sample_type,
                 $mock_sample->species,
-                $mock_sample->well_id,
+                $mock_sample->well->position,
                 $mock_sample->cryo_box,
             );
         }
         push @mock_samples, $mock_sample;
     }
     return ( \@mock_samples, );
+}
+
+sub create_and_add_sample_allele_object {
+    my ( $self, $db_connection, $args, ) = @_;
+    
+    my $mock_sample_allele = Test::MockObject->new();
+    $mock_sample_allele->set_isa( 'Crispr::DB::SampleAllele' );
+    $mock_sample_allele->mock( 'sample', sub{ return $args->{mock_sample}; } );
+    $mock_sample_allele->mock( 'allele', sub{ return $args->{mock_allele}; } );
+    $mock_sample_allele->mock( 'percent_of_reads', sub{ return $args->{pc}; } );
+    
+    if( $args->{add_to_db} ){
+        my $dbh = $db_connection->connection->dbh;
+        # add to db
+        my $statement = "insert into sample_allele values( ?, ?, ? );";
+        my $sth = $dbh->prepare($statement);
+        $sth->execute(
+            $mock_sample_allele->sample->db_id,
+            $mock_sample_allele->allele->db_id,
+            $mock_sample_allele->percent_of_reads,
+        );
+    }
+    
+    return $mock_sample_allele;
 }
 
 sub create_and_add_primer_object {
