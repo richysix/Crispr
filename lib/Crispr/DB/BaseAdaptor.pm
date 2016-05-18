@@ -230,6 +230,24 @@ has 'sample_adaptor' => (
     builder => '_build_sample_adaptor',
 );
 
+=method sample_allele_adaptor
+
+  Usage       : $self->sample_allele_adaptor();
+  Purpose     : Getter for a sample_allele_adaptor.
+  Returns     : Crispr::DB::SampleAdaptor
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
+
+has 'sample_allele_adaptor' => (
+    is => 'ro',
+    isa => 'Crispr::DB::SampleAlleleAdaptor',
+    lazy => 1,
+    builder => '_build_sample_allele_adaptor',
+);
+
 =method sample_amplicon_adaptor
 
   Usage       : $self->sample_amplicon_adaptor();
@@ -746,6 +764,20 @@ sub _build_primer_pair_adaptor {
 sub _build_sample_adaptor {
     my ( $self, ) = @_;
     return $self->db_connection->get_adaptor( 'sample' );
+}
+
+#_build_sample_allele_adaptor
+
+  #Usage       : $sample_allele_adaptor = $self->_build_sample_allele_adaptor();
+  #Purpose     : Internal method to create a new Crispr::DB::InjectionPoolAdaptor
+  #Returns     : Crispr::DB::InjectionPoolAdaptor
+  #Parameters  : None
+  #Throws      : 
+  #Comments    : 
+
+sub _build_sample_allele_adaptor {
+    my ( $self, ) = @_;
+    return $self->db_connection->get_adaptor( 'sample_allele' );
 }
 
 #_build_sample_amplicon_adaptor
