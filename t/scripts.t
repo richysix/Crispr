@@ -2,6 +2,8 @@
 # scripts.t
 use warnings;
 use strict;
+use File::Which;
+use Test::More;
 
 BEGIN {
     if( !$ENV{RELEASE_TESTING} ) {
@@ -9,15 +11,20 @@ BEGIN {
         Test::More::plan(
             skip_all => 'these tests are for release candidate testing' );
     }
+    my $bwa_path = which( 'bwa' );
+    if( !$bwa_path ){
+        Test::More::plan(
+            skip_all => 'Could not run tests. bwa is not installed in current path' );
+    }
 }
 
-use strict; use warnings;
+use autodie qw(:all);
+use English qw( -no_match_vars );
 use Test::Exception;
 use Test::Warn;
 use Test::MockObject;
 use Data::Dumper;
 use File::Spec;
-use Test::More;
 
 plan tests => 1 + 3 + 3;
 
@@ -39,7 +46,7 @@ my $score_crispr_cmd = join(q{ }, 'perl -I lib scripts/score_crisprs_from_id.pl'
     '--singles', '--species zebrafish', '--num_five_prime_Gs 0',
     '--file_base tmp', '--target_genome', $genome_file,
     "--annotation_file", $annotation_file, 'crispr.tmp',
-    '2>', '/dev/null', );
+    '2>', 'tmp.err', );
 
 # run score_crisprs_from_id.pl script - 1 test
 system( $score_crispr_cmd );
@@ -80,7 +87,7 @@ is( $output_for{'crRNA:test_chr2:41-63:1'}{crRNA_off_target_counts}, '0|0|0', 'c
 is( $output_for{'crRNA:test_chr2:41-63:1'}{crRNA_off_target_hits},
    '||', 'check off_target_hits 2' );
 
-unlink( 'crispr.tmp', $output_filename, $fastq_filename, $sai_filename, );
+unlink( 'tmp.err', 'crispr.tmp', $output_filename, $fastq_filename, $sai_filename, );
 
 
 
