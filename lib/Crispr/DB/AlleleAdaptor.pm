@@ -165,10 +165,10 @@ sub store_crisprs_for_allele {
 
 =method allele_exists_in_db
 
-  Usage       : $allele = $allele_adaptor->allele_exists_in_db( $allele );
+  Usage       : $exists = $allele_adaptor->allele_exists_in_db( $allele );
   Purpose     : Fetch a allele given its database id
-  Returns     : Crispr::Allele object
-  Parameters  : crispr-db allele_id - Int
+  Returns     : 1 OR 0
+  Parameters  : Crispr::Allele object
   Throws      : If no rows are returned from the database
   Comments    : None
 
@@ -185,6 +185,10 @@ sub allele_exists_in_db {
     elsif( $allele->chr && $allele->pos && $allele->ref_allele && $allele->alt_allele ){
         $check_statement = 'select count(*) from allele where chr = ? AND pos = ? AND ref_allele = ? AND alt_allele = ?';
         $params = [ $allele->chr, $allele->pos, $allele->ref_allele, $allele->alt_allele ];
+    }
+    elsif( defined $allele->allele_number ){
+        $check_statement = "SELECT count(*) FROM allele WHERE allele_number = ?;";
+        $params = [ $allele->allele_number ];
     }
     
     my $exists;
