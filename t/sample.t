@@ -28,7 +28,7 @@ $tests++;
 # check attributes and methods - 11 + 1 tests
 my @attributes = (
     qw{ db_id injection_pool generation sample_type sample_number
-    alleles total_reads species well cryo_box
+    sample_alleles total_reads species well cryo_box
     sample_name }
 );
 
@@ -81,6 +81,13 @@ $mock_allele2_object->mock( 'ref_allele', sub{ return $ref_allele } );
 $mock_allele2_object->mock( 'alt_allele', sub{ return $alt_allele } );
 $mock_allele2_object->mock( 'allele_name', sub{ return join(":", $chr, $pos, $ref_allele, 'GTAGAG' ); } );
 
+my $pc = 15.4;
+my $mock_sample_allele = Test::MockObject->new();
+$mock_sample_allele->set_isa( 'Crispr::DB::SampleAllele' );
+$mock_sample_allele->mock( 'sample', sub{ return $sample } );
+$mock_sample_allele->mock( 'allele', sub{ return $mock_allele_object } );
+$mock_sample_allele->mock( 'percent_of_reads', sub{ return $pc } );
+
 $sample = Crispr::DB::Sample->new(
     db_id => 1,
     injection_pool => $mock_injection_pool,
@@ -88,7 +95,7 @@ $sample = Crispr::DB::Sample->new(
     sample_type => 'sperm',
     sample_number => 1,
     species => 'zebrafish',
-    alleles => [ $mock_allele_object ],
+    sample_alleles => [ $mock_sample_allele ],
     well => $mock_well,
     cryo_box => 'Cr_Sperm12'
 );
@@ -143,16 +150,16 @@ $tmp_sample = Crispr::DB::Sample->new(
 is( $tmp_sample->sample_name, undef, 'check sample name: no well or sample number' );
 $tests++;
 
-throws_ok{ $sample->alleles( [ $mock_allele_object ] ) }
+throws_ok{ $sample->sample_alleles( [ $mock_allele_object ] ) }
     qr/Cannot assign a value to a read-only accessor/,
     'throws on attempt to set alleles attribute';
-is( scalar @{$sample->alleles}, 1, 'check number of alleles 1');
-ok( $sample->add_allele( $mock_allele2_object ), 'test add allele method');
-is( scalar @{$sample->alleles}, 2, 'check number of alleles 2');
-warning_like { $sample->add_allele( $mock_allele2_object ) }
+is( scalar @{$sample->sample_alleles}, 1, 'check number of sample alleles 1');
+ok( $sample->add_allele( $mock_allele2_object, 10.4 ), 'test add allele method');
+is( scalar @{$sample->sample_alleles}, 2, 'check number of alleles 2');
+warning_like { $sample->add_allele( $mock_allele2_object, 10.4 ) }
     qr/add_allele: ALLELE.*has already been added. Skipping.../,
     'check add_alleles warns on duplicate allele';
-is( scalar @{$sample->alleles}, 2, 'check number of alleles 3');
+is( scalar @{$sample->sample_alleles}, 2, 'check number of alleles 3');
 $tests+=6;
 
 

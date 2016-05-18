@@ -13,6 +13,8 @@ use namespace::autoclean;
 use DateTime;
 use Labware::Well;
 
+use Crispr::DB::SampleAllele;
+
 with 'Crispr::SharedMethods';
 
 =method new
@@ -24,7 +26,7 @@ with 'Crispr::SharedMethods';
                     sample_type => 'sperm',
                     sample_name => '170_1'
                     sample_number => 12,
-                    alleles => $alleles_array_ref,
+                    sample_alleles => $sample_alleles_array_ref,
                     total_reads => $total_reads,
                     species => 'zebrafish',
                     well => $well,
@@ -38,7 +40,7 @@ with 'Crispr::SharedMethods';
                 sample_type => Str ( 'sperm', 'embryo', 'fin_clip' ),
                 sample_name => Str,
                 sample_number => Int,
-                alleles => ArrayRef[ Crispr::Allele ],
+                sample_alleles => ArrayRef[ Crispr::DB::SampleAllele ],
                 total_reads => Int,
                 species => Str
                 well => Labware::Well,
@@ -129,9 +131,9 @@ has 'sample_number' => (
     isa => 'Int',
 );
 
-=method alleles
+=method sample_alleles
 
-  Usage       : $sample->alleles;
+  Usage       : $sample->sample_alleles;
   Purpose     : Getter/Setter for alleles attribute
   Returns     : ArrayRef[ Crispr::Allele ]
   Parameters  : ArrayRef[ Crispr::Allele ]
@@ -140,10 +142,10 @@ has 'sample_number' => (
 
 =cut
 
-has 'alleles' => (
+has 'sample_alleles' => (
     is => 'rw',
-    isa => 'Maybe[ArrayRef[ Crispr::Allele ]]',
-    writer => '_set_alleles',
+    isa => 'Maybe[ArrayRef[ Crispr::DB::SampleAllele ]]',
+    writer => '_set_sample_alleles',
 );
 
 =method total_reads
@@ -249,7 +251,7 @@ sub _build_sample_name {
 =method add_allele
 
   Usage       : $allele->add_allele( $crRNA );
-  Purpose     : add allele object to alleles attribute
+  Purpose     : add allele object to sample_alleles attribute
   Returns     : 1 if successful
   Parameters  : None
   Throws      :
@@ -258,13 +260,21 @@ sub _build_sample_name {
 =cut
 
 sub add_allele {
-    my ( $self, $allele ) = @_;
+    my ( $self, $allele, $pc ) = @_;
+    if( !$pc ){
+        die "A percentage must be supplied to add an allele to a sample.\n";
+    }
     # get current array of alleles
-    my $current_alleles = $self->alleles;
+    my $current_sample_alleles = $self->sample_alleles;
     # check whether this allele is already in the list
-    if( !grep { $_->allele_name eq $allele->allele_name } @{$current_alleles} ){
-        push @{$current_alleles}, $allele;
-        $self->_set_alleles( $current_alleles );
+    if( !grep { $_->allele->allele_name eq $allele->allele_name } @{$current_sample_alleles} ){
+        my $sample_allele = Crispr::DB::SampleAllele->new(
+            sample => $self,
+            allele => $allele,
+            percent_of_reads => $pc,
+        );
+        push @{$current_sample_alleles}, $sample_allele;
+        $self->_set_sample_alleles( $current_sample_alleles );
     }
     else{
         warn join(q{ }, "add_allele: ALLELE", $allele->allele_name,
@@ -290,7 +300,7 @@ __END__
         sample_type => 'sperm',
         sample_name => '170_A01'
         sample_number => 12,
-        alleles => $alleles_array_ref,
+        sample_alleles => $sample_alleles_array_ref,
         species => 'zebrafish',
         well => $well,
         cryo_box => 'Cr_Sperm12'
