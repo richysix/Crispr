@@ -359,59 +359,6 @@ END_SQL
     return \@alleles;
 }
 
-=method fetch_all_by_sample
-
-  Usage       : $alleles = $allele_adaptor->fetch_all_by_sample( $sample );
-  Purpose     : Fetch all alleles for a given sample
-  Returns     : ArrayRef of Crispr::Allele objects
-  Parameters  : Crispr::Sample
-  Throws      : 
-  Comments    : None
-
-=cut
-
-sub fetch_all_by_sample {
-    my ( $self, $sample ) = @_;
-    my $dbh = $self->connection->dbh();
-
-    my $sql = <<'END_SQL';
-        SELECT
-            a.allele_id, allele_number, chr, pos, ref_allele, alt_allele,
-            sample_id, percentage_of_reads
-        FROM allele a, sample_allele sa
-        WHERE a.allele_id = sa.allele_id
-END_SQL
-
-    my $where_clause = 'sample_id = ?';
-    $sql .= 'AND ' . $where_clause;
-
-    my $sth = $self->_prepare_sql( $sql, $where_clause, [ $sample->db_id ], );
-    $sth->execute();
-
-    my ( $allele_id, $allele_number, $chr, $pos, $ref_allele,
-        $alt_allele, $sample_id, $percentage_of_reads, );
-
-    $sth->bind_columns( \( $allele_id, $allele_number, $chr, $pos, $ref_allele,
-        $alt_allele, $sample_id, $percentage_of_reads, ) );
-    
-    my @alleles = ();
-    while ( $sth->fetch ) {
-        my $allele = Crispr::Allele->new(
-            db_id => $allele_id,
-            allele_number => $allele_number,
-            chr => $chr,
-            pos => $pos,
-            ref_allele => $ref_allele,
-            alt_allele => $alt_allele,
-            percent_of_reads => $percentage_of_reads,
-        );
-        push @alleles, $allele;
-    }
-
-    $sample->alleles( \@alleles );
-    return \@alleles;
-}
-
 =method get_db_id_by_variant_description
 
   Usage       : $allele = $allele_adaptor->get_db_id_by_variant_description( $variant_description );
