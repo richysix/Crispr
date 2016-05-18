@@ -17,7 +17,7 @@ use Crispr::DB::AlleleAdaptor;
 use Crispr::DB::DBConnection;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 23 + 2 + 6 + 5 + 2 + 9 + 1 + 6 + 6 + 12 + 7 + 7 + 1 + 8 + 8 + 1;
+Readonly my $TESTS_IN_COMMON => 1 + 22 + 2 + 6 + 5 + 2 + 9 + 1 + 6 + 6 + 12 + 7 + 7 + 1 + 8 + 1;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
@@ -29,14 +29,14 @@ else {
     plan tests => $TESTS_FOREACH_DBC{mysql} + $TESTS_FOREACH_DBC{sqlite};
 }
 
-# check attributes and methods - 4 + 19 tests
+# check attributes and methods - 4 + 18 tests
 my @attributes = ( qw{ dbname db_connection connection crRNA_adaptor } );
 
 my @methods = (
     qw{ store store_allele store_alleles store_crisprs_for_allele allele_exists_in_db
     fetch_by_id fetch_by_ids fetch_by_allele_number fetch_by_variant_description fetch_all_by_crispr
-    fetch_all_by_sample get_db_id_by_variant_description _fetch _make_new_allele_from_db delete_allele_from_db
-    check_entry_exists_in_db fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement _db_error_handling }
+    get_db_id_by_variant_description _fetch _make_new_allele_from_db delete_allele_from_db check_entry_exists_in_db
+    fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement _db_error_handling }
 );
 
 # DB tests
@@ -375,11 +375,6 @@ foreach my $db_connection ( @{$db_connections} ){
     is( scalar @{$alleles_from_db}, 4, "$driver: fetch_all_by_crispr - check number returned" );
     check_attributes( $alleles_from_db->[2], $mock_allele, $driver, 'fetch_all_by_crispr', );
 
-    # fetch_all_by_sample - 8 tests
-    ok( $alleles_from_db = $allele_adaptor->fetch_all_by_sample( $mock_sample ), 'fetch_all_by_sample');
-    is( scalar @{$alleles_from_db}, 1, "$driver: check number returned by fetch_all_by_sample" );
-    check_attributes( $alleles_from_db->[0], $mock_allele, $driver, 'fetch_all_by_sample', );
-    
 TODO: {
     local $TODO = 'methods not implemented yet.';
     
