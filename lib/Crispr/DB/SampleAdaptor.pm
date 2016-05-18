@@ -170,11 +170,11 @@ sub store_samples {
 =method store_alleles_for_sample
 
   Usage       : $samples = $sample_adaptor->store_alleles_for_sample( $sample );
-  Purpose     : Store a set of samples in the database
-  Returns     : ArrayRef of Crispr::DB::Sample objects
-  Parameters  : ArrayRef of Crispr::DB::Sample objects
-  Throws      : If argument is not an ArrayRef
-                If objects in ArrayRef are not Crispr::DB::Sample objects
+  Purpose     : Store the alleles for a sample in the database
+  Returns     : 1 on SUCCESS
+  Parameters  : Crispr::DB::Sample
+  Throws      : If sample is not defined
+                If sample_alleles is not defined
                 If there is an error during the execution of the SQL statements
                     In this case the transaction will be rolled back
   Comments    : None
@@ -188,52 +188,13 @@ sub store_alleles_for_sample {
     if( !defined $sample ){
         die "store_alleles_for_sample: UNDEFINED SAMPLE";
     }
-    elsif( !defined $sample->alleles ){
+    elsif( !defined $sample->sample_alleles ){
         die "store_alleles_for_sample: UNDEFINED ALLELES";
     }
-    my $add_allele_statement = "insert into sample_allele values( ?, ?, ? );";
-
-    # start transaction
-    $self->connection->txn(  fixup => sub {
-        my $sth = $dbh->prepare($add_allele_statement);
-        # go through alleles
-        foreach my $allele ( @{ $sample->alleles } ){
-            # check that it exists in the db
-            my ( $allele_check_statement, $allele_params );
-            if( defined $allele->db_id ){
-                $allele_check_statement = "SELECT count(*) FROM allele WHERE allele_id = ?;";
-                $allele_params = [ $allele->db_id ];
-            }
-            elsif( defined $allele->allele_number ){
-                $allele_check_statement = "SELECT count(*) FROM allele WHERE allele_number = ?;";
-                $allele_params = [ $allele->allele_number ];
-            }
-            else{
-                die join("\n", "store_alleles_for_sample: The Sample contains an Allele object with neither a db_id nor an allele_number.",
-                    "This is required to able to add the allele to the database.", ), "\n";
-            }
-            # check allele exists in db
-            if( !$self->check_entry_exists_in_db( $allele_check_statement, $allele_params ) ){
-                # try storing it
-                my $allele = $self->allele_adaptor->store( $allele );
-            }
-            else{
-                if( !defined $allele->db_id ){
-                    # get id from db
-                    $allele = $self->allele_adaptor->fetch_by_allele_number( $allele->allele_number )
-                }
-            }
-
-            # add sample and allele ids to sample_allele table
-            $sth->execute(
-                $sample->db_id,
-                $allele->db_id,
-                $allele->percent_of_reads,
-            );
-        }
-
-        $sth->finish();
-    } );
+    
+    $self->sample_allele_adaptor->store_sample_alleles( $sample->sample_alleles );
+    
+    return 1;
 }
 
 =method store_sequencing_results

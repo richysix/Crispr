@@ -272,7 +272,7 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_sample->mock( 'well', sub { return undef } );
     $mock_sample->mock( 'cryo_box', sub { return undef } );
     $mock_sample->mock( 'sample_name', sub{ return join("_", $mock_injection_pool->pool_name, $mock_sample->sample_number, ) } );
-    $mock_sample->mock( 'alleles', sub{ return undef; } );
+    $mock_sample->mock( 'sample_alleles', sub{ return undef; } );
 
     # check db adaptor attributes - 4 tests
     my $analysis_adaptor;
@@ -453,14 +453,22 @@ foreach my $db_connection ( @{$db_connections} ){
     throws_ok{ $sample_adaptor->store_alleles_for_sample( $mock_sample ) }
         qr/UNDEFINED ALLELES/, "$driver: store_alleles_for_sample throws on undefined alleles";
 
-    # get new mock allele object
+    # get new mock allele and sample_allele object
     $mock_obj_args->{mock_crRNA} = $mock_crRNA_object_1;
-    my ( $mock_allele, $mock_crRNA_id, ) =
+    my ( $mock_allele, $mock_allele_id, ) =
         $test_method_obj->create_mock_object_and_add_to_db( 'allele',
         $mock_obj_args, $db_connection );
+    $mock_obj_args->{mock_sample} = $mock_sample;
+    $mock_obj_args->{mock_allele} = $mock_allele;
+    $mock_obj_args->{pc} = 15.3;
+    $mock_obj_args->{add_to_db} = 0;
+    my ( $mock_sample_allele, ) =
+        $test_method_obj->create_mock_object_and_add_to_db( 'sample_allele',
+        $mock_obj_args, $db_connection );
+    
     
     # add it to the mock sample
-    $mock_sample->mock('alleles', sub { return [ $mock_allele ]; } );
+    $mock_sample->mock('sample_alleles', sub { return [ $mock_sample_allele ]; } );
 
     ok( $sample_adaptor->store_alleles_for_sample( $mock_sample ),
         "$driver: store_alleles_for_sample");
@@ -470,7 +478,7 @@ foreach my $db_connection ( @{$db_connections} ){
        tests => {
            '==' => {
                 allele_id => $mock_allele->db_id,
-                percentage_of_reads => $mock_allele->percent_of_reads,
+                percentage_of_reads => $mock_obj_args->{pc},
            },
        },
        label => "$driver: allele stored 1",
