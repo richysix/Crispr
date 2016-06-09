@@ -356,6 +356,139 @@ sub get_status_position {
     if( exists $statuses->{$status} ){
         return $statuses->{$status};
     }
+    else{
+        return;
+    }
+}
+
+=method update_status
+
+  Usage       : $ok = $base_adaptor->update_status( $object );
+  Purpose     : update the status column in either the target or crRNA table based on the status of the supplied object
+  Returns     : New status
+  Parameters  : Crispr::Target or Crispr::crRNA object
+  Throws      : If object does not exist in the db
+                If argument is not a Crispr::Target or Crispr::crRNA object
+  Comments    : None
+
+=cut
+
+sub update_status {
+    my ( $self, $object, ) = @_;
+    my $dbh = $self->connection->dbh();
+    
+    # check object is defined and is a Target or crRNA
+    my $err_msg;
+    my $obj_type;
+    if( !$object ){
+        $err_msg = "An object must be supplied in order to update it's status!\n";
+    }
+    else{
+        if( !ref $object ){
+            $err_msg = join("\n", "The supplied argument is a scalar.",
+                "It must be either a Crispr::Target or a Crispr::crRNA object.", ) . "\n";
+        }
+        else{
+            if( $object->isa('Crispr::Target') ){
+                $obj_type = 'target';
+            }
+            elsif( $object->isa('Crispr::crRNA') ){
+                $obj_type = 'crRNA';
+            }
+            else{
+                $err_msg =  "The supplied argument must be either Crispr::Target or a Crispr::crRNA object, not a " .
+                ref $object || 'SCALAR' . "\n";
+            }
+        }
+    }
+    if( $err_msg ){
+        confess $err_msg;
+    }
+
+    # need to check that the object exists in the db
+    my $check_statement = join(q{ }, 'SELECT count(*) FROM',
+        $obj_type,  'WHERE',
+        join(q{}, $obj_type, '_id', ),
+        , '= ?;', );
+    my $db_id = $obj_type eq 'target'   ?
+        $object->target_id    :   $object->crRNA_id;
+    if( !$db_id ){
+        $err_msg = join(q{ }, 'Supplied',
+                $obj_type, 'does not have a database id.',
+            ) . "\n";
+    }
+    if( !$self->check_entry_exists_in_db( $check_statement, [ $db_id ] ) ){
+        my $name = $obj_type eq 'target'   ?
+        $object->target_name    :   $object->name;
+        $err_msg = join(q{}, $obj_type, ', ', $name,
+            ' does not exists in the database.'
+        ) . "\n";
+    }
+    
+    # get current status in db
+    my $current_db_status = $self->fetch_status( $object );
+    
+    if( $current_db_status ne $object->status ){
+        if( $self->get_status_position( $object->status ) >= $self->get_status_position( $current_db_status ) ){
+            my $status_id = $self->_fetch_status_id_from_status( $object->status );
+            my $update_st = join(q{ }, 'UPDATE', $obj_type,
+                'set status_id = ?, status_changed = ?',
+                'WHERE',
+                join(q{}, $obj_type, '_id', ),
+                '= ?',
+            );
+            my $sth = $dbh->prepare($update_st);
+            $sth->execute( $status_id, $object->status_changed, $db_id );
+        }
+        else {
+            warn join("\n",
+                join(q{}, 'Method update_status: supplied status Ð ',
+                        $object->status,
+                        ' Ð comes before status already in db Ð ',
+                        $current_db_status, '.',
+                    ),
+                'Status not updated!',
+            ), "\n";
+        }
+    }
+}
+
+=method fetch_status
+
+   Usage       : $crRNAs = $crRNA_adaptor->fetch_status( $object );
+   Purpose     : Fetch the current status of the supplied target from the database.
+   Returns     : Str (status)
+   Parameters  : Crispr::crRNA object
+   Throws      : 
+   Comments    : 
+
+=cut
+
+sub fetch_status {
+    my ( $self, $object ) = @_;
+    my $dbh = $self->connection->dbh();
+    
+    my $obj_type = $object->isa('Crispr::Target')   ?   'target'
+        :   'crRNA';
+    
+    my $sql = <<"END_SQL";
+SELECT status FROM $obj_type t, status st WHERE t.status_id = st.status_id
+END_SQL
+
+    my $where_clause = $obj_type eq 'target'
+        ?   ' AND t.target_id = ?'
+        :   ' AND t.crRNA_id = ?';
+    my $db_id = $obj_type eq 'target'   ?
+        $object->target_id    :   $object->crRNA_id; 
+    $sql .= $where_clause;
+    my $sth = $self->_prepare_sql( $sql, $where_clause, [ $db_id ] );
+    $sth->execute();
+
+    my $status;
+    $sth->bind_columns( \( $status, ) );
+
+    $sth->fetch;
+    return $status;
 }
 
 =method check_entry_exists_in_db
