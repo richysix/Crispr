@@ -34,7 +34,7 @@ my $date = DateTime->now()->ymd;
 #chomp $transcript_count;
 
 # Number of tests
-Readonly my $TESTS_IN_COMMON => 1 + 23 + 2 + 4 + 14 + 9 + 9 + 9 + 9 + 9 + 19 + 11 + 17 + 10 + 1;
+Readonly my $TESTS_IN_COMMON => 1 + 23 + 2 + 4 + 14 + 9 + 9 + 9 + 9 + 9 + 19 + 11 + 18 + 10 + 1;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
@@ -139,8 +139,8 @@ foreach my $db_connection ( @{$db_connections} ){
     ok( $crRNA_adaptor->store( $mock_well ), 'store mock crRNA 2');
     
     # check fetch_status_for_crispr
-    is( $crRNA_adaptor->fetch_status_for_crispr($mock_crRNA_1), $mock_crRNA_1->status, "$driver: check fetch_status_for_crispr 1" );
-    is( $crRNA_adaptor->fetch_status_for_crispr($mock_crRNA_2), $mock_crRNA_2->status, "$driver: check fetch_status_for_crispr 2" );
+    is( $crRNA_adaptor->fetch_status($mock_crRNA_1), $mock_crRNA_1->status, "$driver: check fetch_status_for_crispr 1" );
+    is( $crRNA_adaptor->fetch_status($mock_crRNA_2), $mock_crRNA_2->status, "$driver: check fetch_status_for_crispr 2" );
     
     # OffTarget objects
     my $mock_exon_off_target = Test::MockObject->new();
@@ -271,16 +271,20 @@ foreach my $db_connection ( @{$db_connections} ){
     ok($crRNAs_tmp = $crRNA_adaptor->fetch_all_by_status( 'FAILED_SPERM_SCREENING', ), "$driver: test fetch_all_by_status method" );
     check_attributes( $crRNAs_tmp->[0], $mock_crRNA_2, $driver, 'fetch_all_by_status' );
     
-    # test update status - 17 tests
+    # test update status - 18 tests
     throws_ok{ $crRNA_adaptor->update_status() }
-        qr/A crRNA object must be supplied/,
+        qr/An object must be supplied in order to update it's status/,
         "$driver: check update_status throws on no input";
-    throws_ok{ $crRNA_adaptor->update_status( $mock_target ) }
-        qr/The supplied arguments must be a Crispr::crRNA/,
+    throws_ok{ $crRNA_adaptor->update_status( 'crRNA' ) }
+        qr/The supplied argument is a scalar/,
+        "$driver: check update_status throws on SCALAR input";
+    throws_ok{ $crRNA_adaptor->update_status( $mock_cas9_prep ) }
+        qr/The supplied argument must be either Crispr::Target or a Crispr::crRNA object/,
         "$driver: check update_status throws on not Crispr::crRNA object";
     
     # change status of object
     $mock_crRNA_1->mock( 'status', sub { return 'PASSED_EMBRYO_SCREENING' } );
+    $mock_crRNA_1->mock( 'status_changed', sub { return $date } );
     ok( $crRNA_adaptor->update_status( $mock_crRNA_1 ), "$driver: test update_status" );
     row_ok(
         sql => "SELECT * FROM crRNA WHERE crRNA_id = 1",
@@ -296,7 +300,11 @@ foreach my $db_connection ( @{$db_connections} ){
     );
     # try updating status to something that comes before the current status
     $mock_crRNA_2->mock( 'status', sub { return 'INJECTED' } );
-    is( $crRNA_adaptor->update_status( $mock_crRNA_2 ), '', "$driver: test update_status with earlier status" );
+    warning_like {
+        $crRNA_adaptor->update_status( $mock_crRNA_2 )
+    }   qr/Method update_status: supplied status Ð INJECTED Ð comes before status already in db Ð FAILED_SPERM_SCREENING/,
+    "$driver: test update_status with earlier status";
+    
     row_ok(
         sql => "SELECT * FROM crRNA WHERE crRNA_id = 2",
         tests => {
@@ -436,7 +444,7 @@ foreach my $db_connection ( @{$db_connections} ){
     );
     ok( my $results = $crRNA_adaptor->aggregate_sequencing_results( [ $mock_crRNA_1, $mock_crRNA_2, ] ),
         'aggregate_sequencing_results');
-    print Dumper( $results );
+    #print Dumper( $results );
     
     # destroy database
     $db_connection->destroy();
