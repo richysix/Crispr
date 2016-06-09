@@ -276,7 +276,7 @@ sub fetch_by_name_and_requestor {
 
     my $target = $self->_fetch( 'target_name = ? and requestor = ?;', [ $target_name, $requestor, ] )->[0];
     if( !$target ){
-        confess "Couldn't retrieve target, $target_name, from database.\n";
+        confess "Couldn't retrieve target, $target_name, from database for requestor, $requestor.\n";
     }
     return $target;
 }
