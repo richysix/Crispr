@@ -474,6 +474,34 @@ around BUILDARGS => sub{
     }
 };
 
+# around status_changed
+# This is to accept either a DateTime object or a string in form yyyy-mm-dd
+#
+around 'status_changed' => sub {
+    my ( $method, $self, $input ) = @_;
+    my $date_obj;
+
+    if( $input ){
+        #is the input already a DateTime object
+        if( ref $input eq 'DateTime' ){
+            $date_obj = $input;
+        }
+        else{
+            # parse date info
+            $date_obj = $self->_parse_date( $input );
+        }
+        return $self->$method( $date_obj );
+    }
+    else{
+        if( defined $self->$method ){
+            return $self->$method->ymd;
+        }
+        else{
+            return $self->$method;
+        }
+    }
+};
+
 #_parse_strand_input
 #
 #Usage       : $crRNA->_parse_strand_input( '+' );
