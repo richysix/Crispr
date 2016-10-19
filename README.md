@@ -2,6 +2,8 @@
 
 CRISPR/Cas9 guide RNA Design and Analysis
 
+Please cite [Brocal, White et al. 2016](https://bmcgenomics.biomedcentral.com/articles/10.1186/s12864-016-2563-z)
+
 ## Summary
 
 This is a set of Perl modules and scripts for CRISPR/Cas9 design and analysis.
