@@ -286,8 +286,8 @@ $tests+=10;
 # skip if genome isn't there or not indexed
 SKIP: {
     my $skip = 0;
-    my $test_num = 2;
-    my $genome_base = File::Spec->catfile('t', 'data', 'zv9_toplevel_unmasked.fa');
+    my $test_num = 4;
+    my $genome_base = File::Spec->catfile('t', 'data', 'GRCz11.fa');
     if( ! -e $genome_base ){
         $skip = 1;
     }
@@ -306,9 +306,9 @@ SKIP: {
     my $design_obj = Crispr->new(
         species => 'zebrafish',
         target_seq => 'NNNNNNNNNNNNNNNNNNNNNGG',
-        target_genome => 't/data/zv9_toplevel_unmasked.fa',
+        target_genome => 't/data/GRCz11.fa',
         slice_adaptor => $slice_adaptor,
-        annotation_file => 't/data/e75_annotation.gff',
+        annotation_file => 't/data/e97_annotation.gff',
         debug => 0,
     );
     
@@ -324,15 +324,21 @@ SKIP: {
         requestor => 'crispr_test',
         ensembl_version => 70,
     );
+    my $crRNA_1 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:5:75452465-75452487:-1', 'zebrafish' );
+    $crRNA_1->target($target);
+    my $crRNA_2 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:5:75476562-75476584:-1', 'zebrafish' );
+    $crRNA_2->target($target);
+    my $crRNA_3 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:5:75474661-75474683:-1', 'zebrafish' );
+    $crRNA_3->target($target);
+    my $crRNA_4 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:5:75457752-75457774:-1', 'zebrafish' );
+    $crRNA_4->target($target);
     
+    $target->crRNAs( [ $crRNA_1, $crRNA_2, $crRNA_3, $crRNA_4, ] );
     $design_obj->add_target( $target );
     
-    my $crRNA_1 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:5:75452465-75452487:-1', 'zebrafish' );
-    my $crRNA_2 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:5:75476562-75476584:-1', 'zebrafish' );
-    my $crRNA_3 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:5:75474661-75474683:-1', 'zebrafish' );
-    my $crRNA_4 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:5:75457752-75457774:-1', 'zebrafish' );
-    
     ok( $design_obj->add_crisprs( [ $crRNA_1, $crRNA_2, $crRNA_3, $crRNA_4, ], $target->target_name ), 'add_crisprs' );
+    ok( $design_obj->remove_crRNAs_from_target( $target, [ $crRNA_4, ] ), 'remove_crisprs_from_target' );
+    ok( $design_obj->add_crisprs( [ $crRNA_4, ], $target->target_name ), 'add_crisprs 2' );
     
     ok( $design_obj->find_off_targets( $design_obj->all_crisprs, ), 'check off targets' );
     
