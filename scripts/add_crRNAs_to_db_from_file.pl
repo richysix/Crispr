@@ -24,6 +24,9 @@ use Crispr::DB::crRNAAdaptor;
 use Crispr::Plate;
 use Labware::Well;
 
+use DateTime;
+my $todays_date_obj = DateTime->now();
+
 my %options;
 get_and_check_options();
 
@@ -77,7 +80,7 @@ my @attributes = ( qw{ well_id target_name species requestor crRNA_name
     crRNA_chr crRNA_start crRNA_end crRNA_strand crRNA_score crRNA_sequence
     crRNA_oligo1 crRNA_oligo2 crRNA_off_target_score crRNA_off_target_counts
     crRNA_off_target_hits crRNA_coding_score crRNA_coding_scores_by_transcript
-    crRNA_five_prime_Gs crRNA_plasmid_backbone crRNA_GC_content } );
+    crRNA_five_prime_Gs crRNA_plasmid_backbone crRNA_GC_content crRNA_status status_changed } );
 
 my @required_attributes = qw{ target_name requestor crRNA_start crRNA_end crRNA_strand crRNA_sequence };
 
@@ -132,7 +135,6 @@ while(<>){
     # fetch target from db
     ##  need to catch exceptions  ##
     my $target = $target_adaptor->fetch_by_name_and_requestor( $args{'target_name'}, $args{'requestor'} );
-    $target->designed( $options{designed} );
     
     my %attributes = (
         crRNA_id => undef,
@@ -142,9 +144,14 @@ while(<>){
         strand => $args{crRNA_strand},
         sequence => $args{crRNA_sequence},
     );
-    if( defined $args{crRNA_chr} ){ $attributes{chr} = $args{crRNA_chr}; };
-    
+    if( defined $args{crRNA_chr} ){ $attributes{chr} = $args{crRNA_chr}; }
+    if( defined $args{crRNA_status} ){ $attributes{status} = $args{crRNA_status}; }
+    $attributes{status_changed} = defined $args{status_changed}
+        ?   $args{status_changed}
+        :   $todays_date_obj;
     my $crRNA = Crispr::crRNA->new( \%attributes );
+    $target->status( $crRNA->status );
+    $target->status_changed( $attributes{status_changed} );
 
     # off target info
     if( exists $args{'crRNA_off_target_hits'} && defined $args{'crRNA_off_target_hits'} ){
@@ -454,7 +461,6 @@ sub get_and_check_options {
         'construction_oligos:s',
         'expression_constructs+',
         'species=s',
-        'designed=s',
         'ordered=s',
         'received=s',
         'debug+',
@@ -491,16 +497,6 @@ sub get_and_check_options {
                 $options{expression_constructs} = undef;
             }
         }
-    }
-    
-    if( !$options{designed} ){
-        $options{designed} = DateTime->now();
-    }
-    elsif( $options{designed} !~ m/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/xms ){
-        pod2usage( "The date supplied for option --designed is not a valid format\n Use YEAR-MONTH-DAY\n" );
-    }
-    else{
-        $options{designed} = _parse_date_to_date_object( $options{designed} );
     }
     
     if( $options{ordered} ){
@@ -567,7 +563,6 @@ Takes Information on crispr target sites and enter guide RNA info into a MySQL o
                                         Also can dictate which type of oligos are added [default: cloning_oligos]
         --expression_constructs         turns on adding expression constructs to the database for each crispr
         --species                       name of species [default: zebrafish]
-        --designed                      date on which the crisprs were designed
         --ordered                       date on which the crisprs were ordered
         --received                      date on which the crisprs were received
         --help                          prints help message and exits
@@ -679,10 +674,6 @@ By default, 2 duplicate plates are added as we routinely pick 2 colonies during 
 =item B<--species >
 
 name of species. This is need to retrieve sequence for off-targets to check the number of mismatches [default:zebrafish]
-
-=item B<--designed >
-
-date on which the crisprs were designed (YEAR-MONTH-DAY)
 
 =item B<--ordered >
 
