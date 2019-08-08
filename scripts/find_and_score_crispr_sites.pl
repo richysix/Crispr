@@ -157,7 +157,8 @@ else{
     }
     
     print "Scoring Off-Targets...\n" if $options{verbose};
-    $crispr_design->find_off_targets( $crispr_design->all_crisprs, $basename, );
+    $crispr_design->find_off_targets( $crispr_design->all_crisprs, $basename,
+                                      $options{max_off_targets} );
     
     if( $options{coding} ){
         print "Calculating coding scores...\n" if $options{verbose};
@@ -708,6 +709,7 @@ sub get_and_check_options {
         'target_sequence=s',
         'num_five_prime_Gs=i',
         'coding',
+        'max_off_targets=i',
         'file_base=s',
         'bed_file+',
         'requestor=s',
@@ -836,6 +838,7 @@ possible off-target effects and optionally for its position in coding transcript
         --num_five_prime_Gs     The number of 5' Gs present in the consensus sequence, 0,1 OR 2
         --enzyme                Sets the requires_enzyme attribute of targets [default: n]
         --coding                turns on scoring of position of site within target gene
+        --max_off_targets       maximum number of off-targets for a CRISPR target site
         --file_base             a prefix for all output files
         --bed_file              outputs the CRISPR sites as a BED file as well as the usual output
         --requestor             A requestor to use for all targets
@@ -920,16 +923,23 @@ then affect the behaviour of scripts used to design screening primers.
 
 switch to indicate whether or not to score crRNAs for position in coding transcripts.
 
-=item B<--file_base >
+=item B<--max_off_targets>
+
+Maximum number of off-target sites for a CRISPR target site. CRISPR target sites
+that are above the threshold will be removed. The default is that all CRISPR
+target sites are returned irrespective of number of off-targets.
+default: NULL
+
+=item B<--file_base>
 
 A prefix for all output files. This is added to output filenames with a '_' as separator.
 
-=item B<--bed_file >
+=item B<--bed_file>
 
 Switch to turn on production of a BED file containing the CRISPR target sites.
 The file is named using the file_base if defined and today's date.
 
-=item B<--requestor >
+=item B<--requestor>
 
 All targets need a requestor. If the requestor is the same for all the targets
 supplied to the script it can be supplied here instead of with each target.
