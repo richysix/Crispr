@@ -585,6 +585,36 @@ sub find_crRNAs_by_target {
 	return $crRNAs;
 }
 
+=method remove_crRNAs_from_target
+
+  Usage       : $crispr_design->remove_crRNAs_from_target($target, $crRNAs);
+  Purpose     : method to remove crRNAs from a target
+  Returns     : 
+  Parameters  : Crispr::Target
+                ArrayRef of Crispr::crRNA objects
+  Throws      : If Target not supplied.
+  Comments    : 
+
+=cut
+
+sub remove_crRNAs_from_target {
+    my ( $self, $target, $crRNAs, ) = @_;
+    
+    my %crRNA_names = map { $_->name() => 1 } @{$crRNAs};
+	my @crRNAs_to_keep;
+	my @crRNAs_to_delete;
+	foreach my $crRNA ( @{$target->crRNAs()} ){
+		if(exists $crRNA_names{$crRNA->name()}){
+			push @crRNAs_to_delete, $crRNA;
+		}
+		else{
+			push @crRNAs_to_keep, $crRNA;
+		}
+	}
+	$target->crRNAs( \@crRNAs_to_keep );
+	$self->remove_crisprs( \@crRNAs_to_delete );
+}
+
 =method filter_crRNAs_from_target_by_strand
 
   Usage       : $crispr_design->filter_crRNAs_from_target_by_strand( $target, '1' );
@@ -1093,7 +1123,7 @@ sub parse_cr_name {
 =cut
 
 sub find_off_targets {
-    my ( $self, $crRNAs, $basename, ) = @_;
+    my ( $self, $crRNAs, $basename, $off_target_threshold, ) = @_;
     
     # check whether bwa is installed in the current PATH
     my $bwa_path = which( 'bwa' );
@@ -1105,7 +1135,8 @@ sub find_off_targets {
     $basename = $basename  ?   $basename    :   'tmp';
     $self->output_fastq_for_off_targets( $crRNAs, $basename, );
     $self->bwa_align( $basename, );
-    $self->filter_and_score_off_targets( $crRNAs, $basename, );
+    $self->filter_and_score_off_targets( $crRNAs, $basename,
+                                            $off_target_threshold, );
     return $crRNAs;
 }
 
@@ -1175,7 +1206,7 @@ sub bwa_align {
 =cut
 
 sub filter_and_score_off_targets {
-	my ( $self, $crRNAs, $basename, ) = @_;
+	my ( $self, $crRNAs, $basename, $off_target_threshold, ) = @_;
     
 	my $sam_cmd = join(q{ }, 'bwa samse -n 900000',
 		$self->target_genome, "$basename.sai", "$basename.fq", );
@@ -1202,7 +1233,9 @@ sub filter_and_score_off_targets {
         $self->score_off_targets_from_sam_output( $crRNAs, $crispr_id, $chr,
                                                  $start, $end, $strand, $mismatches[0], );
         
+        my @off_targets;
         my @supp_alignments = grep { m/\A XA:Z:/xms } @tags;
+        # go through off-target alignments and check they match a CRISPR target site
         foreach my $supp_align ( map { my $align = $_;
                                         $align =~ s/\A XA:Z://xms;
                                         split /;/, $align; } @supp_alignments ){
@@ -1223,7 +1256,20 @@ sub filter_and_score_off_targets {
             }
             next if( $off_target_slice->seq !~ m/GG\z/xms || $off_target_slice->seq =~ m/N/xms );
             warn $crRNAs->{$crispr_id}->name, "\t", $off_target_slice->seq, "\t", $off_target_slice->strand, "\n" if( $self->debug == 2 );
-            $crRNAs = $self->score_off_targets_from_sam_output( $crRNAs, $crispr_id, $chr, $pos, $end, $strand, $mismatch, );
+            push @off_targets, [ $chr, $pos, $end, $strand, $mismatch, ]
+        }
+        
+        # check if the number of off-targets is greater than the threshold
+        if ($off_target_threshold &&
+            scalar @off_targets + 1 > $off_target_threshold) {
+            my $crRNA = $crRNAs->{$crispr_id};
+            $self->remove_crisprs( [$crRNAs->{$crispr_id}] );
+            $self->remove_crRNAs_from_target($crRNA->target(), [$crRNA]);
+            next;
+        } else {
+            foreach my $off_target_info ( @off_targets ) {
+                $crRNAs = $self->score_off_targets_from_sam_output( $crRNAs, $crispr_id, @{$off_target_info}, );
+            }
         }
 	}
 	return $crRNAs;
