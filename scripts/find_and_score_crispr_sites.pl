@@ -608,6 +608,8 @@ sub get_posn {
                 }
             }
             
+            $gene_id = defined $gene ? $gene->stable_id : $gene_id;
+            my $gene_name = defined $gene ? $gene->external_name : undef;
             $target = Crispr::Target->new(
                 target_name => $target_name,
                 assembly => $options{assembly},
@@ -616,8 +618,8 @@ sub get_posn {
                 end => $end_position,
                 strand => $strand,
                 species => $options{species},
-                gene_id => $gene->stable_id,
-                gene_name => $gene->external_name,
+                gene_id => $gene_id,
+                gene_name => $gene_name,
                 requestor => $requestor,
                 ensembl_version => $ensembl_version,
             );
