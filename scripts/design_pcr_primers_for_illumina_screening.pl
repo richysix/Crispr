@@ -350,7 +350,7 @@ foreach my $id ( @ids ){
                 @enzyme_information = get_enzyme_information( $crRNA, );
             }
             print {$primer_fh} join("\t", $crispr_pair->pair_name, $crRNA->name,
-                                @primer_info, join(q{,}, @enzyme_information || 'NULL', ),
+                                @primer_info, join(q{,}, @enzyme_information ) || 'NULL',
                                 $ext_product_size, $sizes || 'NULL', ), "\n";
         }
     }
@@ -366,8 +366,9 @@ foreach my $id ( @ids ){
             $product_size = $target_info->{int_primers}->product_size;
         }
         push @info, 'NULL', $crRNA->name;
-        print {$primer_fh} join("\t", @info, @primer_info, join(q{,},
-                                @enzyme_information || 'NULL', ), $ext_product_size,
+        print {$primer_fh} join("\t", @info, @primer_info,
+                                join(q{,}, @enzyme_information ) || 'NULL',
+                                $ext_product_size,
                                 $product_size || 'NULL', ), "\n";
     }
     else{

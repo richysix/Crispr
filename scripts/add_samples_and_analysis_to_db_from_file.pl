@@ -79,7 +79,6 @@ miseq_plate_num miseq_wells amplicons } );
 
 my $comment_regex = qr/#/;
 my @columns;
-my @analyses;
 my %primer_pair_cache;
 
 # go through input
@@ -186,7 +185,7 @@ while(<>){
             }
             my $primer_pair =
                 $primer_pair_adaptor->fetch_by_plate_name_and_well(
-                                        $plate_name, $well_id )->[0];
+                                        $plate_name, $well_id );
             if( defined $primer_pair ){
                 push @primer_pairs, $primer_pair;
                 $primer_pair_cache{$amplicon_info} = $primer_pair;
@@ -230,15 +229,7 @@ while(<>){
         analysis_finished => $options{analysis_finished},
         info => \@sample_amplicons,
     );
-    push @analyses, $analysis;
-
-}
-
-if( $options{debug} > 1 ){
-    warn Dumper( @analyses, );
-}
-
-foreach my $analysis ( @analyses ){
+    
     eval{
         $analysis_adaptor->store_analysis( $analysis );
     };

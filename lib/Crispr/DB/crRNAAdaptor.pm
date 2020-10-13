@@ -201,13 +201,13 @@ sub store_crRNAs {
                 $crRNA->target_id, $plate_id, $well_id,
                 $status_id, $crRNA->status_changed,
             );
-
+            
             my $last_id;
             $last_id = $dbh->last_insert_id( 'information_schema', $self->dbname(), 'crRNA', 'crRNA_id' );
             $crRNA->crRNA_id( $last_id );
             $sth->finish();
 
-            $self->target_adaptor->update_status_changed( $crRNA->target );
+            $self->update_status( $crRNA->target );
 
         }
     } );
@@ -623,55 +623,6 @@ END_ST
     return( \%results );
 }
 
-=method update_status
-
-  Usage       : $ok = $crRNA_adaptor->update_status( $crRNA );
-  Purpose     : update the status column in the crRNA table based on the status of the supplied object
-  Returns     : New status
-  Parameters  : Crispr::crRNA object
-  Throws      : If crRNA does not exist in the db
-                If argument is not a Crispr::crRNA object
-  Comments    : None
-
-=cut
-
-sub update_status {
-    my ( $self, $crRNA, ) = @_;
-    my $dbh = $self->connection->dbh();
-    
-    # check object is defined and is a crRNA
-    if( !$crRNA ){
-        confess "A crRNA object must be supplied in order to update it's status!\n";
-    }
-    else{
-        if( !ref $crRNA || !$crRNA->isa('Crispr::crRNA') ){
-            confess "The supplied arguments must be a Crispr::crRNA object, not a ",
-                ref $crRNA || 'String', "\n";
-        }
-    }
-
-    # need to check that the crRNA exists in the db
-    if( !$crRNA->crRNA_id ){
-        confess "Supplied Crispr::crRNA does not have a database id.\n";
-    }
-    my $check_statement = 'select count(*) from crRNA where crRNA_id = ?;';
-    if( !$self->check_entry_exists_in_db( $check_statement, [ $crRNA->crRNA_id ] ) ){
-        confess "crRNA, ", $crRNA->name, "does not exists in the database\n";
-    }
-    
-    # get current status in db
-    my $current_db_status = $self->fetch_status_for_crispr( $crRNA );
-    
-    if( $self->get_status_position( $crRNA->status ) > $self->get_status_position( $current_db_status ) ){
-        my $status_id = $self->_fetch_status_id_from_status( $crRNA->status );
-        my $date = DateTime->now()->ymd;
-        my $update_st = join(q{ }, 'UPDATE crRNA set status_id = ?, status_changed = ?',
-                             'WHERE crRNA_id = ?', );
-        my $sth = $dbh->prepare($update_st);
-        $sth->execute( $status_id, $date, $crRNA->crRNA_id );
-    }
-}
-
 =method fetch_by_id
 
     Usage       : $crRNAs = $crRNA_adaptor->fetch_by_id( $crRNA_id );
@@ -1050,37 +1001,6 @@ END_SQL
     }
 
     return \@crRNAs;
-}
-
-=method fetch_status_for_crispr
-
-   Usage       : $crRNAs = $crRNA_adaptor->fetch_status_for_crispr( $crRNA );
-   Purpose     : Fetch the current status of the supplied crispr from the database.
-   Returns     : Str (status)
-   Parameters  : Crispr::crRNA object
-   Throws      : 
-   Comments    : 
-
-=cut
-
-sub fetch_status_for_crispr {
-    my ( $self, $crRNA ) = @_;
-    my $dbh = $self->connection->dbh();
-
-    my $sql = <<'END_SQL';
-SELECT status FROM crRNA cr, status st WHERE cr.status_id = st.status_id
-END_SQL
-
-    my $where_clause = ' AND cr.crRNA_id = ?';
-    $sql .= $where_clause;
-    my $sth = $self->_prepare_sql( $sql, $where_clause, [ $crRNA->crRNA_id ] );
-    $sth->execute();
-
-    my $status;
-    $sth->bind_columns( \( $status, ) );
-
-    $sth->fetch;
-    return $status;
 }
 
 # =method _fetch

@@ -19,7 +19,7 @@ use English qw( -no_match_vars );
 use Crispr::DB::BaseAdaptor;
 
 # Number of tests in the loop
-Readonly my $TESTS_IN_COMMON => 1 + 8 + 5 + 2 + 4 + 2 + 4 + 3;
+Readonly my $TESTS_IN_COMMON => 1 + 18 + 26 + 17 + 5 + 2 + 4 + 2 + 4 + 3;
 Readonly my %TESTS_FOREACH_DBC => (
     mysql => $TESTS_IN_COMMON,
     sqlite => $TESTS_IN_COMMON,
@@ -66,12 +66,25 @@ foreach my $db_connection ( @{$db_connections} ){
     # 1 test
     isa_ok( $base_adaptor, 'Crispr::DB::BaseAdaptor', "$driver: test inital Adaptor object class" );
 
-    # check method calls 8 tests
+    # check method calls 18 + 26 tests
+    my @attributes = qw(
+        db_connection dbname connection target_adaptor crRNA_adaptor
+        guideRNA_prep_adaptor plate_adaptor primer_pair_adaptor primer_adaptor cas9_adaptor
+        cas9_prep_adaptor plex_adaptor sample_adaptor sample_allele_adaptor sample_amplicon_adaptor
+        analysis_adaptor injection_pool_adaptor allele_adaptor
+    );
     my @methods = qw(
-        dbname connection check_entry_exists_in_db fetch_rows_expecting_single_row fetch_rows_for_generic_select_statement
-        _fetch_status_from_id _fetch_status_id_from_status _db_error_handling
+        get_status_position update_status fetch_status check_entry_exists_in_db fetch_rows_expecting_single_row
+        fetch_rows_for_generic_select_statement _fetch_status_from_id _fetch_status_id_from_status _prepare_sql _db_error_handling
+        _build_allele_adaptor _build_analysis_adaptor _build_cas9_adaptor _build_cas9_prep_adaptor _build_crispr_pair_adaptor
+        _build_crRNA_adaptor _build_guideRNA_prep_adaptor _build_injection_pool_adaptor _build_plate_adaptor _build_plex_adaptor
+        _build_primer_adaptor _build_primer_pair_adaptor _build_sample_adaptor _build_sample_allele_adaptor _build_sample_amplicon_adaptor
+        _build_target_adaptor 
     );
 
+    foreach my $attribute ( @attributes ) {
+        ok( $base_adaptor->can( $attribute ), "$driver: $attribute attribute test" );
+    }
     foreach my $method ( @methods ) {
         ok( $base_adaptor->can( $method ), "$driver: $method method test" );
     }
@@ -88,6 +101,31 @@ foreach my $db_connection ( @{$db_connections} ){
 
     #$sth->execute( 1, 'cas9_dnls_native', 'rna', 'cr_test', '2014-10-13', );
     #$sth->execute( 2, 'cas9_dnls_native', 'protein', 'cr_test', '2014-10-13', );
+    # get_status_position - 17 tests
+    my %statuses = (
+        REQUESTED => 1,
+        DESIGNED => 2,
+        ORDERED => 3,
+        MADE => 4,
+        INJECTED => 5,
+        MISEQ_EMBRYO_SCREENING => 6,
+        FAILED_EMBRYO_SCREENING => 7,
+        PASSED_EMBRYO_SCREENING => 8,
+        SPERM_FROZEN => 9,
+        MISEQ_SPERM_SCREENING => 10,
+        FAILED_SPERM_SCREENING => 11,
+        PASSED_SPERM_SCREENING => 12,
+        SHIPPED => 13,
+        SHIPPED_AND_IN_SYSTEM => 13,
+        IN_SYSTEM => 13,
+        CARRIERS => 14,
+        F1_FROZEN => 15, 
+    );
+    foreach my $status ( keys %statuses ){
+        is( $base_adaptor->get_status_position($status), $statuses{$status},
+           "$driver: check get_status_position");
+    }
+    
 
     # test check_entry_exists_in_db - 5 tests
     my $check_statement = 'select count(*) from cas9 where cas9_id = ?;';
