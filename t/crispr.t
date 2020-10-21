@@ -105,13 +105,18 @@ throws_ok { $design_obj->find_crRNAs_by_region( '5-46628364-46628423', ) } qr/Co
 # check which version of Ensembl is being used and set regions/number of crisprs accordingly
 my ( $region, $num_crisprs, );
 if( $ensembl_version <= 79 ){
-    $region = '5:46628364-46628423';
-    $num_crisprs = 9;
+    $region = '5:17719978-17720144:-1';
+    $num_crisprs = 27;
+}
+elsif ( $ensembl_version <= 91 ){
+    $region = '5:15445938-15446104:-1';
+    $num_crisprs = 27;
 }
 else{
-    $region = '5:15448303-15448703';
-    $num_crisprs = 47;
+    $region = '5:15946155-15946321:-1';
+    $num_crisprs = 27;
 }
+
 ok( $design_obj->find_crRNAs_by_region( $region ), 'find crRNAs by region');
 is( scalar keys %{ $design_obj->all_crisprs }, $num_crisprs, 'check number of crispr sites' );
 ok( $design_obj_no_slice_adaptor->find_crRNAs_by_region( 'test_chr1:81-180' ), 'find crRNAs by region - no slice adaptor');
@@ -140,10 +145,7 @@ $mock_target->mock( 'region', sub{ return '15445938-15446104' });
 throws_ok { $design_obj->find_crRNAs_by_target( $mock_target ) }
     qr/Couldn't\sunderstand\sthe\starget's\sregion/, 'find crRNAs by target - incorrect region format';
 
-# set region and num_crisprs according to Ensembl version
-$region = $ensembl_version <= 79 ? '5:17719978-17720144:-1' : '5:15445938-15446104:-1';
-$num_crisprs = $ensembl_version <= 79 ? 27 : 27;
-
+# create mock target but use same region
 $mock_target->mock( 'region', sub{ return $region });
 $mock_target->mock( 'target_name', sub{ return 'ENSDARE00001117797_3' });
 throws_ok { $design_obj_no_target_seq->find_crRNAs_by_target( $mock_target ) } qr/The\starget_seq\sattribute\smust\sbe\sdefined\sto\ssearch\sfor\scrRNAs/,
@@ -163,7 +165,10 @@ throws_ok { $design_obj->find_crRNAs_by_target( $mock_target ) }
 $tests+=11;
 
 my $crRNA_1;
-ok( $crRNA_1 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:3:5689156-5689178:1', 'zebrafish' ), 'create crRNA from crRNA name' );
+my $crRNA_name = $ensembl_version <= 79 ? 'crRNA:3:5689156-5689178:1' :
+    $ensembl_version <= 91 ? 'crRNA:3:5120152-5120174:-1' : 'crRNA:3:5029993-5030015:-1';
+ok( $crRNA_1 = $design_obj->create_crRNA_from_crRNA_name( $crRNA_name, 'zebrafish' ), 'create crRNA from crRNA name' );
+#print $crRNA_1->sequence();
 warning_like { $crRNA_1 = $design_obj_no_slice_adaptor->create_crRNA_from_crRNA_name( 'crRNA:3:5689156-5689178:1', 'zebrafish' ) }
     qr/Couldn't retrieve sequence for crRNA/,
    'create crRNA from crRNA name no slice adaptor';
@@ -385,26 +390,29 @@ SKIP: {
 # calculate protein coding scores
 # change output of mock methods
 $mock_crRNA1->mock( 'name', sub{
-    return $ensembl_version <= 79 ? 'crRNA:5:17720098-17720120:-1' : 'crRNA:5:15446058-15446080:-1' } );
+    return $ensembl_version <= 79 ? 'crRNA:5:17720098-17720120:-1' :
+            $ensembl_version <= 91 ? 'crRNA:5:15446058-15446080:-1' : 'crRNA:5:15946275-15946297:-1'} );
 $mock_crRNA1->mock( 'chr', sub{ return '5' });
-$mock_crRNA1->mock( 'start', sub{ return $ensembl_version <= 79 ? 17720098 : 15446058 });
-$mock_crRNA1->mock( 'end', sub{ return $ensembl_version <= 79 ? 17720120 : 15446080 });
-$mock_crRNA1->mock( 'cut_site', sub{ return $ensembl_version <= 79 ? 17720103 : 15446063 });
+$mock_crRNA1->mock( 'start', sub{ return $ensembl_version <= 79 ? 17720098 : $ensembl_version <= 91 ? 15446058 : 15946275 } );
+$mock_crRNA1->mock( 'end', sub{ return $ensembl_version <= 79 ? 17720120 : $ensembl_version <= 91 ? 15446080 : 15946297 } );
+$mock_crRNA1->mock( 'cut_site', sub{ return $ensembl_version <= 79 ? 17720103 : $ensembl_version <= 91 ? 15446063 : 15946280 } );
 $mock_crRNA1->mock( 'coding_score_for',
     sub{ my @args = @_;
         if( defined $args[2] ){ $coding_scores1->{ $args[1] } = $args[2]; }
         else{ return $coding_scores1->{ $args[1] }; }  } );
 
-$mock_crRNA2->mock( 'name', sub{ return $ensembl_version <= 79 ? 'crRNA:5:17720150-17720172:-1' : 'crRNA:5:15446110-15446132:-1' });
+
+$mock_crRNA2->mock( 'name', sub{
+    return $ensembl_version <= 79 ? 'crRNA:5:17720150-17720172:-1' :
+            $ensembl_version <= 91 ? 'crRNA:5:15446110-15446132:-1' : 'crRNA:5:15946327-15946349:-1'} );
 $mock_crRNA2->mock( 'chr', sub{ return '5' });
-$mock_crRNA2->mock( 'start', sub{ return $ensembl_version <= 79 ? 17720150 : 15446110 });
-$mock_crRNA2->mock( 'end', sub{ return $ensembl_version <= 79 ? 17720172 : 15446132 });
-$mock_crRNA2->mock( 'cut_site', sub{ return $ensembl_version <= 79 ? 17720155 : 15446115 });
+$mock_crRNA2->mock( 'start', sub{ return $ensembl_version <= 79 ? 17720150 : $ensembl_version <= 91 ? 15446110 : 15946327 } );
+$mock_crRNA2->mock( 'end', sub{ return $ensembl_version <= 79 ? 17720172 : $ensembl_version <= 91 ? 15446132 : 15946349 } );
+$mock_crRNA2->mock( 'cut_site', sub{ return $ensembl_version <= 79 ? 17720155 : $ensembl_version <= 91 ? 15446115 : 15946332 } );
 $mock_crRNA2->mock( 'coding_score_for',
     sub{ my @args = @_;
         if( defined $args[2] ){ $coding_scores2->{ $args[1] } = $args[2]; }
         else{ return $coding_scores2->{ $args[1] }; }  } );
-
 
 my $gene_adaptor = Bio::EnsEMBL::Registry->get_adaptor( 'zebrafish', 'core', 'gene' );
 my $gene = $gene_adaptor->fetch_by_stable_id( 'ENSDARG00000035622' );
@@ -413,6 +421,8 @@ my $transcripts = $gene->get_all_Transcripts();
 ok( $design_obj2->calculate_all_pc_coding_scores( $mock_crRNA1, $transcripts ), 'pc coding scores 1');
 ok( $design_obj2->calculate_all_pc_coding_scores( $mock_crRNA2, $transcripts ), 'pc coding scores 2');
 
+#print $coding_scores1->{ENSDART00000124467}, "\n";
+#print abs( $coding_scores1->{ENSDART00000124467} - 0.391 ), "\n";
 is( abs( $coding_scores1->{ENSDART00000124467} - 0.391 ) < 0.001, 1, 'check coding scores 1');
 is( $coding_scores2->{ENSDART00000124467}, 0, 'check coding scores 2');
 $tests+=4;
