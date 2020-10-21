@@ -603,7 +603,7 @@ SELECT crRNA_id, injection_id, type, SUM(pass) as num_passes
 FROM sample s, sequencing_results seq WHERE s.sample_id = seq.sample_id
 END_ST
 
-    my $where_clause = 'AND crRNA_id IN (' . join(q{,}, ('?') x scalar @{$crRNAs} ) . ') GROUP BY crRNA_id, type';
+    my $where_clause = 'AND crRNA_id IN (' . join(q{,}, ('?') x scalar @{$crRNAs} ) . ') GROUP BY crRNA_id, injection_id, type';
     $sql .= $where_clause;
     
     my $where_parameters = [ map { $_->crRNA_id } @{$crRNAs} ];
