@@ -44,7 +44,7 @@ sub create_test_db {
         if( $EVAL_ERROR ){
             if( $EVAL_ERROR =~ m/ENVIRONMENT VARIABLES/ ){
                 warn "The following environment variables need to be set for testing connections to a MySQL database!\n",
-                        q{MYSQL_TEST_DBNAME, $MYSQL_DBHOST, $MYSQL_DBPORT, $MYSQL_DBUSER, $MYSQL_DBPASS}, "\n";
+                        q{$MYSQL_TEST_DBNAME, $MYSQL_DBHOST, $MYSQL_DBPORT, $MYSQL_DBUSER, $MYSQL_DBPASS}, "\n";
             }
         }
         if( defined $adaptor ){
