@@ -69,7 +69,7 @@ has 'db_id' => (
 
 =cut
 
-Readonly my @TYPES = ( qw{ ZfnCas9n ZfnCas9-D10An Cas9 } );
+Readonly my @TYPES => ( qw{ ZfnCas9n ZfnCas9-D10An Cas9 } );
 has 'type' => (
     is => 'ro',
     isa => enum( \@TYPES ),
