@@ -122,21 +122,21 @@ foreach my $db_connection ( @{$db_connections} ){
     open my $fh, '>', 'config.tmp';
     print $fh join("\n", map {
         if($_ ne 'connection' ){ join("\t", $_, $db_connection_params->{$driver}{$_} ) }else{ () }
-        } keys $db_connection_params->{$driver} ), "\n";
+        } keys %{ $db_connection_params->{$driver} } ), "\n";
     close($fh);
     ok( Crispr::DB::DBConnection->new( 'config.tmp' ), "$driver: config_file" );
     unlink( 'config.tmp' );
-    throws_ok{ Crispr::DB::DBConnection->new( 'config2.tmp' ) }
+    throws_ok { Crispr::DB::DBConnection->new( 'config2.tmp' ) }
         qr/Assumed\sthat.+is\sa\sconfig\sfile,\sbut\sfile\sdoes\snot\sexist./, "$driver: config file does not exist";
-    throws_ok{ Crispr::DB::DBConnection->new( [] ) }
+    throws_ok { Crispr::DB::DBConnection->new( [] ) }
         qr/Could\snot\sparse\sarguments\sto\sBUILD\smethod/, "$driver: ArrayRef";
     
     # check that BUILD method throws properly if driver is undefined or not mysql or sqlite- 2 tests
     $db_connection_params->{ $driver }{ 'driver' } = undef;
-    throws_ok{ Crispr::DB::DBConnection->new( $db_connection_params->{ $driver }, ) }
+    throws_ok { Crispr::DB::DBConnection->new( $db_connection_params->{ $driver }, ) }
         qr/Validation\sfailed/, "$driver: throws with undef driver";
     $db_connection_params->{ $driver }{ 'driver' } = 'cheese';
-    throws_ok{ Crispr::DB::DBConnection->new( $db_connection_params->{ $driver }, ) }
+    throws_ok { Crispr::DB::DBConnection->new( $db_connection_params->{ $driver }, ) }
         qr/Validation\sfailed/, "$driver: throws with incorrect driver";
     
     # test get_adaptor: target - 6 tests

@@ -439,7 +439,7 @@ sub create_and_add_crRNA_object {
 
     my $mock_crRNA = Test::MockObject->new();
     $mock_crRNA->set_isa('Crispr::crRNA');
-    foreach my $meth ( keys $crRNA_args->{ $args->{crRNA_num} } ){
+    foreach my $meth ( keys %{ $crRNA_args->{ $args->{crRNA_num} } } ){
         $mock_crRNA->mock($meth, $crRNA_args->{ $args->{crRNA_num} }->{$meth} );
     }
 
@@ -513,7 +513,7 @@ sub create_and_add_gRNA_object {
     
     my $mock_gRNA = Test::MockObject->new();
     $mock_gRNA->set_isa( 'Crispr::guideRNA_prep' );
-    foreach my $meth ( keys $gRNA_args->{ $args->{gRNA_num} } ){
+    foreach my $meth ( keys %{ $gRNA_args->{ $args->{gRNA_num} } } ){
         $mock_gRNA->mock($meth, $gRNA_args->{ $args->{gRNA_num} }->{$meth} );
     }
     
@@ -712,7 +712,7 @@ sub create_and_add_primer_object {
     my $side = $args->{primer_side} || 'left';
     my $mock_primer = Test::MockObject->new();
     $mock_primer->set_isa( 'Crispr::Primer' );
-    foreach my $meth ( keys $primer_args->{ $side } ){
+    foreach my $meth ( keys %{ $primer_args->{ $side } } ){
         $mock_primer->mock($meth, $primer_args->{ $side }->{$meth} );
     }
     
