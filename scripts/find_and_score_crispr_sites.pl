@@ -229,6 +229,17 @@ foreach my $target ( @{ $crispr_design->targets } ){
             ), "\t";
             
             my @notes;
+            # check for transcriptional stops
+            if( $crRNA->sequence =~ m/T{5}/xms ) {
+                push @notes, "Contains transcriptional stop sequence!";
+            }
+            # remove crisprs with DraI sequence if they are for fish
+            if( $options{species} eq 'zebrafish' ){
+                if( $crRNA->sequence =~ m/TTTAAA/xms ) {
+                    push @notes, "Contains DraI sequence!";
+                }
+            }
+
             # check composition
             my $base_composition = $crRNA->base_composition;
             my $not_ideal;

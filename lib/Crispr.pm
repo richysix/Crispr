@@ -436,12 +436,12 @@ sub find_crRNAs_by_region {
     # search sequence for forward regex
     while( $search_seq =~ m/$f_regex/g ){
         # remove crisprs with transcriptional stop sequence
-        next if( $1 =~ m/T{5}/xms );
-        # remove crisprs with DraI sequence if they are for fish
-        ## TO DO: make this based on something else like plasmid
-        if( $self->species eq 'zebrafish' ){
-            next if( $1 =~ m/TTTAAA/xms );
-        }
+        #next if( $1 =~ m/T{5}/xms );
+        ## remove crisprs with DraI sequence if they are for fish
+        ### TO DO: make this based on something else like plasmid
+        #if( $self->species eq 'zebrafish' ){
+        #    next if( $1 =~ m/TTTAAA/xms );
+        #}
         my $match_offset = pos($search_seq);
 		# make a new crRNA object
 		my $crRNA = Crispr::crRNA->new(
