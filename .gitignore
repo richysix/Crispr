@@ -1,6 +1,6 @@
 Crispr-*
 *CR_*.tsv
-tmp/*
+*tmp*
 cover_db/*
 t/data/zv9_*
 t/data/e*_annotation.gff
@@ -10,3 +10,4 @@ perltidy.LOG
 test.db
 _Inline/*
 t/data/GRCz*fa*
+genomes/*
