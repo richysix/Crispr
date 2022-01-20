@@ -10,15 +10,13 @@ use Crispr;
 use Crispr::crRNA;
 use Crispr::Target;
 use Crispr::CrisprPair;
-#use Bio::Seq;
-#use Bio::SeqIO;
 use Getopt::Long;
 use List::MoreUtils qw( any none uniq );
 use Readonly;
 use Number::Format;
 my $num = new Number::Format( DECIMAL_DIGITS => 3, );
 
-#get current date
+# get current date
 use DateTime;
 my $date_obj = DateTime->now();
 my $todays_date = $date_obj->ymd;
@@ -31,38 +29,6 @@ if( $options{debug} ){
     use Data::Dumper;
 }
 
-# check registry file
-if( $options{registry_file} ){
-    Bio::EnsEMBL::Registry->load_all( $options{registry_file} );
-}
-else{
-    # if no registry file connect anonymously to the public server
-    Bio::EnsEMBL::Registry->load_registry_from_db(
-      -host    => 'ensembldb.ensembl.org',
-      -user    => 'anonymous',
-      -port    => 5306,
-    );
-}
-
-my $ensembl_version = Bio::EnsEMBL::ApiVersion::software_version();
-warn "Ensembl version: e", $ensembl_version, "\n" if $options{debug};
-print "Ensembl version: e", $ensembl_version, "\n" if $options{verbose};
-
-# Ensure database connection isn't lost; Ensembl 64+ can do this more elegantly
-## no critic (ProhibitMagicNumbers)
-if ( $ensembl_version < 64 ) {
-## use critic
-    Bio::EnsEMBL::Registry->set_disconnect_when_inactive();
-}
-else {
-    Bio::EnsEMBL::Registry->set_reconnect_when_lost();
-}
-
-#my $gene_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $species, 'core', 'gene' );
-#my $exon_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $species, 'Core', 'Exon' );
-#my $transcript_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $species, 'core', 'transcript' );
-my $slice_adaptor = Bio::EnsEMBL::Registry->get_adaptor( $options{species}, 'core', 'slice' );
-
 # make design object
 my $crispr_design = Crispr->new(
     species => $options{species},
@@ -71,7 +37,6 @@ my $crispr_design = Crispr->new(
     target_seq => $options{target_sequence},
     five_prime_Gs => $options{num_five_prime_Gs},
     scored => 0,
-    slice_adaptor => $slice_adaptor,
     debug => $options{debug},
 );
 
@@ -310,7 +275,6 @@ sub get_and_check_options {
         \%options,
         'singles',
         'pairs',
-        'registry_file=s',
         'species=s',
         'target_genome=s',
         'annotation_file=s',
@@ -426,7 +390,6 @@ Scores crispr target sites/crispr pairs for off-target sites.
     score_crisprs_from_id.pl [options] filename(s) | target info on STDIN
         --singles                       option specifying that inputs are single crisprs
         --pairs                         option specifying that inputs are crispr pairs
-        --registry_file                 a registry file for connecting to the Ensembl database
         --species                       species for the targets
         --target_genome                 a target genome fasta file for scoring off-targets
         --annotation_file               an annotation gff file for scoring off-targets
@@ -474,11 +437,6 @@ option specifying that inputs are single crisprs. This is the default.
 =item B<--pairs>
 
 option specifying that inputs are crispr pairs. --singles and --pairs cannot be specified together.
-
-=item B<--registry_file>
-
-A registry file for connecting to the Ensembl database.
-Connects anonymously if registry file is not supplied.
 
 =item B<--species >
 
