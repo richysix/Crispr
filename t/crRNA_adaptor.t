@@ -302,7 +302,7 @@ foreach my $db_connection ( @{$db_connections} ){
     $mock_crRNA_2->mock( 'status', sub { return 'INJECTED' } );
     warning_like {
         $crRNA_adaptor->update_status( $mock_crRNA_2 )
-    }   qr/Method update_status: supplied status Ð INJECTED Ð comes before status already in db Ð FAILED_SPERM_SCREENING/,
+    }   qr/Method update_status: supplied status, INJECTED, comes before status already in db, FAILED_SPERM_SCREENING/,
     "$driver: test update_status with earlier status";
     
     row_ok(

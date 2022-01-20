@@ -442,9 +442,9 @@ sub update_status {
         }
         else {
             warn join("\n",
-                join(q{}, 'Method update_status: supplied status Ğ ',
+                join(q{}, 'Method update_status: supplied status, ',
                         $object->status,
-                        ' Ğ comes before status already in db Ğ ',
+                        ', comes before status already in db, ',
                         $current_db_status, '.',
                     ),
                 'Status not updated!',
