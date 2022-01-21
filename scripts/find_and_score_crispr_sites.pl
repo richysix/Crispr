@@ -180,21 +180,12 @@ else{
 }
 
 print "Outputting results...\n" if $options{verbose};
-Readonly my @columns => (
-    qw{ target_id target_name assembly chr start end strand
-        species requires_enzyme gene_id gene_name requestor ensembl_version
-        designed crRNA_name crRNA_chr crRNA_start crRNA_end crRNA_strand
-        crRNA_score crRNA_sequence crRNA_oligo1 crRNA_oligo2
-        crRNA_off_target_score crRNA_off_target_counts crRNA_off_target_hits
-        crRNA_coding_score crRNA_coding_scores_by_transcript crRNA_five_prime_Gs
-        crRNA_plasmid_backbone crRNA_GC_content crRNA_notes }
-);
-
 if( $options{no_crRNA} ){
-    print '#', join("\t", @columns[0..13] ), "\n";
+    print '#', join("\t", $crispr_design->target_info_header(), "crRNA_notes" ), "\n";
 }
 else{
-    print '#', join("\t", @columns ), "\n";    
+    print '#', join("\t", $crispr_design->target_info_header(), $crispr_design->crRNA_info_header(),
+                    "crRNA_notes"), "\n";
 }
 
 if( $options{bed_file} ){
