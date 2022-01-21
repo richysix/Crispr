@@ -293,17 +293,20 @@ $tests+=10;
 SKIP: {
     my $skip = 0;
     my $test_num = 4;
-    my $genome_base = File::Spec->catfile('t', 'data', 'GRCz11.fa');
+    my $genome_base = File::Spec->catfile('t', 'data', 'Danio_rerio.GRCz11.dna_sm.primary_assembly.fa');
     if( ! -e $genome_base ){
         $skip = 1;
     }
     
-    
-    foreach my $suffix ( qw{ amb ann bwt pac rbwt rpac rsa sa  } ){
+    foreach my $suffix ( qw{ amb ann bwt pac sa } ){
         my $index_file = join('.', $genome_base, $suffix );
         if( ! -e $index_file ){
             $skip = 1;
         }
+    }
+    my $annotation_file = File::Spec->catfile('t', 'data', 'Dr-e100_annotation.gff');
+    if( ! -e $annotation_file ){
+        $skip = 1;
     }
     
     $tests += $test_num;
@@ -312,17 +315,17 @@ SKIP: {
     my $design_obj = Crispr->new(
         species => 'zebrafish',
         target_seq => 'NNNNNNNNNNNNNNNNNNNNNGG',
-        target_genome => 't/data/GRCz11.fa',
+        target_genome => $genome_base,
         slice_adaptor => $slice_adaptor,
-        annotation_file => 't/data/e97_annotation.gff',
+        annotation_file => 't/data/Dr-e100_annotation.gff',
         debug => 0,
     );
     
     my $target = Crispr::Target->new(
         target_name => 'ENSDARE00000701362',
         chr => '5',
-        start => 75451438,
-        end => 75451817,
+        start => 72289269,
+        end => 72289648,
         strand => '1',
         species => 'zebrafish',
         gene_id => 'ENSDARG00000024894',
@@ -330,13 +333,13 @@ SKIP: {
         requestor => 'crispr_test',
         ensembl_version => 70,
     );
-    my $crRNA_1 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:5:75452465-75452487:-1', 'zebrafish' );
+    my $crRNA_1 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:5:72289297-72289319:-1', 'zebrafish' );
     $crRNA_1->target($target);
-    my $crRNA_2 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:5:75476562-75476584:-1', 'zebrafish' );
+    my $crRNA_2 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:5:72289267-72289289:1', 'zebrafish' );
     $crRNA_2->target($target);
-    my $crRNA_3 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:5:75474661-75474683:-1', 'zebrafish' );
+    my $crRNA_3 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:5:72289319-72289341:-1', 'zebrafish' );
     $crRNA_3->target($target);
-    my $crRNA_4 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:5:75457752-75457774:-1', 'zebrafish' );
+    my $crRNA_4 = $design_obj->create_crRNA_from_crRNA_name( 'crRNA:5:72289330-72289352:1', 'zebrafish' );
     $crRNA_4->target($target);
     
     $target->crRNAs( [ $crRNA_1, $crRNA_2, $crRNA_3, $crRNA_4, ] );
