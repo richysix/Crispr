@@ -589,24 +589,28 @@ sub summary {
 =cut
 
 sub info {
-    my ( $self, ) = @_;
+    my ( $self, $header, ) = @_;
     my @info;
 
-    push @info, ( $self->target_id || 'NULL' );
-    push @info,   $self->target_name;
-    push @info, ( $self->assembly || 'NULL' );
-    push @info, ( $self->chr || 'NULL' );
-    push @info,   $self->start;
-    push @info,   $self->end;
-    push @info,   $self->strand;
-    push @info, ( $self->species || 'NULL');
-    push @info,   $self->requires_enzyme;
-    push @info, ( $self->gene_id || 'NULL');
-    push @info, ( $self->gene_name || 'NULL');
-    push @info, ( $self->requestor || 'NULL' );
-    push @info, ( $self->ensembl_version || 'NULL' );
-    push @info, ( $self->status_changed || 'NULL' );
-
+    if ($header) {
+        @info = (qw{ target_id target_name assembly chr start end strand
+        species requires_enzyme gene_id gene_name requestor ensembl_version });
+    } else {
+        push @info, ( $self->target_id || 'NULL' );
+        push @info,   $self->target_name;
+        push @info, ( $self->assembly || 'NULL' );
+        push @info, ( $self->chr || 'NULL' );
+        push @info,   $self->start;
+        push @info,   $self->end;
+        push @info,   $self->strand;
+        push @info, ( $self->species || 'NULL');
+        push @info,   $self->requires_enzyme;
+        push @info, ( $self->gene_id || 'NULL');
+        push @info, ( $self->gene_name || 'NULL');
+        push @info, ( $self->requestor || 'NULL' );
+        push @info, ( $self->ensembl_version || 'NULL' );
+    #    push @info, ( $self->status_changed || 'NULL' );
+    }
     return @info;
 }
 

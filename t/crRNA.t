@@ -338,7 +338,10 @@ like( join("\t", $crRNA->info ),
 like( join("\t", $crRNA_2->info ),
     qr/crRNA:5:18078991-18079013:-1\t5\t18078991\t18079013\t-1\tNULL\tGGCCTTCGGGTTTGACCCCATGG\tATAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGGC\tNULL\tNULL\tNULL\tNULL\tNULL\t1\tpGERETY-1260/,
     'check info 2');
-$tests += 2;
+like( join("\t", $crRNA_2->info(1) ),
+    qr/crRNA_name\tcrRNA_chr\tcrRNA_start\tcrRNA_end\tcrRNA_strand\tcrRNA_score\tcrRNA_sequence\tcrRNA_oligo1\tcrRNA_oligo2\tcrRNA_off_target_score\tcrRNA_off_target_counts\tcrRNA_off_target_hits\tcrRNA_coding_score\tcrRNA_coding_scores_by_transcript\tcrRNA_five_prime_Gs\tcrRNA_plasmid_backbone\tcrRNA_GC_content/,
+    'check info header');
+$tests += 3;
 
 # crRNA target_summary_plus_crRNA_info & target_info_plus_crRNA_info
 # 2 tests

@@ -615,43 +615,52 @@ sub top_restriction_sites {
 =cut
 
 sub info {
-    my ( $self, ) = @_;
+    my ( $self, $header ) = @_;
 
-    my @info = (
-        $self->name,
-        $self->chr || 'NULL',
-        $self->start,
-        $self->end,
-        $self->strand,
-    );
-	#score
-    if( defined $self->score ){
-        push @info, $num->format_number($self->score);
+    my @info = ();
+    if ($header) {
+        @info = ( qw{ crRNA_name crRNA_chr crRNA_start crRNA_end crRNA_strand
+        crRNA_score crRNA_sequence crRNA_oligo1 crRNA_oligo2
+        crRNA_off_target_score crRNA_off_target_counts crRNA_off_target_hits
+        crRNA_coding_score crRNA_coding_scores_by_transcript crRNA_five_prime_Gs
+        crRNA_plasmid_backbone crRNA_GC_content} );
+    } else {
+        @info = (
+            $self->name,
+            $self->chr || 'NULL',
+            $self->start,
+            $self->end,
+            $self->strand,
+        );
+        #score
+        if( defined $self->score ){
+            push @info, $num->format_number($self->score);
+        }
+        else{
+            push @info, 'NULL';
+        }
+        push @info, $self->sequence, $self->forward_oligo, $self->reverse_oligo;
+    
+        # off-target score
+        if( defined $self->off_target_hits ){
+            push @info, $self->off_target_info;
+        }
+        else{
+            push @info, qw{NULL NULL NULL};
+        }
+    
+        # protein-coding score and detail on protein-coding scores by transcript
+        if( defined $self->coding_score ){
+            push @info, $num->format_number($self->coding_score), join(';', $self->coding_scores_by_transcript);
+        }
+        else{
+            push @info, qw{NULL NULL};
+        }
+    
+        my $base_comp = $self->base_composition();
+        my $gc_content = $base_comp->{C} + $base_comp->{G};
+        push @info, $self->five_prime_Gs, $self->plasmid_backbone, $gc_content;
     }
-    else{
-        push @info, 'NULL';
-    }
-    push @info, $self->sequence, $self->forward_oligo, $self->reverse_oligo;
-
-	# off-target score
-    if( defined $self->off_target_hits ){
-        push @info, $self->off_target_info;
-    }
-	else{
-		push @info, qw{NULL NULL NULL};
-	}
-
-	# protein-coding score and detail on protein-coding scores by transcript
-	if( defined $self->coding_score ){
-		push @info, $num->format_number($self->coding_score), join(';', $self->coding_scores_by_transcript);
-    }
-    else{
-        push @info, qw{NULL NULL};
-    }
-
-    my $base_comp = $self->base_composition();
-    my $gc_content = $base_comp->{C} + $base_comp->{G};
-	push @info, $self->five_prime_Gs, $self->plasmid_backbone, $gc_content;
     return @info;
 }
 

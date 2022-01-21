@@ -15,7 +15,7 @@ use DateTime;
 my $date_obj = DateTime->now();
 my $todays_date = $date_obj->ymd;
 
-plan tests => 4 + 2 + 1 + 20 + 4 + 4 + 2 + 5 + 6 + 6 + 2 + 8 + 2 + 2 + 2 + 2 + 9 + 9 + 4;
+plan tests => 4 + 2 + 1 + 20 + 4 + 4 + 2 + 5 + 6 + 6 + 2 + 8 + 2 + 2 + 2 + 2 + 9 + 10 + 4;
 
 my $species = 'zebrafish';
 
@@ -201,7 +201,7 @@ throws_ok { $target->status_changed( '2012-02-30' ) } qr/Invalid/, 'Impossible d
 
 is( $target_2->status_changed, '2012-07-18', 'status_changed2');
 
-# 9 tests - check output of non attribute methods
+# 10 tests - check output of non attribute methods
 is( $target->region, '5:18067321-18083466:-1', 'check region');
 is( $target_2->region, '50-60:1', 'Get region without chr');
 is( $target->length, 16146, 'check length' );
@@ -211,9 +211,11 @@ like( join("\t", $target->summary ),
 like( join("\t", $target_2->summary ),
     qr/gfp_50_100\tNULL\tNULL\tcrispr_test/, 'check summary 2' );
 like( join("\t", $target->info ),
-    qr/\A NULL\tKAT5_exon1\tZv9\t5\t18067321\t18083466\t-1\tdanio_rerio\ty\tENSDARG00000090174\tKAT5_1_of_2\tcrispr_test\t71\t$todays_date \z/xms, 'check info 1' );
+    qr/\A NULL\tKAT5_exon1\tZv9\t5\t18067321\t18083466\t-1\tdanio_rerio\ty\tENSDARG00000090174\tKAT5_1_of_2\tcrispr_test\t71 \z/xms, 'check info 1' );
 like( join("\t", $target_2->info ),
-    qr/\A NULL\tgfp_50_100\tNULL\tNULL\t50\t60\t1\tAequorea_victoria\tn\tNULL\tNULL\tcrispr_test\tNULL\t2012-07-18 \z/xms, 'check info 2' );
+    qr/\A NULL\tgfp_50_100\tNULL\tNULL\t50\t60\t1\tAequorea_victoria\tn\tNULL\tNULL\tcrispr_test\tNULL \z/xms, 'check info 2' );
+like( join("\t", $target_2->info(1) ),
+    qr/\A target_id\ttarget_name\tassembly\tchr\tstart\tend\tstrand\tspecies\trequires_enzyme\tgene_id\tgene_name\trequestor\tensembl_version \z/xms, 'check info header' );
 
 $tmp_target = Crispr::Target->new(
     target_id => 1,
@@ -232,7 +234,7 @@ $tmp_target = Crispr::Target->new(
 like( join("\t", $tmp_target->summary ),
     qr/SLC39A14\tENSDARG00000090174\tSLC39A14\tNULL/, 'check summary 3' );
 like( join("\t", $tmp_target->info ),
-    qr/\A 1\tSLC39A14\tZv9\t5\t18067321\t18083466\t-1\tNULL\ty\tENSDARG00000090174\tSLC39A14\tNULL\t71\tNULL \z/xms, 'check info 3' );
+    qr/\A 1\tSLC39A14\tZv9\t5\t18067321\t18083466\t-1\tNULL\ty\tENSDARG00000090174\tSLC39A14\tNULL\t71 \z/xms, 'check info 3' );
 
 # create object with hash and hash_ref
 my %args = (
