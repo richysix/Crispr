@@ -568,11 +568,16 @@ sub length {
 =cut
 
 sub summary {
-    my ( $self, ) = @_;
-    my @info = ( $self->target_name, );
-    push @info, ( $self->gene_id || 'NULL' );
-    push @info, ( $self->gene_name || 'NULL' );
-    push @info, ( $self->requestor || 'NULL' );
+    my ( $self, $header, ) = @_;
+    my @info = ();
+    if ($header) {
+        @info = (qw{target_name gene_id gene_name requestor});
+    } else {
+        @info = ( $self->target_name, );
+        push @info, ( $self->gene_id || 'NULL' );
+        push @info, ( $self->gene_name || 'NULL' );
+        push @info, ( $self->requestor || 'NULL' );
+    }
 
     return @info;
 }

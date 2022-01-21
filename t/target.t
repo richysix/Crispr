@@ -15,7 +15,7 @@ use DateTime;
 my $date_obj = DateTime->now();
 my $todays_date = $date_obj->ymd;
 
-plan tests => 4 + 2 + 1 + 20 + 4 + 4 + 2 + 5 + 6 + 6 + 2 + 8 + 2 + 2 + 2 + 2 + 9 + 10 + 4;
+plan tests => 4 + 2 + 1 + 20 + 4 + 4 + 2 + 5 + 6 + 6 + 2 + 8 + 2 + 2 + 2 + 2 + 9 + 11 + 4;
 
 my $species = 'zebrafish';
 
@@ -201,7 +201,7 @@ throws_ok { $target->status_changed( '2012-02-30' ) } qr/Invalid/, 'Impossible d
 
 is( $target_2->status_changed, '2012-07-18', 'status_changed2');
 
-# 10 tests - check output of non attribute methods
+# 11 tests - check output of non attribute methods
 is( $target->region, '5:18067321-18083466:-1', 'check region');
 is( $target_2->region, '50-60:1', 'Get region without chr');
 is( $target->length, 16146, 'check length' );
@@ -210,6 +210,8 @@ like( join("\t", $target->summary ),
     qr/KAT5_exon1\tENSDARG00000090174\tKAT5_1_of_2\tcrispr_test/, 'check summary 1' );
 like( join("\t", $target_2->summary ),
     qr/gfp_50_100\tNULL\tNULL\tcrispr_test/, 'check summary 2' );
+like( join("\t", $target_2->summary(1) ),
+    qr/target_name\tgene_id\tgene_name\trequestor/, 'check summary header' );
 like( join("\t", $target->info ),
     qr/\A NULL\tKAT5_exon1\tZv9\t5\t18067321\t18083466\t-1\tdanio_rerio\ty\tENSDARG00000090174\tKAT5_1_of_2\tcrispr_test\t71 \z/xms, 'check info 1' );
 like( join("\t", $target_2->info ),
