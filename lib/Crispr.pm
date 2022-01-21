@@ -1073,6 +1073,7 @@ sub create_crRNA_from_crRNA_name {
     if( defined $sequence ){
         $args{sequence} = $sequence;
     }
+    warn $sequence, "\n" if $self->debug > 0;
     
     my $crRNA = Crispr::crRNA->new( \%args );
     return $crRNA;
@@ -1534,9 +1535,39 @@ sub calculate_pc_coding_score {
 	}
 }
 
+# crRNA_info_header
+#
+#Usage       : $crispr->crRNA_info_header;
+#Purpose     : returns header columns names for crRNA->info method
+#Returns     : Array
+#Parameters  : None
+#Throws      : 
+#Comments    : 
+
+sub crRNA_info_header {
+    my ( $self, ) = @_;
+    my $crRNA = Crispr::crRNA->new();
+    return( $crRNA->info(1) );
+}
+
+# target_info_header
+#
+#Usage       : $crispr->target_info_header;
+#Purpose     : returns header columns names for target->info method
+#Returns     : Array
+#Parameters  : None
+#Throws      : 
+#Comments    : 
+
+sub target_info_header {
+    my ( $self, ) = @_;
+    my $target = Crispr::Target->new();
+    return( $target->info(1) );
+}
+
 #_build_annotation_tree
 #
-#Usage       : $crRNA->_build_annotation_tree;
+#Usage       : _build_annotation_tree;
 #Purpose     : builder for Annotation Tree to hold genome annotation
 #Returns     : Tree::AnnotationTree
 #Parameters  : None

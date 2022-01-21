@@ -38,7 +38,7 @@ foreach ( @files ){
 # make a crispr object with no attributes
 my $design_obj = Crispr->new();
 
-# check method calls 12 + 25 tests
+# check method calls 12 + 27 tests
 my @attributes = qw( target_seq PAM five_prime_Gs species target_genome
 slice_adaptor targets all_crisprs annotation_file annotation_tree
 off_targets_interval_tree debug );
@@ -48,7 +48,8 @@ _seen_crRNA_id _seen_target_name find_crRNAs_by_region _construct_regex_from_tar
 filter_crRNAs_from_target_by_strand filter_crRNAs_from_target_by_score add_targets add_target remove_target 
 add_crisprs remove_crisprs target_seq_length create_crRNA_from_crRNA_name parse_cr_name
 find_off_targets output_fastq_for_off_targets bwa_align filter_and_score_off_targets score_off_targets_from_sam_output
-calculate_all_pc_coding_scores calculate_pc_coding_score _build_annotation_tree _build_interval_tree _build_five_prime_Gs );
+calculate_all_pc_coding_scores calculate_pc_coding_score crRNA_info_header target_info_header
+_build_annotation_tree _build_interval_tree _build_five_prime_Gs );
 
 foreach my $method ( @attributes, @methods ) {
     can_ok( $design_obj, $method );
@@ -442,6 +443,18 @@ $tests+=2;
 # test method remove targets
 ok( $design_obj->remove_target( $mock_target ), 'remove target');
 is( scalar @{ $design_obj->targets }, 0, 'check number of targets');
+$tests+=2;
+
+# test info headers
+my @crRNA_info_header = ( qw{ crRNA_name crRNA_chr crRNA_start crRNA_end crRNA_strand
+        crRNA_score crRNA_sequence crRNA_oligo1 crRNA_oligo2
+        crRNA_off_target_score crRNA_off_target_counts crRNA_off_target_hits
+        crRNA_coding_score crRNA_coding_scores_by_transcript crRNA_five_prime_Gs
+        crRNA_plasmid_backbone crRNA_GC_content} );
+is( $design_obj->crRNA_info_header(), @crRNA_info_header, 'crRNA info header');
+my @target_info_header = (qw{ target_id target_name assembly chr start end strand
+        species requires_enzyme gene_id gene_name requestor ensembl_version });
+is( $design_obj->target_info_header(), @target_info_header, 'target info header');
 $tests+=2;
 
 ## test output_to_mixed_plate - 6 tests
