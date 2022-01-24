@@ -92,8 +92,6 @@ my $crRNA_2 = Crispr::crRNA->new(
 isa_ok( $crRNA, 'Crispr::crRNA' );
 $tests++;
 
-
-
 # check method calls 19 + 31 tests
 my @attributes = ( qw{crRNA_id target name chr start
     end strand sequence species five_prime_Gs
@@ -352,6 +350,28 @@ like( join("\t", $crRNA->target_info_plus_crRNA_info ),
     qr/NULL\tENSE000000035646\tNULL\t5\t18078900\t18079400\t1\tzebrafish\tn\tENSDARG00000026374\tatpase2\tcrispr_test\t75\tNULL\tcrRNA:5:18078991-18079013:1\t5\t18078991\t18079013\t1\t0.099\tGGCCTTCGGGTTTGACCCCATGG\tTAGGCCTTCGGGTTTGACCCCA\tAAACTGGGGTCAAACCCGAAGG\t0.88\t1\/2\/0\t17:403-425:-1|Zv9_NA1:403-425:-1\/18:1000-1022:1|\t0.445\tENSDART00000037671=0.1;ENSDART00000037681=0.5;ENSDART00000037691=0.734/,
     'check target_info plus info' );
 $tests += 2;
+
+
+# notes
+my @notes = ("Contains transcriptional stop sequence!", "Contains DraI sequence!",
+             "Base Composition is not ideal!", "GC content less than 40%!",
+             "base20 is a G"
+);
+my @notes1 = ();
+is($crRNA->notes, @notes1, 'check notes');
+$tmp_crRNA = Crispr::crRNA->new(sequence => 'GGCCTTCGGGTTTTTAACCTTGG', species => 'zebrafish');
+like( join("\t", $tmp_crRNA->notes), qr/Contains\stranscriptional\sstop\ssequence!/, 'check notes transcriptional stop');
+$tmp_crRNA = Crispr::crRNA->new(sequence => 'GGCCTTCGGGTTTTAAACCTTGG', species => 'zebrafish');
+like( join("\t", $tmp_crRNA->notes), qr/Contains\sDraI\ssequence!/, 'check notes DraI sequence');
+$tmp_crRNA = Crispr::crRNA->new(sequence => 'GGCCTTCGGGTTTTACGCCTTGG', species => 'zebrafish');
+like( join("\t", $tmp_crRNA->notes), qr/Base\sComposition\sis\snot\sideal!/, 'check notes base comp');
+$tmp_crRNA = Crispr::crRNA->new(sequence => 'GACATTATGGTTTTACGCATTGG', species => 'zebrafish');
+like( join("\t", $tmp_crRNA->notes), qr/GC\scontent\sless\sthan\s40/, 'check notes GC content');
+$tmp_crRNA = Crispr::crRNA->new(sequence => 'GACATTATGGTTGTACGCAGTGG', species => 'zebrafish');
+like( join("\t", $tmp_crRNA->notes), qr/base20\sis\sa\sG/, 'check notes GC content');
+$tmp_crRNA = Crispr::crRNA->new(sequence => 'GACAGCATGGTTTAAAGCAGTGG', species => 'zebrafish');
+like( join("\t", $tmp_crRNA->notes), qr/Contains\sDraI\ssequence!\tbase20\sis\sa\sG/, 'check notes GC content');
+$tests += 7;
 
 # check cut-site 2 tests
 is( $crRNA->cut_site, 18079007, 'cut_site + strand');

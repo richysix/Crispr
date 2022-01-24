@@ -219,41 +219,7 @@ foreach my $target ( @{ $crispr_design->targets } ){
                 $crRNA->target_info_plus_crRNA_info,
             ), "\t";
             
-            my @notes;
-            # check for transcriptional stops
-            if( $crRNA->sequence =~ m/T{5}/xms ) {
-                push @notes, "Contains transcriptional stop sequence!";
-            }
-            # remove crisprs with DraI sequence if they are for fish
-            if( $options{species} eq 'zebrafish' ){
-                if( $crRNA->sequence =~ m/TTTAAA/xms ) {
-                    push @notes, "Contains DraI sequence!";
-                }
-            }
-
-            # check composition
-            my $base_composition = $crRNA->base_composition;
-            my $not_ideal;
-            foreach my $base ( qw{ A C G T } ){
-                if( $base_composition->{$base} < 0.1 || $base_composition->{$base} > 0.4 ){
-                    $not_ideal = 1;
-                }
-            }
-            if( $not_ideal ){
-                push @notes, "Base Composition is not ideal!";
-            }
-            
-            # check GC content
-            if( $base_composition->{C} + $base_composition->{G} < 0.4 ){
-                push @notes, "GC content less than 40%!";
-            }
-            
-            # check pre-PAM base
-            my $pre_pam_base = substr($crRNA->sequence, 19, 1);
-            if( $pre_pam_base eq 'G' ){
-                push @notes, "base20 is a G";
-            }
-            print join(';', @notes, ), "\n";
+            print join(';', $crRNA->notes, ), "\n";
             
             # print bed file line if necessary
             if( $options{bed_file} ){

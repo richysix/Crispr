@@ -226,17 +226,11 @@ sub cut_site {
 }
 
 if( $options{singles} ){
-    my @header_columns = (
-        '#target_name', qw{ species requestor
-        crRNA_name crRNA_chr crRNA_start crRNA_end crRNA_strand
-        crRNA_score crRNA_sequence crRNA_oligo1 crRNA_oligo2 crRNA_off_target_score
-        crRNA_off_target_counts crRNA_off_target_hits crRNA_coding_score
-        crRNA_coding_scores_by_transcript crRNA_five_prime_Gs crRNA_plasmid_backbone crRNA_GC_content } );
-    print $out_fh_1 join("\t", @header_columns, ), "\n";
+    print $out_fh_1 "#", join("\t", $crispr_design->target_summary_header(), $crispr_design->crRNA_info_header(), ), "\n";
     
     foreach my $crRNA ( @crisprs ){
-        print $out_fh_1 join("\t", $crRNA->target_name, $crRNA->target->species,
-                             $crRNA->target->requestor, $crRNA->info, ), "\n";
+        print $out_fh_1 join("\t", $crRNA->target_summary_plus_crRNA_info,
+                             join(';', $crRNA->notes, ) ), "\n";
     }
 }
 else{
