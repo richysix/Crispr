@@ -52,10 +52,26 @@ my %crisprs;
 my @crisprs;
 my @crispr_pairs;
 my %targets;
-if( $options{singles} ){
-    while(<>){
-        chomp;
-        my ( $name, $target_name, $requestor, ) = split /\t/, $_;
+while(<>){
+    chomp;
+    my ( $name, $requestor, $target_name, $gene_id, $gene_name, ) = split /\t/, $_;
+    
+    my $target;
+    if( exists $targets{$target_name} ){
+        $target = $targets{$target_name};
+    }
+    else{
+        $target = Crispr::Target->new(
+            target_name => $target_name,
+            requestor => $requestor,
+            gene_id  => $gene_id,
+            gene_name => $gene_name,
+            species => $options{species},
+        ),
+        $targets{$target_name} = $target;
+    }
+    
+    if( $options{singles} ){
         if( $name !~ m/\AcrRNA:[[:alnum:]_]+:    # crRNA:CHR:
                             [0-9]+\-[0-9]+              # RANGE
                             :*[1-]*                     # :STRAND optional
@@ -69,28 +85,12 @@ if( $options{singles} ){
         else{
             $crRNA = $crispr_design->create_crRNA_from_crRNA_name( $name, $options{species}, );
             $crRNA->five_prime_Gs( $options{num_five_prime_Gs} ) if exists $options{num_five_prime_Gs};
-            my $target;
-            if( exists $targets{$target_name} ){
-                $target = $targets{$target_name};
-            }
-            else{
-                $target = Crispr::Target->new(
-                    target_name => $target_name,
-                    requestor => $requestor,
-                    species => $options{species},
-                ),
-                $targets{$target_name} = $target;
-            }
+    
             $crRNA->target( $target );
             $crisprs{$name} = $crRNA;
         }
         push @crisprs, $crRNA;
-    }
-}
-else{
-    while(<>){
-        chomp;
-        my ( $name, $target_name, $requestor, ) = split /\t/, $_;
+    } else{
         if( $name !~ m/\AcrRNA:[[:alnum:]_]+:   # crRNA:CHR:
                             [0-9]+\-[0-9]+:         # RANGE:
                             [1-]+                   # STRAND
@@ -101,18 +101,6 @@ else{
         else{
             my @names = split /\./, $name;
             # make crRNA for each name and then Crispr pair
-            my $target;
-            if( exists $targets{$target_name} ){
-                $target = $targets{$target_name};
-            }
-            else{
-                $target = Crispr::Target->new(
-                    target_name => $target_name,
-                    requestor => $requestor,
-                    species => $options{species},
-                );
-            }
-            
             my @crRNAs;
             for( my $i = 0; $i < 2; $i++ ){
                 my $crRNA;
