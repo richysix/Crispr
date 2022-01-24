@@ -571,9 +571,10 @@ sub summary {
     my ( $self, $header, ) = @_;
     my @info = ();
     if ($header) {
-        @info = (qw{target_name gene_id gene_name requestor});
+        @info = (qw{target_id target_name gene_id gene_name requestor});
     } else {
-        @info = ( $self->target_name, );
+        push @info, ( $self->target_id || 'NULL' );
+        push @info, ( $self->target_name, );
         push @info, ( $self->gene_id || 'NULL' );
         push @info, ( $self->gene_name || 'NULL' );
         push @info, ( $self->requestor || 'NULL' );

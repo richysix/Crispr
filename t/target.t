@@ -211,7 +211,7 @@ like( join("\t", $target->summary ),
 like( join("\t", $target_2->summary ),
     qr/gfp_50_100\tNULL\tNULL\tcrispr_test/, 'check summary 2' );
 like( join("\t", $target_2->summary(1) ),
-    qr/target_name\tgene_id\tgene_name\trequestor/, 'check summary header' );
+    qr/target_id\ttarget_name\tgene_id\tgene_name\trequestor/, 'check summary header' );
 like( join("\t", $target->info ),
     qr/\A NULL\tKAT5_exon1\tZv9\t5\t18067321\t18083466\t-1\tdanio_rerio\ty\tENSDARG00000090174\tKAT5_1_of_2\tcrispr_test\t71 \z/xms, 'check info 1' );
 like( join("\t", $target_2->info ),
