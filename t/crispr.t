@@ -224,24 +224,22 @@ my $design_obj2 = Crispr->new(
 
 $design_obj2->_testing( 1 );
 
-
-SKIP: {
-    my $test_num = 3;
-    $tests += $test_num;
-    # check whether bwa is installed in the current PATH
-    my $bwa_path = which( 'bwa' );
-    skip "bwa not installed. Skipping off-target finding...", $test_num if !$bwa_path;
-    
-    ok( $design_obj2->find_off_targets( $design_obj2->all_crisprs,  ), 'off_targets' );
-    ## Off Targets for crRNA:test_chr1:101-123:1
-    #exon:test_chr1:201-223:1 mismatches:2 annotation:exon
-    #intron:test_chr2:101-123:1 mismatches:3 annotation:intron
-    #intron:test_chr3:101-123:1 mismatches:1 annotation:intron
-    #nongenic:test_chr1:1-23:1 mismatches:1 annotation:nongenic
-    #nongenic:test_chr3:201-223:1 mismatches:2 annotation:nongenic
-    is( $mock_crRNA1->off_target_hits->score, 0.76, 'check off target score 1');
-    is( $mock_crRNA2->off_target_hits->score, 1, 'check off target score 2');
-}
+my $test_num = 3;
+$tests += $test_num;
+ok( $design_obj2->find_off_targets( $design_obj2->all_crisprs, 'tmp', 30,
+                                   't/data/mock_all_crisprs.tsv', 4 ), 'off_targets' );
+## Off Targets for crRNA:test_chr1:101-123:1
+#exon:test_chr1:201-223:1 mismatches:2 annotation:exon
+#intron:test_chr2:101-123:1 mismatches:3 annotation:intron
+#intron:test_chr2:201-223:1 mismatches 4 annotation:intron
+#intron:test_chr3:101-123:1 mismatches:1 annotation:intron
+#intron:test_chr3:301-323:1 mismatches:4 annotation:intron
+#nongenic:test_chr1:1-23:1 mismatches:1 annotation:nongenic
+#nongenic:test_chr3:201-223:1 mismatches:2 annotation:nongenic
+#print Dumper($mock_crRNA1);
+#print Dumper($mock_crRNA1->off_target_hits);
+is( $mock_crRNA1->off_target_hits->score, 0.66, 'check off target score 1');
+is( $mock_crRNA2->off_target_hits->score, 1, 'check off target score 2');
 
 # test make_and_add_off_target_from_position
 # test args
@@ -458,7 +456,9 @@ is( $design_obj->crRNA_info_header(), @crRNA_info_header, 'crRNA info header');
 my @target_info_header = (qw{ target_id target_name assembly chr start end strand
         species requires_enzyme gene_id gene_name requestor ensembl_version });
 is( $design_obj->target_info_header(), @target_info_header, 'target info header');
-$tests+=2;
+my @target_summary_header = (qw{ target_id requestor target_name gene_id gene_name });
+is( $design_obj->target_summary_header(), @target_summary_header, 'target summary header');
+$tests+=3;
 
 ## test output_to_mixed_plate - 6 tests
 ## make mock crRNA object

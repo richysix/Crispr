@@ -407,11 +407,11 @@ sub find_crRNAs_by_region {
     
 	my @crRNAs;
     # create regex from target sequence for forward and reverse
-	my $f_regex = $self->_construct_regex_from_target_seq( $self->target_seq );
+	my $f_regex = $self->_construct_regex_from_target_seq( $self->target_seq, 'f' );
 	warn $f_regex, "\n" if $self->debug == 2;
 	my $r_str = reverse $self->target_seq;
 	$r_str =~ tr/[ACGTNRYSWMKBDHV]/[TGCANYRWSKMVHDB]/;
-	my $r_regex = $self->_construct_regex_from_target_seq( $r_str );
+	my $r_regex = $self->_construct_regex_from_target_seq( $r_str, 'r' );
 	warn $r_regex, "\n" if $self->debug == 2;
 	
 	# fetch sequence either from Ensembl or from fasta file
@@ -463,18 +463,18 @@ sub find_crRNAs_by_region {
     }
     
     while( $search_seq =~ m/$r_regex/g ){
-        next if( $1 =~ m/A{5}/xms );
-        if( $self->species eq 'zebrafish' ){
-            next if( $1 =~ m/TTTAAA/xms );
-        }
+        #next if( $1 =~ m/A{5}/xms );
+        #if( $self->species eq 'zebrafish' ){
+        #    next if( $1 =~ m/TTTAAA/xms );
+        #}
         my $match_offset = pos($search_seq);
         my $rev_com_seq = reverse $1;
         $rev_com_seq =~ tr/[ACGT]/[TGCA]/;
 		# make a new crRNA object
 		my $crRNA = Crispr::crRNA->new(
 			chr => $chr,
-			start => $match_offset + $match_start,
-			end => $match_offset + $match_start + ($self->target_seq_length - 1),
+			start => $match_offset + $match_start - ($self->target_seq_length - 1),
+			end => $match_offset + $match_start,
 			strand => '-1',
 			sequence => $rev_com_seq,
 			species => $self->species,
@@ -496,12 +496,13 @@ sub find_crRNAs_by_region {
 #Usage       : $crRNA->_construct_regex_from_target_seq( 'NNNNNNNNNNNNNNNNNNNNNGG' );
 #Purpose     : Internal method to construct a regex for the target sequence
 #Returns     : Stringified version of a regex for the target sequence
-#Parameters  : Target sequence
+#Parameters  : Target sequence as IUPAC ambiguity codes
+#              direction Str, 'f' or 'r'
 #Throws      : 
 #Comments    : 
 
 sub _construct_regex_from_target_seq {
-	my ( $self, $target_str ) = @_;
+	my ( $self, $target_str, $direction, ) = @_;
 	my %regex_for = (
 		N => '[ACGT]',
         A => '[A]',
@@ -532,7 +533,13 @@ sub _construct_regex_from_target_seq {
 			croak "Base, ", $_, " is not an accepted IUPAC code.\n";
 		}
 	}
-	my $regex = qr/(?=($regex_str))/xms;
+	my $regex;
+    if ($direction eq 'f') {
+        $regex = qr/(?=($regex_str))/xms;
+    } else {
+        $regex = qr/(?<=($regex_str))/xms;
+    }
+    return($regex);
 }
 
 =method find_crRNAs_by_target
@@ -1124,21 +1131,111 @@ sub parse_cr_name {
 =cut
 
 sub find_off_targets {
-    my ( $self, $crRNAs, $basename, $off_target_threshold, ) = @_;
-    
-    # check whether bwa is installed in the current PATH
-    my $bwa_path = which( 'bwa' );
-    if( !$bwa_path ){
-        croak join("\n", 'Could not find bwa installed in the current path!',
-            'Either install bwa in the current path or alter the path to include the bwa directory', ), "\n";
+    my ( $self, $crRNAs, $basename, $off_target_threshold, $all_crisprs_file,
+        $num_allowed_mismatches, ) = @_;
+
+    # check if all_crisprs file defined
+    if ($all_crisprs_file) {
+        $self->check_hamming_distance( $crRNAs, $all_crisprs_file, $num_allowed_mismatches );
+        return 1;
+    } else {
+        # check whether bwa is installed in the current PATH
+        my $bwa_path = which( 'bwa' );
+        if( !$bwa_path ){
+            croak join("\n", 'Could not find bwa installed in the current path!',
+                'Either install bwa in the current path or alter the path to include the bwa directory', ), "\n";
+        }
+
+        $basename = $basename  ?   $basename    :   'tmp';
+        $self->output_fastq_for_off_targets( $crRNAs, $basename, );
+        $self->bwa_align( $basename, );
+        $self->filter_and_score_off_targets( $crRNAs, $basename,
+                                                $off_target_threshold, );
+        return $crRNAs;
     }
-    
-    $basename = $basename  ?   $basename    :   'tmp';
-    $self->output_fastq_for_off_targets( $crRNAs, $basename, );
-    $self->bwa_align( $basename, );
-    $self->filter_and_score_off_targets( $crRNAs, $basename,
-                                            $off_target_threshold, );
-    return $crRNAs;
+}
+
+=method check_hamming_distance
+
+  Usage       : $self->check_hamming_distance( $crRNAs, $all_crisprs_file, $num_allowed_mismatches, );
+  Purpose     : Check the hamming distance betweeen each crispr and the all crisprs file
+  Returns     : crRNAs
+  Parameters  : crRNAs HASHREF
+                all_crisprs_file Str
+                num_allowed_mismatches Int
+  Throws      :
+  Comments    :
+
+=cut
+
+sub check_hamming_distance {
+    my ( $self, $crRNAs, $all_crisprs_file, $num_allowed_mismatches, ) = @_;
+
+    # open all crisprs file
+    open my $all_crisprs_fh, '<', $all_crisprs_file;
+    while(my $line = <$all_crisprs_fh>) {
+        chomp $line;
+        my ($name, $chr, $start, $end, $strand, $seq_upper, $comp_seq, ) = split /\t/, $line;
+        foreach my $crRNA_id ( keys %{$crRNAs} ){
+            my $crRNA = $crRNAs->{$crRNA_id};
+            my $protospacer = substr($crRNA->sequence, 0, 20);
+            if ($self->hamming_distance($protospacer, $comp_seq) <= $num_allowed_mismatches) {
+                # if the coordinates match ignore it
+                next if( defined $crRNA->chr && $crRNA->chr eq $chr && $crRNA->start == $start && $crRNA->end == $end );
+
+                if( !defined $crRNA->off_target_hits ){
+                    $crRNA->off_target_hits( Crispr::OffTargetInfo->new() );
+                }
+                # check annotation
+                my $annotations = $self->annotation_tree->fetch_overlapping_annotations( $chr, $start, $end );
+                my $type;
+                if( !@{$annotations} ){
+                    $type = 'nongenic';
+                }
+                elsif( any { $_ eq 'exon' } @{$annotations} ){
+                    $type = 'exon';
+                }
+                elsif( any { $_ eq 'intron' } @{$annotations} ){
+                    $type = 'intron';
+                }
+                else{
+                    die join(q{ }, 'Could not understand the annotation returned for off-target:',
+                                @{$annotations}, ), "\n";
+                }
+
+                # make an off target object and add it to interval tree
+                my $off_target_obj = Crispr::OffTarget->new(
+                    crRNA_name => $crRNA->name,
+                    chr => $chr,
+                    start => $start,
+                    end => $end,
+                    strand => $strand,
+                    mismatches => $self->hamming_distance($crRNA->sequence, $comp_seq),
+                    annotation => $type,
+                );
+
+                $self->off_targets_interval_tree->insert_interval_into_tree( $chr, $start, $end, $off_target_obj );
+                $crRNA->off_target_hits->add_off_target( $off_target_obj );
+            }
+        }
+    }
+}
+
+=method hamming_distance
+
+  Usage       : hamming_distance( $crRNA1, $crRNA2, );
+  Purpose     : Return the hamming distance between two strings assuming they
+                are the same length
+  Returns     : Hamming distance, Int
+  Parameters  : crRNA1 Str
+                crRNA2 Str
+  Throws      : 
+  Comments    : 
+
+=cut
+
+sub hamming_distance {
+    return ($_[1] ^ $_[2]) =~ tr/\001-\255//;
 }
 
 =method output_fastq_for_off_targets
@@ -1182,15 +1279,15 @@ sub output_fastq_for_off_targets {
 =cut
 
 sub bwa_align {
-	my ( $self, $basename, ) = @_;
-	my $fq_filename = $basename . '.fq';
-	my $sai_filename = $basename . '.sai';
-	#my $align_cmd = join(q{ }, 'bwa aln -n 6 -o 0 -l 20 -k 5 -N',
-	#	$self->target_genome, $fq_filename, '>', $sai_filename, );
-	my $align_cmd = join(q{ }, 'bwa aln -n 4 -o 0 -l 20 -k 3 -N',
-		$self->target_genome, $fq_filename, '>', $sai_filename, );
+    my ( $self, $basename, ) = @_;
+    my $fq_filename = $basename . '.fq';
+    my $sai_filename = $basename . '.sai';
+    #my $align_cmd = join(q{ }, 'bwa aln -n 6 -o 0 -l 20 -k 5 -N',
+    #	$self->target_genome, $fq_filename, '>', $sai_filename, );
+    my $align_cmd = join(q{ }, 'bwa aln -n 4 -o 0 -l 20 -k 3 -N',
+        $self->target_genome, $fq_filename, '>', $sai_filename, );
     $align_cmd .= ' 2> /dev/null' if $testing;
-	system( $align_cmd );
+    system( $align_cmd );
     return 1;
 }
 
@@ -1207,7 +1304,7 @@ sub bwa_align {
 =cut
 
 sub filter_and_score_off_targets {
-	my ( $self, $crRNAs, $basename, $off_target_threshold, ) = @_;
+    my ( $self, $crRNAs, $basename, $off_target_threshold, ) = @_;
     
 	my $sam_cmd = join(q{ }, 'bwa samse -n 900000',
 		$self->target_genome, "$basename.sai", "$basename.fq", );
@@ -1563,6 +1660,21 @@ sub target_info_header {
     my ( $self, ) = @_;
     my $target = Crispr::Target->new();
     return( $target->info(1) );
+}
+
+# target_summary_header
+#
+#Usage       : $crispr->target_summary_header;
+#Purpose     : returns header columns names for target->summary method
+#Returns     : Array
+#Parameters  : None
+#Throws      : 
+#Comments    : 
+
+sub target_summary_header {
+    my ( $self, ) = @_;
+    my $target = Crispr::Target->new();
+    return( $target->summary(1) );
 }
 
 #_build_annotation_tree
