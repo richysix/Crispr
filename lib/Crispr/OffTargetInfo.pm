@@ -181,12 +181,16 @@ sub info {
     
 	# scores and detail
     push @info, $self->off_target_counts;
-    my @hits = $self->off_target_hits_by_annotation;
-    push @info, join('|',
-                    join('/', @{$hits[0]} ),
-                    join('/', @{$hits[1]} ),
-                    join('/', @{$hits[2]} ),
-                );
+    if ($self->number_hits > 30) {
+        push @info, 'TOO_MANY_HITS';
+    } else {
+        my @hits = $self->off_target_hits_by_annotation;
+        push @info, join('|',
+                        join('/', @{$hits[0]} ),
+                        join('/', @{$hits[1]} ),
+                        join('/', @{$hits[2]} ),
+                    );
+    }
     
     return @info;
 }
