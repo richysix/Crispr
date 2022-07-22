@@ -156,9 +156,11 @@ else{
         }
     }
     
-    print "Scoring Off-Targets...\n" if $options{verbose};
+    print "Scoring Off-Targets...\n" if $options{'verbose'};
     $crispr_design->find_off_targets( $crispr_design->all_crisprs, $basename,
-                                      $options{max_off_targets} );
+                                      $options{'max_off_targets'},
+                                      $options{'all_crisprs_file'},
+                                      $options{'max_off_target_mismatches'}, );
     
     if( $options{coding} ){
         print "Calculating coding scores...\n" if $options{verbose};
@@ -679,7 +681,9 @@ sub get_and_check_options {
         'target_sequence=s',
         'num_five_prime_Gs=i',
         'coding',
+        'all_crisprs_file=s',
         'max_off_targets=i',
+        'max_off_target_mismatches=i',
         'file_base=s',
         'bed_file+',
         'requestor=s',
@@ -773,6 +777,8 @@ sub get_and_check_options {
         }
     }
     
+    # max number of mismatches for off_targets
+    $options{'max_off_target_mismatches'} = !$options{'max_off_target_mismatches'} ? 4 : $options{'max_off_target_mismatches'};
     $options{requestor} = !$options{requestor} ? 'NULL' : $options{requestor};
     $options{debug} = 0 if !$options{debug};
     
@@ -798,26 +804,28 @@ possible off-target effects and optionally for its position in coding transcript
 =head1 SYNOPSIS
 
     find_and_score_crRNAs.pl [options] filename(s) | target info on STDIN
-        --registry_file         a registry file for connecting to the Ensembl database
-        --species               species for the targets
-        --assembly              current assembly
-        --target_genome         a target genome fasta file for scoring off-targets
-        --annotation_file       an annotation gff file for scoring off-targets
-        --variation_file        a file of known background variation for filtering crispr target sites
-        --target_sequence       crRNA consensus sequence (e.g. GGNNNNNNNNNNNNNNNNNNNGG)
-        --num_five_prime_Gs     The number of 5' Gs present in the consensus sequence, 0,1 OR 2
-        --enzyme                Sets the requires_enzyme attribute of targets [default: n]
-        --coding                turns on scoring of position of site within target gene
-        --max_off_targets       maximum number of off-targets for a CRISPR target site
-        --file_base             a prefix for all output files
-        --bed_file              outputs the CRISPR sites as a BED file as well as the usual output
-        --requestor             A requestor to use for all targets
-        --no_db                 option to stop script using Ensembl database and using genome fasta file instead
-        --no_crRNA              option to supress finding and scoring crispr target sites
-        --help                  prints help message and exits
-        --man                   prints manual page and exits
-        --debug                 prints debugging information
-        --verbose               turns on verbose output
+        --registry_file                 a registry file for connecting to the Ensembl database
+        --species                       species for the targets
+        --assembly                      current assembly
+        --target_genome                 a target genome fasta file for scoring off-targets
+        --annotation_file               an annotation gff file for scoring off-targets
+        --variation_file                a file of known background variation for filtering crispr target sites
+        --target_sequence               crRNA consensus sequence (e.g. GGNNNNNNNNNNNNNNNNNNNGG)
+        --num_five_prime_Gs             The number of 5' Gs present in the consensus sequence, 0,1 OR 2
+        --enzyme                        Sets the requires_enzyme attribute of targets [default: n]
+        --coding                        turns on scoring of position of site within target gene
+        --all_crisprs_file              name of a precomputed all_crisprs file
+        --max_off_targets               maximum number of off-targets for a CRISPR target site
+        --max_off_target_mismatches     maximum number of mismatches for off-target checking
+        --file_base                     a prefix for all output files
+        --bed_file                      outputs the CRISPR sites as a BED file as well as the usual output
+        --requestor                     A requestor to use for all targets
+        --no_db                         option to stop script using Ensembl database and using genome fasta file instead
+        --no_crRNA                      option to supress finding and scoring crispr target sites
+        --help                          prints help message and exits
+        --man                           prints manual page and exits
+        --debug                         prints debugging information
+        --verbose                       turns on verbose output
 
 =head1 REQUIRED ARGUMENTS
 
@@ -893,12 +901,24 @@ then affect the behaviour of scripts used to design screening primers.
 
 switch to indicate whether or not to score crRNAs for position in coding transcripts.
 
+=item B<--all_crisprs_file>
+
+The name of a precomputed all_crisprs file to use for off-target checking. If this is
+not defined then mapping by bwa is used.
+default: NULL
+
 =item B<--max_off_targets>
 
 Maximum number of off-target sites for a CRISPR target site. CRISPR target sites
 that are above the threshold will be removed. The default is that all CRISPR
 target sites are returned irrespective of number of off-targets.
 default: NULL
+
+=item B<--max_off_target_mismatches>
+
+The maximum allowed number of mismatches between the protospacer sequence and
+potential off-target sites.
+default: 4
 
 =item B<--file_base>
 
