@@ -189,7 +189,8 @@ $mock_crRNA1->mock( 'off_target_hits', sub{ my @args = @_; if( $args[1] ){ $off_
 $mock_crRNA1->mock( 'cut_site', sub{ return 117 });
 $mock_crRNA1->mock( 'target', sub{ return $mock_target });
 
-my $off_targets2;
+use Crispr::OffTarget;
+my $off_targets2 = Crispr::OffTargetInfo->new( crRNA_name => 'crRNA:test_chr2:41-63:1');
 my $coding_scores2 = {};
 my $mock_crRNA2 = Test::MockObject->new();
 $mock_crRNA2->set_isa( 'Crispr::crRNA' );
@@ -236,8 +237,10 @@ ok( $design_obj2->find_off_targets( $design_obj2->all_crisprs, 'tmp', 30,
 #intron:test_chr3:301-323:1 mismatches:4 annotation:intron
 #nongenic:test_chr1:1-23:1 mismatches:1 annotation:nongenic
 #nongenic:test_chr3:201-223:1 mismatches:2 annotation:nongenic
-#print Dumper($mock_crRNA1);
-#print Dumper($mock_crRNA1->off_target_hits);
+# print Dumper($mock_crRNA1);
+# print Dumper($mock_crRNA1->off_target_hits);
+# print Dumper($mock_crRNA2);
+# print Dumper($mock_crRNA2->off_target_hits);
 is( $mock_crRNA1->off_target_hits->score, 0.66, 'check off target score 1');
 is( $mock_crRNA2->off_target_hits->score, 1, 'check off target score 2');
 

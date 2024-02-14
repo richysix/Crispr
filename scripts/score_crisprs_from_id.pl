@@ -214,7 +214,8 @@ sub cut_site {
 }
 
 if( $options{singles} ){
-    print $out_fh_1 "#", join("\t", $crispr_design->target_summary_header(), $crispr_design->crRNA_info_header(), ), "\n";
+    print $out_fh_1 "#", join("\t", $crispr_design->target_summary_header(), 
+    $crispr_design->crRNA_info_header(), "notes", ), "\n";
     
     foreach my $crRNA ( @crisprs ){
         print $out_fh_1 join("\t", $crRNA->target_summary_plus_crRNA_info,
