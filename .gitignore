@@ -11,3 +11,4 @@ test.db
 _Inline/*
 t/data/*GRCz*fa*
 genomes/*
+.releases/
