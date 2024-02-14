@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 # PODNAME: downsample_bams_for_candidate_indels.pl
-# ABSTRACT: call and count indels from sample bam files
+# ABSTRACT: Downsample reads from bam files from MiSeq screening
 
 ## Author         : rw4
 ## Maintainer     : rw4
@@ -30,8 +30,7 @@ use Hash::Merge;
 use Crispr;
 use Tree::GenomicIntervalTree;
 use Labware::Plate;
-use Bio::DB::Sam;
-use Bio::DB::Bam::Alignment;
+use Bio::DB::HTS;
 
 # get options
 my %options;
@@ -118,7 +117,7 @@ foreach my $plate ( @{ $plex_info->{plates} } ){
                 
                 my $infile = File::Spec->catfile( $options{sample_directory}, $name . '.bam' );
                 
-                my $bam = Bio::DB::Sam->new(
+                my $bam = Bio::DB::HTS->new(
                     -bam  => $infile,
                     -fasta => $options{reference},
                     -autoindex => 1,
@@ -212,7 +211,7 @@ foreach my $plate ( @{ $plex_info->{plates} } ){
                 my $infile = File::Spec->catfile( $options{sample_directory}, $name . '.bam' );
                 print $infile, "\n" if $options{verbose};
                 
-                my $bam = Bio::DB::Sam->new(
+                my $bam = Bio::DB::HTS->new(
                     -bam  => $infile,
                     -fasta => $options{reference},
                     -autoindex => 1,
@@ -306,14 +305,14 @@ foreach my $plate ( @{ $plex_info->{plates} } ){
                     warn Dumper( %read_names ) if $options{debug} > 2;
                     
                     # open bam file and get header
-                    my $in_bam = Bio::DB::Bam->open($infile, "r");
-                    my $header = $in_bam->header();
+                    my $in_bam = Bio::DB::HTSfile->open($infile);
+                    my $header = $in_bam->header_read();
                     
                     # open output bam file for each variant and write header
                     my %bam_fhs;
                     foreach my $variant ( keys %read_names ){
                         my $outfile = File::Spec->catfile( $options{output_directory}, 'bams', $plex->{name}, join(".", $name, $var_num, 'bam' ) );
-                        my $out_bam = Bio::DB::Bam->open($outfile, "w");
+                        my $out_bam = Bio::DB::HTSfile->open($outfile, "wb");
                         $out_bam->header_write( $header );
                         $bam_fhs{ $variant } = $out_bam;
                         # add number for var to results hash
@@ -328,7 +327,7 @@ foreach my $plate ( @{ $plex_info->{plates} } ){
                     }
                     
                     # open bai index and go through region
-                    my $index = Bio::DB::Bam->index_open($infile);
+                    my $index = Bio::DB::HTSfile->index_load($in_bam);
                     my ( $tid, $r_start, $r_end, ) = $header->parse_region( $region );
                     
                     my $callback = sub {
@@ -718,8 +717,8 @@ sub parse_yaml_file {
     if( $options{verbose} ){
         print "Crispr groups:\n";
         foreach my $plate_num ( sort { $a <=> $b } keys %groups_for_crisprs  ){
-            foreach my $well_ids ( sort keys $groups_for_crisprs{$plate_num} ){
-                foreach my $crispr_name ( sort keys $groups_for_crisprs{$plate_num}{$well_ids} ){
+            foreach my $well_ids ( sort keys %{ $groups_for_crisprs{$plate_num} } ){
+                foreach my $crispr_name ( sort keys %{ $groups_for_crisprs{$plate_num}{$well_ids} } ){
                     print join("\t", $plate_num, $well_ids, $crispr_name,
                         $groups_for_crisprs{$plate_num}{$well_ids}{$crispr_name},
                         ), "\n";
@@ -831,7 +830,7 @@ __END__
 
 =head1 NAME
 
-count_indel_reads_from_sam.pl
+downsample_bams_for_candidate_indels.pl
 
 =head1 DESCRIPTION
 
@@ -841,7 +840,7 @@ Description
 
 =head1 SYNOPSIS
 
-    count_indel_reads_from_sam.pl [options] YAML file
+    downsample_bams_for_candidate_indels.pl [options] YAML file
         --output_directory      directory for output files                  default: results
         --sample_directory      directory to find sample bam files          default: sample-bams
         --pc_filter             threshold for the percentage of reads

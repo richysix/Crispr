@@ -30,8 +30,7 @@ use Hash::Merge;
 use Crispr;
 use Tree::GenomicIntervalTree;
 use Labware::Plate;
-use Bio::DB::Sam;
-use Bio::DB::Bam::Alignment;
+use Bio::DB::HTS;
 
 my $date_obj = DateTime->now();
 my $todays_date = $date_obj->ymd( q{} );
@@ -48,7 +47,8 @@ Readonly my $PER_AMP_COVERAGE_FILTER => !defined $options{low_coverage_filter} ?
     :   $options{low_coverage_filter};
 
 # For merging calls
-Hash::Merge::specify_behavior(
+my $hash_merge_consensus = Hash::Merge->new();
+$hash_merge_consensus->add_behavior_spec(
     {
         SCALAR => {
             SCALAR => sub { $_[0] + $_[1] },    # Add scalars
@@ -68,7 +68,6 @@ Hash::Merge::specify_behavior(
     },
     'consensus',
 );
-my $hash_merge_consensus = Hash::Merge->new('consensus');
 
 # make new Crispr object
 my $crispr_design;
@@ -117,7 +116,7 @@ if( !-e $output_bam_dir ){
 
 
 # set up global types array
-Readonly my @TYPES = ( qw{ D SI LI INT_final } );
+Readonly my @TYPES => ( qw{ D SI LI INT_final } );
 
 # go through all the sample bams from the yaml file
 my ( $results, $outliers, );
@@ -225,7 +224,7 @@ if( $no_combined ){
                             
                             my $infile = File::Spec->catfile( $options{sample_directory}, $name . '.bam' );
                             
-                            my $bam = Bio::DB::Sam->new(
+                            my $bam = Bio::DB::HTS->new(
                                 -bam  => $infile,
                                 -fasta => $options{reference},
                                 -autoindex => 1,
@@ -303,7 +302,7 @@ if( $no_combined ){
             %variants_seen = %{ $data_object->{variants_seen} };
         }
         
-        #warn Dumper( $results, $outliers, ) if( $options{debug} > 1 );
+        warn Dumper( $results, $outliers, ) if( $options{debug} > 1 );
         
         if( $options{no_pindel} ){
             warn "Option no_pindel specified. Skipping Pindel...\n";
@@ -426,7 +425,7 @@ if( $no_combined ){
                     my $infile = File::Spec->catfile( $options{sample_directory}, $name . '.bam' );
                     print $infile, "\n" if $options{verbose};
                     
-                    my $bam = Bio::DB::Sam->new(
+                    my $bam = Bio::DB::HTS->new(
                         -bam  => $infile,
                         -fasta => $options{reference},
                         -autoindex => 1,
@@ -454,9 +453,6 @@ if( $no_combined ){
                         foreach my $crispr_name ( keys %{ $results_hash->{indels} } ){
                             print $crispr_name, "\n" if( $options{verbose} );
                             warn $crispr_name, "\n" if( $options{debug} );
-                            #my @variants = grep {
-                            #                        $results_hash->{indels}->{$crispr_name}->{$_}->{count}/$results_hash->{read_count} > $options{pc_filter}
-                            #                    }   keys %{ $results_hash->{indels}->{$crispr_name} };
                             # Remove variants that are below threshold
                             my @variants;
                             foreach my $variant ( keys %{ $results_hash->{indels}->{$crispr_name} } ){
@@ -506,7 +502,6 @@ if( $no_combined ){
                                                             },
                                                         );
                                         # add read name to read_names hash
-                                        #my $read_name = join(":", $align->query->name, $align->strand, );
                                         my $read_name = $align->query->name;
                                         if( $results_hash->{indels}->{$crispr_name}->{$variant}->{count} > $DOWNSAMPLE_LIMIT ){
                                             my $fraction = $DOWNSAMPLE_LIMIT / $results_hash->{indels}->{$crispr_name}->{$variant}->{count};
@@ -524,14 +519,14 @@ if( $no_combined ){
                         warn Dumper( %read_names ) if $options{debug} > 2;
                         
                         # open bam file and get header
-                        my $in_bam = Bio::DB::Bam->open($infile, "r");
-                        my $header = $in_bam->header();
+                        my $in_bam = Bio::DB::HTSfile->open($infile);
+                        my $header = $in_bam->header_read();
                         
                         # open output bam file for each variant and write header
                         my %bam_fhs;
                         foreach my $variant ( keys %read_names ){
                             my $outfile = File::Spec->catfile( $options{output_directory}, 'bams', $plex->{name}, join(".", $name, $var_num, 'bam' ) );
-                            my $out_bam = Bio::DB::Bam->open($outfile, "w");
+                            my $out_bam = Bio::DB::HTSfile->open($outfile, "wb");
                             $out_bam->header_write( $header );
                             $bam_fhs{ $variant } = $out_bam;
                             # add number for var to results hash
@@ -546,7 +541,7 @@ if( $no_combined ){
                         }
                         
                         # open bai index and go through region
-                        my $index = Bio::DB::Bam->index_open($infile);
+                        my $index = Bio::DB::HTSfile->index_load($in_bam);
                         my ( $tid, $r_start, $r_end, ) = $header->parse_region( $region );
                         
                         my $callback = sub {
@@ -556,7 +551,7 @@ if( $no_combined ){
                             foreach my $variant ( keys %{$read_names} ){
                                 my $read_name = $alignment->qname;
                                 if( exists $read_names->{ $variant}{ $read_name } ){
-                                    $bam_fhs->{ $variant }->write1($alignment);
+                                    $bam_fhs->{ $variant }->write1($header, $alignment);
                                 }
                             }
                         };
@@ -684,8 +679,10 @@ foreach my $plate ( @{ $plex_info->{plates} } ){
                                     }
                                     # check var seen hash to avoid double counting
                                     if( !exists $var_seen{ $samples->[$sample_counter] . $variant } ){
-                                        warn join(":", "Count", $results_hash->{indels}->{$crispr_name}->{$variant}->{count}, ), "\n",
-                                            join(":", "WT count", ($results_hash->{wt_read_count} || '0' ), ), "\n";
+                                        if ($options{debug} > 1){
+                                            warn join(":", "Count", $results_hash->{indels}->{$crispr_name}->{$variant}->{count}, ), "\n",
+                                                join(":", "WT count", ($results_hash->{wt_read_count} || '0' ), ), "\n";
+                                        }
                                         $vcf_info{$variant}->{total_counts} +=
                                             $results_hash->{indels}->{$crispr_name}->{$variant}->{count} +
                                                 ($results_hash->{wt_read_count} || 0);
@@ -715,7 +712,7 @@ foreach my $plate ( @{ $plex_info->{plates} } ){
                                                 $results_hash->{indels}->{$crispr_name}->{$variant}->{count}/$results_hash->{read_count}, );
                                     if( exists $results_hash->{indels}->{$crispr_name}->{ $variant }->{consensus} ){
                                         my $consensus = create_consensus( $results_hash->{indels}->{$crispr_name}->{ $variant } );
-                                        #print join("\n", $consensus, $options{consensus_filter} ), "\n" if $options{debug};
+                                        print join("\n", $consensus, $options{consensus_filter} ), "\n" if $options{debug} > 1;
                                         if( length($consensus) < $options{consensus_filter} ){
                                             next;
                                         }
@@ -1058,7 +1055,6 @@ sub concat_vcfs {
         open my $vcf_fh, '>', $vcf_file;
         close( $vcf_fh );
     }
-    #return
 }
 
 sub parse_vcf_file_for_region {
@@ -2071,8 +2067,8 @@ sub parse_yaml_file {
     if( $options{verbose} ){
         print "Crispr groups:\n";
         foreach my $plate_num ( sort { $a <=> $b } keys %groups_for_crisprs  ){
-            foreach my $well_ids ( sort keys $groups_for_crisprs{$plate_num} ){
-                foreach my $crispr_name ( sort keys $groups_for_crisprs{$plate_num}{$well_ids} ){
+            foreach my $well_ids ( sort keys %{ $groups_for_crisprs{$plate_num} } ){
+                foreach my $crispr_name ( sort keys %{ $groups_for_crisprs{$plate_num}{$well_ids} } ){
                     print join("\t", $plate_num, $well_ids, $crispr_name,
                         $groups_for_crisprs{$plate_num}{$well_ids}{$crispr_name},
                         ), "\n";
