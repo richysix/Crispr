@@ -19,7 +19,13 @@ Features:
 ### Download and install prerequisites
 
 These modules rely on other Perl modules which must be installed for the scripts to work.  
-BioPerl v1.6.9 - [Instructions for installing](http://www.bioperl.org/wiki/Installing_BioPerl)  
+BioPerl v1.6.9 - [Instructions for installing](https://github.com/bioperl/bioperl-live)  
+The required modules are:  
+* Bio::Seq
+* Bio::SeqIO
+* Bio::Restriction
+* Bio::DB::Fasta
+
 Ensembl API - [Instructions for installing](http://www.ensembl.org/info/docs/api/api_installation.html)
 
 Other required modules can be installed from [CPAN](http://www.cpan.org/modules/INSTALL.html)  
@@ -31,7 +37,7 @@ These can be installed from github.
 The modules are:  
 #### [PCR](http://github.com/richysix/PCR)  
 
-Install [Primer3](http://primer3.sourceforge.net/) first.  
+Install [Primer3](https://github.com/primer3-org/primer3) first.  
 Download latest [PCR](https://github.com/richysix/PCR/releases) release and
 install using make.
 e.g.  
