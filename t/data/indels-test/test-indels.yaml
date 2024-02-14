@@ -1,0 +1,21 @@
+---
+name: miseq-test
+run_id: 123
+lane: 1
+plates:
+  -
+    name: 1
+    wells:
+      -
+        well_ids: A01
+        indices: 1
+        sample_names: test-1
+        plexes:
+          -
+            name: plex1
+            region_info:
+              -
+                crisprs:
+                  - crRNA:test_chr3:38-60:1
+                gene_name: test-gene-1
+                region: test_chr3:11-85:1

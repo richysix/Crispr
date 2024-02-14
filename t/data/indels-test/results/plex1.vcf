@@ -1,0 +1,19 @@
+##fileformat=VCFv4.0
+##source=Dindel
+##reference=../mock_genome.fa
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Total number of reads in haplotype window">
+##INFO=<ID=NF,Number=1,Type=Integer,Description="Number of reads covering non-ref variant on forward strand">
+##INFO=<ID=NR,Number=1,Type=Integer,Description="Number of reads covering non-ref variant on reverse strand">
+##INFO=<ID=NFS,Number=1,Type=Integer,Description="Number of reads covering non-ref variant site on forward strand">
+##INFO=<ID=NRS,Number=1,Type=Integer,Description="Number of reads covering non-ref variant site on reverse strand">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=AD,Number=2,Type=Integer,Description="Allele Depths">
+##ALT=<ID=DEL,Description="Deletion">
+##FILTER=<ID=q20,Description="Quality below 20">
+##FILTER=<ID=hp10,Description="Reference homopolymer length was longer than 10">
+##FILTER=<ID=fr0,Description="Non-ref allele is not covered by at least one read on both strands">
+##FILTER=<ID=wv,Description="Other indel in window had higher likelihood">
+#CHROM 	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	test-1
+test_chr3	49	.	ACAAC	A	.	PASS	DP=22	GT:AD	0/1:10,12
+test_chr3	50	.	CAACT	CAGGAA	.	PASS	DP=14	GT:AD	0/1:10,4
+test_chr3	53	.	C	CAG	.	PASS	DP=16	GT:AD	0/1:10,6

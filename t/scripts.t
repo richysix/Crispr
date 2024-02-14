@@ -3,6 +3,7 @@
 use warnings;
 use strict;
 use File::Which;
+use File::Temp qw/ tempdir /;
 use Test::More;
 
 BEGIN {
@@ -26,7 +27,7 @@ use Test::MockObject;
 use Data::Dumper;
 use File::Spec;
 
-plan tests => 1 + 3 + 3 + 2;
+plan tests => 1 + 3 + 3 + 2 + 2;
 
 #get current date
 use DateTime;
@@ -94,25 +95,48 @@ is( $output_for{'crRNA:test_chr2:41-63:1'}{'crRNA_off_target_hits'},
    '||', 'check off_target_hits 2' );
 
 
-$annotation_file = File::Spec->catfile( 't', 'data', 'Dr-e100_annotation.gff' );
-$genome_file = File::Spec->catfile( 't', 'data', 'Danio_rerio.GRCz11.dna_sm.primary_assembly.fa' );
+SKIP: {
+    $annotation_file = File::Spec->catfile( 't', 'data', 'Dr-e100_annotation.gff' );
+    $genome_file = File::Spec->catfile( 't', 'data', 'Danio_rerio.GRCz11.dna_sm.primary_assembly.fa' );
+    my $skip_it;
+    if ( ! -e $annotation_file || ! -e $genome_file ) {
+        $skip_it = 1;
+    }
+    skip "Genome or annotation file does not exist", 2 if $skip_it;
 
-open $tmp_fh, '>', 'crispr.tmp' or die "Couldn't open temp file crispr.tmp to write to!\n";
-print $tmp_fh join("\t", qw{ crRNA:24:8727235-8727257:1 crispr_test ENSDARE00000597893 ENSDARG00000059279 tfap2a }, ), "\n";
-print $tmp_fh join("\t", qw{ crRNA:24:8727267-8727289:-1 crispr_test ENSDARE00000597893 ENSDARG00000059279 tfap2a }, ), "\n";
-close $tmp_fh;
+    open $tmp_fh, '>', 'crispr.tmp' or die "Couldn't open temp file crispr.tmp to write to!\n";
+    print $tmp_fh join("\t", qw{ crRNA:24:8727235-8727257:1 crispr_test ENSDARE00000597893 ENSDARG00000059279 tfap2a }, ), "\n";
+    print $tmp_fh join("\t", qw{ crRNA:24:8727267-8727289:-1 crispr_test ENSDARE00000597893 ENSDARG00000059279 tfap2a }, ), "\n";
+    close $tmp_fh;
 
-$score_crispr_cmd = join(q{ }, 'perl -I lib scripts/score_crisprs_from_id.pl',
-    '--singles', '--species zebrafish', '--num_five_prime_Gs 0',
-    '--file_base tmp', '--target_genome', $genome_file,
-    "--annotation_file", $annotation_file, 'crispr.tmp',
-    '2>', 'tmp.err', );
+    $score_crispr_cmd = join(q{ }, 'perl -I lib scripts/score_crisprs_from_id.pl',
+        '--singles', '--species zebrafish', '--num_five_prime_Gs 0',
+        '--file_base tmp', '--target_genome', $genome_file,
+        "--annotation_file", $annotation_file, 'crispr.tmp',
+        '2>', 'tmp.err', );
 
-system( $score_crispr_cmd );
-ok( $? >> 8 == 0, 'run score_crisprs_from_id.pl danio genome' );
-my $test_output_file = File::Spec->catfile( 't', 'data', 'test_crRNAs-score_from_id-danio.txt' );
-system("diff -q $output_filename $test_output_file");
-ok( $? >> 8 == 0, 'check score_crisprs_from_id.pl output' );
+    system( $score_crispr_cmd );
+    ok( $? >> 8 == 0, 'run score_crisprs_from_id.pl danio genome' );
+    my $test_output_file = File::Spec->catfile( 't', 'data', 'test_crRNAs-score_from_id-danio.txt' );
+    system("diff -q $output_filename $test_output_file");
+    ok( $? >> 8 == 0, 'check score_crisprs_from_id.pl output' );
+}
+
+# Test count indel read from bam
+my $test_indel_results_file = File::Spec->catfile( 't', 'data', 'indels-test', 'results', 'test-results.txt' );
+my $tempdir = 'tmp';
+my $count_indels_cmd = join(q{ }, 'perl -I lib/ scripts/count_indel_reads_from_bam.pl',
+    "--output_directory $tempdir --output_file test.txt", '--reference t/data/mock_genome.fa',
+    '--sample_dir t/data/indels-test', '--no_pindel', '--no_dindel',
+    '--low_coverage_filter 1', '--low_coverage_per_variant_filter 1',
+    '--assembly mockGenome', 't/data/indels-test/test-indels.yaml', 
+    '2 > /dev/null');
+
+system( $count_indels_cmd );
+ok( $? >> 8 == 0, 'run count_indel_reads_from_bam.pl' );
+system("sort $tempdir/test.txt > $tempdir/test.tmp" );
+system("diff -q $test_indel_results_file $tempdir/test.tmp");
+ok( $? >> 8 == 0, 'check count_indel_reads_from_bam.pl output' );
 
 if (Test::More->builder->is_passing) {
     unlink( 'tmp.err', 'crispr.tmp', $output_filename, $fastq_filename, $sai_filename, );
