@@ -24,8 +24,7 @@ use Crispr::OffTargetInfo;
 use Tree::AnnotationTree;
 use Tree::GenomicIntervalTree;
 
-use BioPerl 1.006900;
-use Bio::Seq ;
+use Bio::Seq;
 use Bio::SeqIO;
 use Bio::DB::Fasta;
 
@@ -282,6 +281,7 @@ has 'off_targets_interval_tree' => (
 has 'debug' => (
     is => 'ro',
     isa => 'Int',
+    default => 0,
 );
 
 #_testing
@@ -1632,14 +1632,16 @@ sub calculate_pc_coding_score {
 	}
 }
 
-# crRNA_info_header
-#
-#Usage       : $crispr->crRNA_info_header;
-#Purpose     : returns header columns names for crRNA->info method
-#Returns     : Array
-#Parameters  : None
-#Throws      : 
-#Comments    : 
+=method crRNA_info_header
+
+  Usage       : $crispr->crRNA_info_header;
+  Purpose     : returns header columns names for crRNA->info method
+  Returns     : Array
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
 
 sub crRNA_info_header {
     my ( $self, ) = @_;
@@ -1647,14 +1649,16 @@ sub crRNA_info_header {
     return( $crRNA->info(1) );
 }
 
-# target_info_header
-#
-#Usage       : $crispr->target_info_header;
-#Purpose     : returns header columns names for target->info method
-#Returns     : Array
-#Parameters  : None
-#Throws      : 
-#Comments    : 
+=method target_info_header
+
+  Usage       : $crispr->target_info_header;
+  Purpose     : returns header columns names for target->info method
+  Returns     : Array
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
 
 sub target_info_header {
     my ( $self, ) = @_;
@@ -1662,14 +1666,16 @@ sub target_info_header {
     return( $target->info(1) );
 }
 
-# target_summary_header
-#
-#Usage       : $crispr->target_summary_header;
-#Purpose     : returns header columns names for target->summary method
-#Returns     : Array
-#Parameters  : None
-#Throws      : 
-#Comments    : 
+=method target_summary_header
+
+  Usage       : $crispr->target_summary_header;
+  Purpose     : returns header columns names for target->summary method
+  Returns     : Array
+  Parameters  : None
+  Throws      : 
+  Comments    : 
+
+=cut
 
 sub target_summary_header {
     my ( $self, ) = @_;
