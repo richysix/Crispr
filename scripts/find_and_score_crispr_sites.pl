@@ -791,11 +791,11 @@ __END__
 
 =head1 NAME
 
-find_and_score_crRNAs.pl
+find_and_score_crispr_sites.pl
 
 =head1 DESCRIPTION
 
-find_and_score_crRNAs.pl takes either an Ensembl exon id, gene id, transcript id
+find_and_score_crispr_sites.pl takes either an Ensembl exon id, gene id, transcript id
 or a genomic position for a target and uses the Ensembl API to retrieve sequence
 for the region. The region is scanned for possible crispr guideRNA targets (the
 target sequence can be adjusted) and these possible crRNA targets are scored for
@@ -803,7 +803,7 @@ possible off-target effects and optionally for its position in coding transcript
 
 =head1 SYNOPSIS
 
-    find_and_score_crRNAs.pl [options] filename(s) | target info on STDIN
+    find_and_score_crispr_sites.pl [options] filename(s) | target info on STDIN
         --registry_file                 a registry file for connecting to the Ensembl database
         --species                       species for the targets
         --assembly                      current assembly

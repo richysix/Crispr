@@ -304,8 +304,6 @@ This file is tab-separated with the following columns
 
 We order just the external and internal-illumina_adaptor primers, but the
 internal primers are included on their own in the output for completeness.
-The
-
 
 ### Screening by amplicon sequencing - Analysis of sequencing
 
