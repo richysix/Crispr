@@ -277,13 +277,13 @@ if( ( any { !defined $targets->{$_}->{int_primers} } keys %$targets ) && keys %{
         }
     }
     # make a targets hash that is the undesigned subset of $targets
-    my @left_over_target_ids = grep { !defined $targets->{$_}->{int_primers} } keys $targets;
+    my @left_over_target_ids = grep { !defined $targets->{$_}->{int_primers} } keys %{ $targets };
     my $left_over_targets;
     %{$left_over_targets} = map { $_ => $targets->{$_} } @left_over_target_ids;
     
     foreach my $size_range ( @pcr_size_ranges ){
         $left_over_targets = primer_design( $left_over_targets, $primer_design_settings, $size_range );
-        if( all { defined $targets->{$_}->{int_primers} } keys %$targets ){
+        if( all { defined $targets->{$_}->{int_primers} } keys %{$targets} ){
             last;
         }
     }
